@@ -5,12 +5,13 @@ Automatically create Jira tickets when a newreleases.io release is detected usin
 ## Configuration:
 
 The application requires the following environment variables to be set:
-- `PORT`: The port the application is expecting traffic on
-- `JIRA_URL`: The URL of your Jira instance
-- `JIRA_USER`: Jira username to authenticate API requests
-- `JIRA_TOKEN`: Jira API token, can also be a password in self-hosted instances
-- `JIRA_PROJECT`: Jira Project key the tickets will be created in
+- `JELEASE_PORT`: The port the application is expecting traffic on
+- `JELEASE_ADDLABELS`: Add additional labels to the created jira ticket
+- `JELEASE_JIRAURL`: The URL of your Jira instance
+- `JELEASE_JIRAUSER`: Jira username to authenticate API requests
+- `JELEASE_JIRATOKEN`: Jira API token, can also be a password in self-hosted instances
+- `JELEASE_JIRAPROJECT`: Jira Project key the tickets will be created in
 
 ## Usage
 
-Send newreleases.io webhooks to the `host:port/webhook` route.
+Direct newreleases.io webhooks to the `host:port/webhook` route.
