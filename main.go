@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 
@@ -32,7 +31,7 @@ type Config struct {
 }
 
 // Release object unmarshaled from the newreleases.io webhook.
-// Some fields omitted for simplicity, check out the documentation at https://newreleases.io/webhooks
+// Some fields omitted for simplicity, refer to the documentation at https://newreleases.io/webhooks
 type Release struct {
 	Provider string `json:"provider"`
 	Project  string `json:"project"`
@@ -95,11 +94,13 @@ func handlePostWebhook(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Println(err.Error())
 		body, readErr := io.ReadAll(resp.Body)
+		errCtx := errors.New("error response from Jira when searching previous issues")
 		if readErr != nil {
-			panic(readErr)
+			fmt.Fprintf(os.Stderr, "%v: %v. Failed to decode response body: %v", errCtx, err, string(body))
+		} else {
+			fmt.Fprintf(os.Stderr, "%v: %v. Response body: %v", errCtx, err, string(body))
 		}
-		fmt.Printf("Error response from Jira when searching previous issues: %+v\n", string(body))
-		http.Error(w, http.StatusText(http.StatusBadGateway), http.StatusBadGateway)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
@@ -108,13 +109,14 @@ func handlePostWebhook(w http.ResponseWriter, r *http.Request) {
 		i := release.JiraIssue()
 		newIssue, response, err := jiraClient.Issue.Create(&i)
 		if err != nil {
-			fmt.Println(err.Error())
 			body, readErr := io.ReadAll(response.Body)
+			errCtx := errors.New("error response from Jira when creating issue")
 			if readErr != nil {
-				panic(readErr)
+				fmt.Fprintf(os.Stderr, "%v: %v. Failed to decode response body: %v", errCtx, err, readErr)
+			} else {
+				fmt.Fprintf(os.Stderr, "%v: %v. Response body: %v", errCtx, err, string(body))
 			}
-			fmt.Printf("Error response from Jira when creating issue: %+v\n", string(body))
-			http.Error(w, http.StatusText(http.StatusBadGateway), http.StatusBadGateway)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 		fmt.Printf("Created issue %v\n", newIssue.ID)
 		return
@@ -143,13 +145,15 @@ func handlePostWebhook(w http.ResponseWriter, r *http.Request) {
 
 		resp, err = jiraClient.Issue.UpdateIssue(previousIssue.ID, updates)
 		if err != nil {
-			fmt.Println(err.Error())
 			body, readErr := io.ReadAll(resp.Body)
+			errCtx := errors.New("error response from Jira when updating issue")
 			if readErr != nil {
-				panic(readErr)
+				fmt.Fprintf(os.Stderr, "%v: %v. Failed to decode response body: %v", errCtx, err, readErr)
+			} else {
+				fmt.Fprintf(os.Stderr, "%v: %v. Response body: %v", errCtx, err, body)
 			}
-			fmt.Printf("Error response from Jira when updating issue: %+v\n", string(body))
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
 		}
 
 		fmt.Printf("Updated issue summary from %q to %q", previousSummary, release.IssueSummary())
@@ -157,6 +161,15 @@ func handlePostWebhook(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	err := run()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+	os.Exit(0)
+}
+
+func run() error {
 	// configuration setup
 	err := godotenv.Load()
 	if err != nil {
@@ -165,7 +178,7 @@ func main() {
 
 	err = envconfig.Process("jelease", &config)
 	if err != nil {
-		log.Fatal(err.Error())
+		return err
 	}
 
 	fmt.Printf("Jira URL: %v\n", config.JiraUrl)
@@ -175,19 +188,18 @@ func main() {
 	}
 	jiraClient, err = jira.NewClient(tp.Client(), config.JiraUrl)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("failed to create jira client: %w", err)
 	}
 
 	// Ensure config.Project exists on the Jira server
 	allProjects, response, err := jiraClient.Project.GetList()
 	if err != nil {
-		fmt.Println(err.Error())
-		body, decodingErr := io.ReadAll(response.Body)
-		if err != nil {
-			panic(decodingErr.Error())
+		body, readErr := io.ReadAll(response.Body)
+		errCtx := errors.New("error response from Jira when retrieving project list")
+		if readErr != nil {
+			return fmt.Errorf("%v: %w. Failed to decode response body: %v", errCtx, err, readErr)
 		}
-		fmt.Printf("Error response from Jira when retrieving project list: %+v\n", string(body))
-		os.Exit(1)
+		return fmt.Errorf("%v: %w. Response body: %v", errCtx, err, string(body))
 	}
 	var projectExists bool
 	for _, project := range *allProjects {
@@ -197,20 +209,18 @@ func main() {
 		}
 	}
 	if !projectExists {
-		fmt.Printf("Project %v does not exist on your Jira server", config.Project)
-		os.Exit(1)
+		return fmt.Errorf("project %v does not exist on your Jira server", config.Project)
 	}
 
 	// Ensure config.DefaultStatus exists on the Jira server
 	allStatuses, response, err := jiraClient.Status.GetAllStatuses()
 	if err != nil {
-		fmt.Println(err.Error())
-		body, decodingErr := io.ReadAll(response.Body)
-		if err != nil {
-			panic(decodingErr.Error())
+		body, readErr := io.ReadAll(response.Body)
+		errCtx := errors.New("error response from Jira when retrieving status list: %+v")
+		if readErr != nil {
+			return fmt.Errorf("%v: %w. Failed to decode response body: %v", errCtx, err, readErr)
 		}
-		fmt.Printf("Error response from Jira when retrieving status list: %+v\n", string(body))
-		os.Exit(1)
+		return fmt.Errorf("%v: %w. Response body: %v", errCtx, err, string(body))
 	}
 	var statusExists bool
 	for _, status := range allStatuses {
@@ -220,8 +230,7 @@ func main() {
 		}
 	}
 	if !statusExists {
-		fmt.Printf("Status %v does not exist on your Jira server", config.DefaultStatus)
-		os.Exit(1)
+		return fmt.Errorf("status %v does not exist on your Jira server", config.DefaultStatus)
 	}
 
 	// http server setup
@@ -231,8 +240,9 @@ func main() {
 	err = http.ListenAndServe(fmt.Sprintf(":%v", config.Port), nil)
 	if errors.Is(err, http.ErrServerClosed) {
 		fmt.Printf("server closed\n")
+		return nil
 	} else if err != nil {
-		fmt.Printf("error starting server: %s\n", err)
-		os.Exit(1)
+		return fmt.Errorf("error starting server: %w", err)
 	}
+	return nil
 }
