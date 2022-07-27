@@ -175,71 +175,100 @@ func main() {
 
 func run() error {
 	// configuration setup
-	err := godotenv.Load()
-	if err != nil {
-		logger.Println("No .env file found.")
-	}
+	configSetup := func() error {
+		err := godotenv.Load()
+		if err != nil {
+			logger.Println("No .env file found.")
+		}
 
-	err = envconfig.Process("jelease", &config)
-	if err != nil {
-		return err
-	}
+		err = envconfig.Process("jelease", &config)
+		if err != nil {
+			return err
+		}
 
-	logger.Printf("Jira URL: %v\n", config.JiraUrl)
-	tp := jira.BasicAuthTransport{
-		Username: config.JiraUser,
-		Password: config.JiraToken,
-	}
-	jiraClient, err = jira.NewClient(tp.Client(), config.JiraUrl)
-	if err != nil {
-		return fmt.Errorf("failed to create jira client: %w", err)
+		logger.Printf("Jira URL: %v\n", config.JiraUrl)
+		tp := jira.BasicAuthTransport{
+			Username: config.JiraUser,
+			Password: config.JiraToken,
+		}
+		jiraClient, err = jira.NewClient(tp.Client(), config.JiraUrl)
+		if err != nil {
+			return fmt.Errorf("failed to create jira client: %w", err)
+		}
+		return nil
 	}
 
 	// Ensure config.Project exists on the Jira server
-	allProjects, response, err := jiraClient.Project.GetList()
-	if err != nil {
-		body, readErr := io.ReadAll(response.Body)
-		errCtx := errors.New("error response from Jira when retrieving project list")
-		if readErr != nil {
-			return fmt.Errorf("%v: %w. Failed to decode response body: %v", errCtx, err, readErr)
+	projectExists := func() error {
+		allProjects, response, err := jiraClient.Project.GetList()
+		if err != nil {
+			body, readErr := io.ReadAll(response.Body)
+			errCtx := errors.New("error response from Jira when retrieving project list")
+			if readErr != nil {
+				return fmt.Errorf("%v: %w. Failed to decode response body: %v", errCtx, err, readErr)
+			}
+			return fmt.Errorf("%v: %w. Response body: %v", errCtx, err, string(body))
 		}
-		return fmt.Errorf("%v: %w. Response body: %v", errCtx, err, string(body))
-	}
-	var projectExists bool
-	for _, project := range *allProjects {
-		if project.Key == config.Project {
-			projectExists = true
-			break
+		var projectExists bool
+		for _, project := range *allProjects {
+			if project.Key == config.Project {
+				projectExists = true
+				break
+			}
 		}
-	}
-	if !projectExists {
-		return fmt.Errorf("project %v does not exist on your Jira server", config.Project)
+		if !projectExists {
+			return fmt.Errorf("project %v does not exist on your Jira server", config.Project)
+		}
+		return nil
 	}
 
 	// Ensure config.DefaultStatus exists on the Jira server
-	allStatuses, response, err := jiraClient.Status.GetAllStatuses()
-	if err != nil {
-		body, readErr := io.ReadAll(response.Body)
-		errCtx := errors.New("error response from Jira when retrieving status list: %+v")
-		if readErr != nil {
-			return fmt.Errorf("%v: %w. Failed to decode response body: %v", errCtx, err, readErr)
+	statusExists := func() error {
+		allStatuses, response, err := jiraClient.Status.GetAllStatuses()
+		if err != nil {
+			body, readErr := io.ReadAll(response.Body)
+			errCtx := errors.New("error response from Jira when retrieving status list: %+v")
+			if readErr != nil {
+				return fmt.Errorf("%v: %w. Failed to decode response body: %v", errCtx, err, readErr)
+			}
+			return fmt.Errorf("%v: %w. Response body: %v", errCtx, err, string(body))
 		}
-		return fmt.Errorf("%v: %w. Response body: %v", errCtx, err, string(body))
-	}
-	var statusExists bool
-	for _, status := range allStatuses {
-		if status.Name == config.DefaultStatus {
-			statusExists = true
-			break
+		var statusExists bool
+		for _, status := range allStatuses {
+			if status.Name == config.DefaultStatus {
+				statusExists = true
+				break
+			}
 		}
-	}
-	if !statusExists {
-		return fmt.Errorf("status %v does not exist on your Jira server", config.DefaultStatus)
+		if !statusExists {
+			return fmt.Errorf("status %v does not exist on your Jira server", config.DefaultStatus)
+		}
+		return nil
 	}
 
-	// http server setup
-	http.HandleFunc("/webhook", handlePostWebhook)
-	http.HandleFunc("/", handleGetRoot)
-	logger.Printf("Listening on port %v\n", config.Port)
-	return http.ListenAndServe(fmt.Sprintf(":%v", config.Port), nil)
+	serveHTTP := func() error {
+		// http server setup
+		http.HandleFunc("/webhook", handlePostWebhook)
+		http.HandleFunc("/", handleGetRoot)
+		logger.Printf("Listening on port %v\n", config.Port)
+		return http.ListenAndServe(fmt.Sprintf(":%v", config.Port), nil)
+	}
+
+	err := configSetup()
+	if err != nil {
+		return fmt.Errorf("failed to run config setup: %w", err)
+	}
+	err = projectExists()
+	if err != nil {
+		return err
+	}
+	err = statusExists()
+	if err != nil {
+		return err
+	}
+	err = serveHTTP()
+	if err != nil {
+		return err
+	}
+	return nil
 }
