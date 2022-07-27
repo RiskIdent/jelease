@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 
@@ -16,6 +17,7 @@ import (
 var (
 	jiraClient *jira.Client
 	config     Config
+	logger     *log.Logger
 )
 
 // Config contains configuration values from environment and .env file.
@@ -65,7 +67,7 @@ func (release Release) JiraIssue() jira.Issue {
 
 // handleGetRoot handles to GET requests for a basic reachability check
 func handleGetRoot(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("health check request\n")
+	logger.Println("Received health check request")
 	io.WriteString(w, "Ok")
 }
 
@@ -73,7 +75,7 @@ func handleGetRoot(w http.ResponseWriter, r *http.Request) {
 func handlePostWebhook(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-		fmt.Fprintf(os.Stderr, "Rejected request because: %v %v. Attempted method: %v",
+		logger.Printf("Rejected request because: %v %v. Attempted method: %v",
 			http.StatusMethodNotAllowed, http.StatusText(http.StatusMethodNotAllowed), r.Method)
 		return
 	}
@@ -83,22 +85,20 @@ func handlePostWebhook(w http.ResponseWriter, r *http.Request) {
 	err := decoder.Decode(&release)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-		fmt.Fprintf(os.Stderr, "Couldn't decode request body to json: %v\n error: %v\n", r.Body, err)
+		logger.Printf("Couldn't decode request body to json: %v\n error: %v\n", r.Body, err)
 		return
 	}
-	fmt.Println(release)
 
 	// look for existing update tickets
 	previousIssuesQuery := fmt.Sprintf("status = %q and labels = %q", config.DefaultStatus, release.Project)
 	previousIssues, resp, err := jiraClient.Issue.Search(previousIssuesQuery, &jira.SearchOptions{})
 	if err != nil {
-		fmt.Println(err.Error())
 		body, readErr := io.ReadAll(resp.Body)
 		errCtx := errors.New("error response from Jira when searching previous issues")
 		if readErr != nil {
-			fmt.Fprintf(os.Stderr, "%v: %v. Failed to decode response body: %v", errCtx, err, string(body))
+			logger.Printf("%v: %v. Failed to decode response body: %v", errCtx, err, string(body))
 		} else {
-			fmt.Fprintf(os.Stderr, "%v: %v. Response body: %v", errCtx, err, string(body))
+			logger.Printf("%v: %v. Response body: %v", errCtx, err, string(body))
 		}
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
@@ -112,13 +112,13 @@ func handlePostWebhook(w http.ResponseWriter, r *http.Request) {
 			body, readErr := io.ReadAll(response.Body)
 			errCtx := errors.New("error response from Jira when creating issue")
 			if readErr != nil {
-				fmt.Fprintf(os.Stderr, "%v: %v. Failed to decode response body: %v", errCtx, err, readErr)
+				logger.Printf("%v: %v. Failed to decode response body: %v", errCtx, err, readErr)
 			} else {
-				fmt.Fprintf(os.Stderr, "%v: %v. Response body: %v", errCtx, err, string(body))
+				logger.Printf("%v: %v. Response body: %v", errCtx, err, string(body))
 			}
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
-		fmt.Printf("Created issue %v\n", newIssue.ID)
+		logger.Printf("Created issue %v\n", newIssue.ID)
 		return
 	}
 
@@ -148,32 +148,36 @@ func handlePostWebhook(w http.ResponseWriter, r *http.Request) {
 			body, readErr := io.ReadAll(resp.Body)
 			errCtx := errors.New("error response from Jira when updating issue")
 			if readErr != nil {
-				fmt.Fprintf(os.Stderr, "%v: %v. Failed to decode response body: %v", errCtx, err, readErr)
+				logger.Printf("%v: %v. Failed to decode response body: %v", errCtx, err, readErr)
 			} else {
-				fmt.Fprintf(os.Stderr, "%v: %v. Response body: %v", errCtx, err, body)
+				logger.Printf("%v: %v. Response body: %v", errCtx, err, body)
 			}
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
-
-		fmt.Printf("Updated issue summary from %q to %q", previousSummary, release.IssueSummary())
+		logger.Printf("Updated issue summary from %q to %q", previousSummary, release.IssueSummary())
 	}
+}
+
+func init() {
+	logger = log.New(os.Stderr, "", log.LstdFlags|log.Lshortfile)
 }
 
 func main() {
 	err := run()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
+	if errors.Is(err, http.ErrServerClosed) {
+		logger.Println("server closed")
+	} else if err != nil {
+		logger.Println(err.Error())
 		os.Exit(1)
 	}
-	os.Exit(0)
 }
 
 func run() error {
 	// configuration setup
 	err := godotenv.Load()
 	if err != nil {
-		fmt.Println("No .env file found.")
+		logger.Println("No .env file found.")
 	}
 
 	err = envconfig.Process("jelease", &config)
@@ -181,7 +185,7 @@ func run() error {
 		return err
 	}
 
-	fmt.Printf("Jira URL: %v\n", config.JiraUrl)
+	logger.Printf("Jira URL: %v\n", config.JiraUrl)
 	tp := jira.BasicAuthTransport{
 		Username: config.JiraUser,
 		Password: config.JiraToken,
@@ -236,13 +240,6 @@ func run() error {
 	// http server setup
 	http.HandleFunc("/webhook", handlePostWebhook)
 	http.HandleFunc("/", handleGetRoot)
-	fmt.Printf("Listening on port %v\n", config.Port)
-	err = http.ListenAndServe(fmt.Sprintf(":%v", config.Port), nil)
-	if errors.Is(err, http.ErrServerClosed) {
-		fmt.Printf("server closed\n")
-		return nil
-	} else if err != nil {
-		return fmt.Errorf("error starting server: %w", err)
-	}
-	return nil
+	logger.Printf("Listening on port %v\n", config.Port)
+	return http.ListenAndServe(fmt.Sprintf(":%v", config.Port), nil)
 }
