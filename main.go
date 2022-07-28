@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	jira "github.com/andygrunwald/go-jira"
@@ -123,6 +124,28 @@ func handlePostWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// in case of duplicate issues, update the oldest (probably original) one, ignore rest as duplicates
+	var oldestExistingIssue jira.Issue
+	var duplicateIssueKeys []string
+	for i, existingIssue := range existingIssues {
+		if i == 0 {
+			oldestExistingIssue = existingIssue
+			continue
+		}
+		tCurrent := time.Time(existingIssue.Fields.Created)
+		tOldest := time.Time(oldestExistingIssue.Fields.Created)
+		if tCurrent.Before(tOldest) {
+			duplicateIssueKeys = append(duplicateIssueKeys, oldestExistingIssue.Key)
+			oldestExistingIssue = existingIssue
+		} else {
+			duplicateIssueKeys = append(duplicateIssueKeys, existingIssue.Key)
+		}
+	}
+	if len(duplicateIssueKeys) > 0 {
+		logger.Printf("Ignoring the following possible duplicate issues in favor of older issue %v: %v", oldestExistingIssue.Key,
+			strings.Join(duplicateIssueKeys, ", "))
+	}
+
 	// This seems hacky, but is taken from the official examples
 	// https://github.com/andygrunwald/go-jira/blob/47d27a76e84da43f6e27e1cd0f930e6763dc79d7/examples/addlabel/main.go
 	// There is also a jiraClient.Issue.Update() method, but it panics and does not provide a usage example
@@ -132,23 +155,7 @@ func handlePostWebhook(w http.ResponseWriter, r *http.Request) {
 	type issueUpdate struct {
 		Summary []summaryUpdate `json:"summary" structs:"summary"`
 	}
-
-	var latestExistingIssue *jira.Issue = nil
-	for _, existingIssue := range existingIssues {
-		if latestExistingIssue == nil {
-			latestExistingIssue = &existingIssue
-			continue
-		}
-		tCurrent := time.Time(existingIssue.Fields.Created)
-		tLatest := time.Time(latestExistingIssue.Fields.Created)
-		if tCurrent.After(tLatest) {
-			logger.Printf("Ignoring older issue for same software %v\n", latestExistingIssue.Key)
-			latestExistingIssue = &existingIssue
-		} else {
-			logger.Printf("Ignoring older issue for same software %v\n", existingIssue.Key)
-		}
-	}
-	previousSummary := latestExistingIssue.Fields.Summary
+	previousSummary := oldestExistingIssue.Fields.Summary
 	updates := map[string]any{
 		"update": issueUpdate{
 			Summary: []summaryUpdate{
@@ -156,7 +163,7 @@ func handlePostWebhook(w http.ResponseWriter, r *http.Request) {
 			},
 		},
 	}
-	resp, err = jiraClient.Issue.UpdateIssue(latestExistingIssue.ID, updates)
+	resp, err = jiraClient.Issue.UpdateIssue(oldestExistingIssue.ID, updates)
 	if err != nil {
 		body, readErr := io.ReadAll(resp.Body)
 		errCtx := errors.New("error response from Jira when updating issue")
