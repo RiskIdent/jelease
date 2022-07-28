@@ -174,7 +174,6 @@ func main() {
 }
 
 func run() error {
-	// configuration setup
 	configSetup := func() error {
 		err := godotenv.Load()
 		if err != nil {
@@ -198,7 +197,6 @@ func run() error {
 		return nil
 	}
 
-	// Ensure config.Project exists on the Jira server
 	projectExists := func() error {
 		allProjects, response, err := jiraClient.Project.GetList()
 		if err != nil {
@@ -222,7 +220,6 @@ func run() error {
 		return nil
 	}
 
-	// Ensure config.DefaultStatus exists on the Jira server
 	statusExists := func() error {
 		allStatuses, response, err := jiraClient.Status.GetAllStatuses()
 		if err != nil {
@@ -247,7 +244,6 @@ func run() error {
 	}
 
 	serveHTTP := func() error {
-		// http server setup
 		http.HandleFunc("/webhook", handlePostWebhook)
 		http.HandleFunc("/", handleGetRoot)
 		logger.Printf("Listening on port %v\n", config.Port)
@@ -256,19 +252,15 @@ func run() error {
 
 	err := configSetup()
 	if err != nil {
-		return fmt.Errorf("failed to run config setup: %w", err)
+		return fmt.Errorf("error in config setup: %w", err)
 	}
 	err = projectExists()
 	if err != nil {
-		return err
+		return fmt.Errorf("error in check if configured project exists: %w", err)
 	}
 	err = statusExists()
 	if err != nil {
-		return err
+		return fmt.Errorf("error in check if configured default status exists: %w", err)
 	}
-	err = serveHTTP()
-	if err != nil {
-		return err
-	}
-	return nil
+	return serveHTTP()
 }
