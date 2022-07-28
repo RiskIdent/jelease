@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	jira "github.com/andygrunwald/go-jira"
 	"github.com/joho/godotenv"
@@ -90,8 +91,8 @@ func handlePostWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// look for existing update tickets
-	previousIssuesQuery := fmt.Sprintf("status = %q and labels = %q", config.DefaultStatus, release.Project)
-	previousIssues, resp, err := jiraClient.Issue.Search(previousIssuesQuery, &jira.SearchOptions{})
+	existingIssuesQuery := fmt.Sprintf("status = %q and labels = %q", config.DefaultStatus, release.Project)
+	existingIssues, resp, err := jiraClient.Issue.Search(existingIssuesQuery, &jira.SearchOptions{})
 	if err != nil {
 		body, readErr := io.ReadAll(resp.Body)
 		errCtx := errors.New("error response from Jira when searching previous issues")
@@ -104,7 +105,7 @@ func handlePostWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(previousIssues) == 0 {
+	if len(existingIssues) == 0 {
 		// no previous issues, create new jira issue
 		i := release.JiraIssue()
 		newIssue, response, err := jiraClient.Issue.Create(&i)
@@ -132,31 +133,42 @@ func handlePostWebhook(w http.ResponseWriter, r *http.Request) {
 		Summary []summaryUpdate `json:"summary" structs:"summary"`
 	}
 
-	for _, previousIssue := range previousIssues {
-		previousSummary := previousIssue.Fields.Summary
-
-		updates := map[string]any{
-			"update": issueUpdate{
-				Summary: []summaryUpdate{
-					{Set: release.IssueSummary()},
-				},
-			},
+	var latestExistingIssue *jira.Issue = nil
+	for _, existingIssue := range existingIssues {
+		if latestExistingIssue == nil {
+			latestExistingIssue = &existingIssue
+			continue
 		}
-
-		resp, err = jiraClient.Issue.UpdateIssue(previousIssue.ID, updates)
-		if err != nil {
-			body, readErr := io.ReadAll(resp.Body)
-			errCtx := errors.New("error response from Jira when updating issue")
-			if readErr != nil {
-				logger.Printf("%v: %v. Failed to decode response body: %v", errCtx, err, readErr)
-			} else {
-				logger.Printf("%v: %v. Response body: %v", errCtx, err, body)
-			}
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
+		tCurrent := time.Time(existingIssue.Fields.Created)
+		tLatest := time.Time(latestExistingIssue.Fields.Created)
+		if tCurrent.After(tLatest) {
+			logger.Printf("Ignoring older issue for same software %v\n", latestExistingIssue.Key)
+			latestExistingIssue = &existingIssue
+		} else {
+			logger.Printf("Ignoring older issue for same software %v\n", existingIssue.Key)
 		}
-		logger.Printf("Updated issue summary from %q to %q", previousSummary, release.IssueSummary())
 	}
+	previousSummary := latestExistingIssue.Fields.Summary
+	updates := map[string]any{
+		"update": issueUpdate{
+			Summary: []summaryUpdate{
+				{Set: release.IssueSummary()},
+			},
+		},
+	}
+	resp, err = jiraClient.Issue.UpdateIssue(latestExistingIssue.ID, updates)
+	if err != nil {
+		body, readErr := io.ReadAll(resp.Body)
+		errCtx := errors.New("error response from Jira when updating issue")
+		if readErr != nil {
+			logger.Printf("%v: %v. Failed to decode response body: %v", errCtx, err, readErr)
+		} else {
+			logger.Printf("%v: %v. Response body: %v", errCtx, err, body)
+		}
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	logger.Printf("Updated issue summary from %q to %q", previousSummary, release.IssueSummary())
 }
 
 func init() {
