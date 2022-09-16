@@ -1,4 +1,4 @@
-module github.2rioffice.com/nicolas-mohr/jelease
+module github.2rioffice.com/platform/jelease
 
 go 1.18
 

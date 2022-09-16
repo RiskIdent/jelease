@@ -22,4 +22,4 @@ docker:
   COPY +build/jelease .
   CMD ["/jelease"]
   SAVE IMAGE jelease:latest
-  SAVE IMAGE --push docker-riskident.2rioffice.com/platform/nicolasmohr/jelease
+  SAVE IMAGE --push docker-riskident.2rioffice.com/platform/jelease
