@@ -1,5 +1,5 @@
 VERSION 0.6
-FROM golang:1.19.0-bullseye
+FROM golang:1.19-bullseye
 WORKDIR /jelease
 
 deps:
