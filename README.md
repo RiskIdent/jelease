@@ -20,6 +20,8 @@ The application requires the following environment variables to be set:
   - `JELEASE_DRY_RUN`: Don't create tickets, log when a ticket would be created
   - `JELEASE_ISSUE_DESCRIPTION`: The description for created issues
   - `JELEASE_PROJECT`: Jira Project key the tickets will be created in
+  - `JELEASE_LOG_FORMAT`: Logging format. One of: `pretty` (default), `json`
+  - `JELEASE_LOG_LEVEL`: Logging minimum level/severity. One of: `trace`, `debug` (default), `info`, `warn`, `error`, `fatal`, `panic`
 
 They can also be specified using a `.env` file in the application directory.
 
