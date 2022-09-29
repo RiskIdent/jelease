@@ -1,5 +1,7 @@
 # jelease - A newreleases.io ➡️ Jira connector
 
+![logo](./docs/new-release-128.png)
+
 Automatically create Jira tickets when a newreleases.io release
 is detected using webhooks.
 
@@ -49,3 +51,7 @@ earhtly --push +docker
 A helm chart deploying the application together with a webhookrelayd sidecar
 is available in the
 [platform/helm repo](https://github.2rioffice.com/platform/helm/tree/master/charts/jelease)
+
+## Logo
+
+[New-release icons created by berkahicon - Flaticon](https://www.flaticon.com/free-icons/new-release)
