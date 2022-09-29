@@ -1,6 +1,6 @@
-# jelease - A newreleases.io ➡️ Jira connector
+<img align="right" src="./docs/new-release-128.png" alt="new-release icon"/>
 
-![logo](./docs/new-release-128.png)
+# jelease - A newreleases.io ➡️ Jira connector
 
 Automatically create Jira tickets when a newreleases.io release
 is detected using webhooks.
