@@ -10,8 +10,9 @@ deps:
 
 build:
   FROM +deps
-  COPY main.go .
-  RUN go build -o build/jelease main.go
+  COPY *.go .
+  RUN go test -v ./... \
+    && go build -o build/jelease main.go
   SAVE ARTIFACT build/jelease /jelease AS LOCAL build/jelease
 
 docker:
