@@ -67,8 +67,12 @@ func (r Release) JiraIssue() jira.Issue {
 	var extraFields tcontainer.MarshalMap
 
 	if config.ProjectNameCustomField == 0 {
+		log.Trace().Msg("Create ticket with project name in labels.")
 		labels = append(labels, r.Project)
 	} else {
+		log.Trace().
+			Uint("customField", config.ProjectNameCustomField).
+			Msg("Create ticket with project name in custom field.")
 		customFieldName := fmt.Sprintf("customfield_%d", config.ProjectNameCustomField)
 		extraFields = tcontainer.MarshalMap{
 			customFieldName: r.Project,
@@ -242,7 +246,10 @@ func configSetup() error {
 		return dotEnvErr
 	}
 
-	log.Debug().Str("url", config.JiraURL).Msg("Loaded configuration.")
+	log.Debug().
+		Str("url", config.JiraURL).
+		Uint("customField", config.ProjectNameCustomField).
+		Msg("Loaded configuration.")
 
 	var httpClient *http.Client
 	tlsConfig := tls.Config{InsecureSkipVerify: config.SkipCertVerify}
