@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 Risk.Ident GmbH <contact@riskident.com>
+#
+# SPDX-License-Identifier: CC0-1.0
+
 VERSION 0.6
 FROM golang:1.19-bullseye
 WORKDIR /jelease
