@@ -7,7 +7,7 @@ deps: deps-npm deps-pip
 
 .PHONY: deps-pip
 deps-pip:
-	pip install --user yamllint ansible-lint reuse
+	pip install --user reuse
 
 .PHONY: deps-npm
 deps-npm: node_modules
