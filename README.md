@@ -50,9 +50,7 @@ earhtly --push +docker
 
 ## Deployment
 
-A helm chart deploying the application together with a webhookrelayd sidecar
-is available in the
-[platform/helm repo](https://github.2rioffice.com/platform/helm/tree/master/charts/jelease)
+**TODO**
 
 ## Logo
 

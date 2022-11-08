@@ -1,4 +1,4 @@
-module github.2rioffice.com/platform/jelease
+module github.com/RiskIdent/jelease
 
 go 1.19
 
