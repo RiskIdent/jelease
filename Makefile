@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: CC0-1.0
 
 .PHONY: deps
-deps: deps-npm
+deps: deps-npm deps-pip
 
 .PHONY: deps-pip
 deps-pip:
