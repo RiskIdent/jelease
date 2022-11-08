@@ -24,3 +24,7 @@ build/
 
 # Go workspace file
 go.work
+
+# NPM
+node_modules
+package-lock.json
