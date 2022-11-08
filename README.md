@@ -8,6 +8,8 @@ SPDX-License-Identifier: CC-BY-4.0
 
 # jelease - A newreleases.io ➡️ Jira connector
 
+[![REUSE status](https://api.reuse.software/badge/github.com/RiskIdent/jelease)](https://api.reuse.software/info/github.com/RiskIdent/jelease)
+
 Automatically create Jira tickets when a newreleases.io release
 is detected using webhooks.
 
