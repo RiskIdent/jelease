@@ -61,7 +61,7 @@ After installing earthly, the image can be built by running
 earhtly +docker
 
 # if you want to push a new image version
-earhtly --push +docker --TAG=v0.4.1
+earhtly --push +docker --VERSION=v0.4.1
 ```
 
 You can also persist build flags in a `.env` file, e.g:
