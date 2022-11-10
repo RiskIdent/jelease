@@ -20,11 +20,15 @@ build:
   SAVE ARTIFACT build/jelease /jelease AS LOCAL build/jelease
 
 docker:
+  ARG VERSION=latest
+  ARG REGISTRY=ghcr.io/riskident
   FROM ubuntu:22.04
   RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/*
   COPY +build/jelease .
   CMD ["/jelease"]
-  SAVE IMAGE jelease:latest
-  SAVE IMAGE --push docker-riskident.2rioffice.com/platform/jelease
+  IF [ "$VERSION" != "latest" ]
+    SAVE IMAGE --push $REGISTRY/jelease:latest
+  END
+  SAVE IMAGE --push $REGISTRY/jelease:$VERSION

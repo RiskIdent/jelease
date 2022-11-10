@@ -58,9 +58,17 @@ and pushing a docker image.
 After installing earthly, the image can be built by running
 
 ```bash
-earthly +docker
+earhtly +docker
+
 # if you want to push a new image version
-earhtly --push +docker
+earhtly --push +docker --TAG=v0.4.1
+```
+
+You can also persist build flags in a `.env` file, e.g:
+
+```properties
+# Inside the .env file
+REGISTRY=docker.io/my-username
 ```
 
 ## Deployment
