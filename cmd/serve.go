@@ -28,6 +28,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/RiskIdent/jelease/pkg/config"
 	jira "github.com/andygrunwald/go-jira"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -61,37 +62,37 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("check if configured project exists: %w", err)
 	}
-	log.Debug().Str("project", config.Project).Msg("Configured project found ✓")
+	log.Debug().Str("project", cfg.Jira.Issue.Project).Msg("Configured project found ✓")
 	err = statusExists(jiraClient)
 	if err != nil {
 		return fmt.Errorf("check if configured default status exists: %w", err)
 	}
-	log.Debug().Str("status", config.DefaultStatus).Msg("Configured default status found ✓")
+	log.Debug().Str("status", cfg.Jira.Issue.Status).Msg("Configured default status found ✓")
 	return serveHTTP(jiraClient)
 }
 
 func jiraClientSetup() (*jira.Client, error) {
 	var httpClient *http.Client
-	tlsConfig := tls.Config{InsecureSkipVerify: config.SkipCertVerify}
+	tlsConfig := tls.Config{InsecureSkipVerify: cfg.Jira.SkipCertVerify}
 
-	switch strings.ToLower(config.AuthType) {
-	case "pat":
+	switch cfg.Jira.Auth.Type {
+	case config.JiraAuthTypePAT:
 		httpClient = (&jira.PATAuthTransport{
-			Token:     config.JiraToken,
+			Token:     cfg.Jira.Auth.Token,
 			Transport: &http.Transport{TLSClientConfig: &tlsConfig},
 		}).Client()
-	case "token":
+	case config.JiraAuthTypeToken:
 		httpClient = (&jira.BasicAuthTransport{
-			Username:  config.JiraUser,
-			Password:  config.JiraToken,
+			Username:  cfg.Jira.Auth.User,
+			Password:  cfg.Jira.Auth.Token,
 			Transport: &http.Transport{TLSClientConfig: &tlsConfig},
 		}).Client()
 	default:
-		return nil, fmt.Errorf("invalid AUTH_TYPE value %q, must be one of [pat, token]", config.AuthType)
+		return nil, fmt.Errorf("invalid Jira auth type %q", cfg.Jira.Auth.Type)
 	}
 
 	httpClient.Timeout = 10 * time.Second
-	jiraClient, err := jira.NewClient(httpClient, config.JiraURL)
+	jiraClient, err := jira.NewClient(httpClient, cfg.Jira.URL)
 	if err != nil {
 		return nil, err
 	}
@@ -112,29 +113,29 @@ func (r Release) IssueSummary() string {
 }
 
 func (r Release) JiraIssue() jira.Issue {
-	labels := config.AddLabels
+	labels := cfg.Jira.Issue.Labels
 	var extraFields tcontainer.MarshalMap
 
-	if config.ProjectNameCustomField == 0 {
+	if cfg.Jira.Issue.PorjectNameCustomField == 0 {
 		log.Trace().Msg("Create ticket with project name in labels.")
 		labels = append(labels, r.Project)
 	} else {
 		log.Trace().
-			Uint("customField", config.ProjectNameCustomField).
+			Uint("customField", cfg.Jira.Issue.PorjectNameCustomField).
 			Msg("Create ticket with project name in custom field.")
-		customFieldName := fmt.Sprintf("customfield_%d", config.ProjectNameCustomField)
+		customFieldName := fmt.Sprintf("customfield_%d", cfg.Jira.Issue.PorjectNameCustomField)
 		extraFields = tcontainer.MarshalMap{
 			customFieldName: r.Project,
 		}
 	}
 	return jira.Issue{
 		Fields: &jira.IssueFields{
-			Description: config.IssueDescription,
+			Description: cfg.Jira.Issue.Description,
 			Project: jira.Project{
-				Key: config.Project,
+				Key: cfg.Jira.Issue.Project,
 			},
 			Type: jira.IssueType{
-				Name: config.IssueType,
+				Name: cfg.Jira.Issue.Type,
 			},
 			Labels:   labels,
 			Summary:  r.IssueSummary(),
@@ -188,7 +189,7 @@ func (m httpModule) handlePostWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// look for existing update tickets
-	existingIssuesQuery := newJiraIssueSearchQuery(config.DefaultStatus, release.Project, config.ProjectNameCustomField)
+	existingIssuesQuery := newJiraIssueSearchQuery(cfg.Jira.Issue.Status, release.Project, cfg.Jira.Issue.PorjectNameCustomField)
 	existingIssues, resp, err := m.jira.Issue.Search(existingIssuesQuery, &jira.SearchOptions{})
 	if err != nil {
 		err := fmt.Errorf("searching Jira for previous issues: %w", err)
@@ -201,7 +202,7 @@ func (m httpModule) handlePostWebhook(w http.ResponseWriter, r *http.Request) {
 		// no previous issues, create new jira issue
 		i := release.JiraIssue()
 		log.Trace().Interface("issue", i).Msg("Creating issue.")
-		if config.DryRun {
+		if cfg.DryRun {
 			log.Debug().
 				Str("issue", i.Fields.Summary).
 				Msg("Skipping creation of issue because Config.DryRun is enabled.")
@@ -252,7 +253,7 @@ func (m httpModule) handlePostWebhook(w http.ResponseWriter, r *http.Request) {
 		Summary []summaryUpdate `json:"summary" structs:"summary"`
 	}
 	previousSummary := oldestExistingIssue.Fields.Summary
-	if config.DryRun {
+	if cfg.DryRun {
 		log.Debug().
 			Str("issue", oldestExistingIssue.Key).
 			Str("summary", release.IssueSummary()).
@@ -296,13 +297,13 @@ func projectExists(jiraClient *jira.Client) error {
 	}
 	var projectExists bool
 	for _, project := range *allProjects {
-		if project.Key == config.Project {
+		if project.Key == cfg.Jira.Issue.Project {
 			projectExists = true
 			break
 		}
 	}
 	if !projectExists {
-		return fmt.Errorf("project %v does not exist on your Jira server", config.Project)
+		return fmt.Errorf("project %v does not exist on your Jira server", cfg.Jira.Issue.Project)
 	}
 	return nil
 }
@@ -322,7 +323,7 @@ func statusExists(jiraClient *jira.Client) error {
 	}
 	var statusExists bool
 	for _, status := range allStatuses {
-		if status.Name == config.DefaultStatus {
+		if status.Name == cfg.Jira.Issue.Status {
 			statusExists = true
 			break
 		}
@@ -335,7 +336,8 @@ func statusExists(jiraClient *jira.Client) error {
 			}
 			statusSB.WriteString(status.Name)
 		}
-		return fmt.Errorf("status %q does not exist on your Jira server for project %q. Available statuses: [%v]", config.DefaultStatus, config.Project, statusSB.String())
+		return fmt.Errorf("status %q does not exist on your Jira server for project %q. Available statuses: [%v]",
+			cfg.Jira.Issue.Status, cfg.Jira.Issue.Project, statusSB.String())
 	}
 	return nil
 }
@@ -344,8 +346,8 @@ func serveHTTP(jiraClient *jira.Client) error {
 	m := httpModule{jira: jiraClient}
 	http.HandleFunc("/webhook", m.handlePostWebhook)
 	http.HandleFunc("/", m.handleGetRoot)
-	log.Info().Int("port", config.Port).Msg("Starting server.")
-	return http.ListenAndServe(fmt.Sprintf(":%v", config.Port), nil)
+	log.Info().Uint16("port", cfg.HTTP.Port).Msg("Starting server.")
+	return http.ListenAndServe(fmt.Sprintf(":%v", cfg.HTTP.Port), nil)
 }
 
 func newJiraIssueSearchQuery(statusName, projectName string, customFieldID uint) string {

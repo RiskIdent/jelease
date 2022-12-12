@@ -15,25 +15,27 @@
 // You should have received a copy of the GNU General Public License along
 // with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package main
+package cmd
 
 import (
-	"fmt"
+	"os"
 
-	"github.com/RiskIdent/jelease/cmd"
-	"github.com/RiskIdent/jelease/pkg/config"
+	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
-
-	_ "embed"
 )
 
-//go:embed jelease.yaml
-var defaultConfigYAML []byte
+// configCmd represents the config command
+var configCmd = &cobra.Command{
+	Use:   "config",
+	Short: "Prints the parsed config",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		enc := yaml.NewEncoder(os.Stdout)
+		enc.SetIndent(2)
+		defer enc.Close()
+		return enc.Encode(cfg)
+	},
+}
 
-func main() {
-	var defaultConfig config.Config
-	if err := yaml.Unmarshal(defaultConfigYAML, &defaultConfig); err != nil {
-		panic(fmt.Errorf("Parse embedded config: %w", err))
-	}
-	cmd.Execute(defaultConfig)
+func init() {
+	rootCmd.AddCommand(configCmd)
 }
