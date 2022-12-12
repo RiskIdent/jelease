@@ -25,9 +25,11 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/RiskIdent/jelease/pkg/git"
 	jira "github.com/andygrunwald/go-jira"
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
@@ -363,13 +365,70 @@ func serveHTTP() error {
 }
 
 func main() {
-	err := run()
-	if errors.Is(err, http.ErrServerClosed) {
-		log.Error().Msg("Server closed.")
-	} else if err != nil {
-		log.Error().Err(err).Msg("Error starting server.")
+	loggerSetup()
+	g := git.Cmd{Credentials: git.Credentials{}}
+	dir, err := os.MkdirTemp("tmp", "jelease-repo-*")
+	if err != nil {
+		log.Error().Msgf("Failed to create tmp dir: %s", err)
 		os.Exit(1)
 	}
+
+	//repo, err := g.Clone(dir, "https://github.com/RiskIdent/jelease.git")
+	repo, err := g.Clone(dir, "tmp/upstream-test")
+	if err != nil {
+		log.Error().Msgf("Failed to clone repo: %s", err)
+		os.Exit(1)
+	}
+	//defer repo.Close()
+	log.Info().Str("branch", repo.CurrentBranch()).Str("dir", repo.Directory()).Msg("Cloned repo.")
+	if err := repo.CheckoutNewBranch("jelease/is/awesome"); err != nil {
+		log.Error().Msgf("Failed to checkout branch: %s", err)
+		os.Exit(1)
+	}
+	log.Info().Str("branch", repo.CurrentBranch()).Str("mainBranch", repo.MainBranch()).Msg("Checked out new branch.")
+
+	if err := createTestFile(filepath.Join(repo.Directory(), "testfile.txt")); err != nil {
+		log.Error().Msgf("Failed to create test file: %s", err)
+		os.Exit(1)
+	}
+	log.Info().Msg("Created test file")
+
+	if err := repo.StageChanges(); err != nil {
+		log.Error().Msgf("Failed to stage changes: %s", err)
+		os.Exit(1)
+	}
+	log.Info().Msg("Staged changes.")
+
+	if err := repo.CreateCommit("Some fancy commit message"); err != nil {
+		log.Error().Msgf("Failed to commit: %s", err)
+		os.Exit(1)
+	}
+	log.Info().Msg("Commit created.")
+
+	if err := repo.PushChanges(); err != nil {
+		log.Error().Msgf("Failed to push: %s", err)
+		os.Exit(1)
+	}
+	log.Info().Msg("Pushed changes.")
+
+	//err := run()
+	//if errors.Is(err, http.ErrServerClosed) {
+	//	log.Error().Msg("Server closed.")
+	//} else if err != nil {
+	//	log.Error().Err(err).Msg("Error starting server.")
+	//	os.Exit(1)
+	//}
+}
+
+func createTestFile(path string) error {
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = file.WriteString("Lorem ipsum")
+	return err
 }
 
 func run() error {
