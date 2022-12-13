@@ -31,11 +31,23 @@ type Repo interface {
 
 	CheckoutNewBranch(branchName string) error
 	StageChanges() error
-	CreateCommit(message string) error
+	CreateCommit(message string) (Commit, error)
 	PushChanges() error
 }
 
 type Credentials struct {
 	Username string
 	Password string
+}
+
+type Commit struct {
+	Hash           string
+	AbbrHash       string
+	ParentHash     string
+	ParentAbbrHash string
+	Subject        string
+}
+
+func (c Commit) String() string {
+	return c.Hash
 }

@@ -18,6 +18,7 @@
 package git
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"net/url"
@@ -111,12 +112,26 @@ func (r *CmdRepo) StageChanges() error {
 	return nil
 }
 
-func (r *CmdRepo) CreateCommit(message string) error {
+func (r *CmdRepo) CreateCommit(message string) (Commit, error) {
 	_, err := r.runGitCmdInRepo("commit", "-m", message, "--no-gpg-sign")
 	if err != nil {
-		return fmt.Errorf("commit changes: %w", err)
+		return Commit{}, fmt.Errorf("commit changes: %w", err)
 	}
-	return nil
+	output, err := r.runGitCmdInRepo("show", "--no-notes", "--no-patch", "--format=%H%n%h%n%P%n%p%n%s")
+	if err != nil {
+		return Commit{}, fmt.Errorf("get commit details: %w", err)
+	}
+	lines := bytes.Split(output, []byte("\n"))
+	if len(lines) < 5 {
+		return Commit{}, fmt.Errorf("get commit details: expected 5 lines, got %d", len(lines))
+	}
+	return Commit{
+		Hash:           string(lines[0]),
+		AbbrHash:       string(lines[1]),
+		ParentHash:     string(lines[2]),
+		ParentAbbrHash: string(lines[3]),
+		Subject:        string(lines[4]),
+	}, nil
 }
 
 func (r *CmdRepo) PushChanges() error {

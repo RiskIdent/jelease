@@ -272,10 +272,11 @@ func commitAndPushChanges(g git.Git, repo git.Repo, pkgName, version string) err
 	}
 	log.Info().Msg("Staged changes.")
 
-	if err := repo.CreateCommit(fmt.Sprintf("Updated %v to %v", pkgName, version)); err != nil {
+	commit, err := repo.CreateCommit(fmt.Sprintf("Updated %v to %v", pkgName, version))
+	if err != nil {
 		return err
 	}
-	log.Info().Msg("Commit created.")
+	log.Info().Str("hash", commit.AbbrHash).Str("subject", commit.Subject).Msg("Commit created.")
 
 	if err := repo.PushChanges(); err != nil {
 		return err
