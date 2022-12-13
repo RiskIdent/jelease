@@ -58,7 +58,7 @@
     "jiraAuth": {
       "properties": {
         "type": {
-          "type": "string"
+          "$ref": "#/$defs/jiraAuthType"
         },
         "token": {
           "type": "string"
@@ -69,6 +69,14 @@
       },
       "additionalProperties": false,
       "type": "object"
+    },
+    "jiraAuthType": {
+      "type": "string",
+      "enum": [
+        "pat",
+        "token"
+      ],
+      "title": "Jira auth type"
     },
     "jiraIssue": {
       "properties": {
