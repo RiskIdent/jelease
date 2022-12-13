@@ -21,7 +21,9 @@ import (
 	"encoding"
 	"fmt"
 	"regexp"
+	"text/template"
 
+	"github.com/invopop/jsonschema"
 	"github.com/rs/zerolog"
 	"github.com/spf13/pflag"
 )
@@ -50,10 +52,10 @@ type Package struct {
 }
 
 type PackagePatch struct {
-	Repo    string
+	Repo    string `jsonschema_extras:"format=uri-reference"`
 	File    string
 	Match   *RegexPattern
-	Replace string
+	Replace *Template
 }
 
 type RegexPattern regexp.Regexp
@@ -91,8 +93,58 @@ func (r *RegexPattern) MarshalText() ([]byte, error) {
 	return []byte(r.String()), nil
 }
 
+func (RegexPattern) JSONSchema() *jsonschema.Schema {
+	return &jsonschema.Schema{
+		Type:   "string",
+		Title:  "Regular Expression pattern (regex)",
+		Format: "regex",
+	}
+}
+
+type Template template.Template
+
+// Ensure the type implements the interfaces
+var _ pflag.Value = &Template{}
+var _ encoding.TextUnmarshaler = &Template{}
+
+func (t *Template) Template() *template.Template {
+	return (*template.Template)(t)
+}
+
+func (t *Template) String() string {
+	return t.Template().Root.String()
+}
+
+func (t *Template) Set(value string) error {
+	parsed, err := template.New("").Parse(value)
+	if err != nil {
+		return err
+	}
+	*t = Template(*parsed)
+	return nil
+}
+
+func (Template) Type() string {
+	return "template"
+}
+
+func (t *Template) UnmarshalText(text []byte) error {
+	return t.Set(string(text))
+}
+
+func (t *Template) MarshalText() ([]byte, error) {
+	return []byte(t.String()), nil
+}
+
+func (Template) JSONSchema() *jsonschema.Schema {
+	return &jsonschema.Schema{
+		Type:  "string",
+		Title: "Go template",
+	}
+}
+
 type Jira struct {
-	URL            string
+	URL            string `jsonschema_extras:"format=uri"`
 	SkipCertVerify bool
 	Auth           JiraAuth
 	Issue          JiraIssue
@@ -111,13 +163,14 @@ const (
 	JiraAuthTypeToken JiraAuthType = "token"
 )
 
+// Jira Ticket type
 type JiraIssue struct {
 	Labels                 []string
 	Status                 string
 	Description            string
 	Type                   string
 	Project                string
-	PorjectNameCustomField uint
+	ProjectNameCustomField uint
 }
 
 type HTTP struct {
@@ -163,6 +216,23 @@ func (l *LogLevel) Type() string {
 	return "level"
 }
 
+func (LogLevel) JSONSchema() *jsonschema.Schema {
+	return &jsonschema.Schema{
+		Type:  "string",
+		Title: "Logging level",
+		Enum: []any{
+			LogLevel(zerolog.DebugLevel),
+			LogLevel(zerolog.InfoLevel),
+			LogLevel(zerolog.WarnLevel),
+			LogLevel(zerolog.ErrorLevel),
+			LogLevel(zerolog.FatalLevel),
+			LogLevel(zerolog.PanicLevel),
+			LogLevel(zerolog.Disabled),
+			LogLevel(zerolog.TraceLevel),
+		},
+	}
+}
+
 type LogFormat string
 
 const (
@@ -199,4 +269,15 @@ func (f *LogFormat) Type() string {
 
 func (f *LogFormat) UnmarshalText(text []byte) error {
 	return f.Set(string(text))
+}
+
+func (LogFormat) JSONSchema() *jsonschema.Schema {
+	return &jsonschema.Schema{
+		Type:  "string",
+		Title: "Logging format",
+		Enum: []any{
+			LogFormatPretty,
+			LogFormatJSON,
+		},
+	}
 }

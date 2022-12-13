@@ -20,6 +20,7 @@ package cmd
 import (
 	"regexp"
 	"testing"
+	"text/template"
 
 	"github.com/RiskIdent/jelease/pkg/config"
 )
@@ -61,9 +62,13 @@ func TestConcat(t *testing.T) {
 
 func TestPatchSingleLine(t *testing.T) {
 	line := []byte("<<my-pkg v0.1.0>>")
+	tmpl, err := template.New("").Parse(`{{ index .Groups 1 }} {{ .Version }}`)
+	if err != nil {
+		t.Fatal(err)
+	}
 	patch := config.PackagePatch{
 		Match:   (*config.RegexPattern)(regexp.MustCompile(`(my-pkg) v0.1.0`)),
-		Replace: `{{ index .Groups 1 }} {{ .Version }}`,
+		Replace: (*config.Template)(tmpl),
 	}
 
 	version := "v1.2.3"

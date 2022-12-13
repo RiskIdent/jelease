@@ -116,14 +116,14 @@ func (r Release) JiraIssue() jira.Issue {
 	labels := cfg.Jira.Issue.Labels
 	var extraFields tcontainer.MarshalMap
 
-	if cfg.Jira.Issue.PorjectNameCustomField == 0 {
+	if cfg.Jira.Issue.ProjectNameCustomField == 0 {
 		log.Trace().Msg("Create ticket with project name in labels.")
 		labels = append(labels, r.Project)
 	} else {
 		log.Trace().
-			Uint("customField", cfg.Jira.Issue.PorjectNameCustomField).
+			Uint("customField", cfg.Jira.Issue.ProjectNameCustomField).
 			Msg("Create ticket with project name in custom field.")
-		customFieldName := fmt.Sprintf("customfield_%d", cfg.Jira.Issue.PorjectNameCustomField)
+		customFieldName := fmt.Sprintf("customfield_%d", cfg.Jira.Issue.ProjectNameCustomField)
 		extraFields = tcontainer.MarshalMap{
 			customFieldName: r.Project,
 		}
@@ -189,7 +189,7 @@ func (m httpModule) handlePostWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// look for existing update tickets
-	existingIssuesQuery := newJiraIssueSearchQuery(cfg.Jira.Issue.Status, release.Project, cfg.Jira.Issue.PorjectNameCustomField)
+	existingIssuesQuery := newJiraIssueSearchQuery(cfg.Jira.Issue.Status, release.Project, cfg.Jira.Issue.ProjectNameCustomField)
 	existingIssues, resp, err := m.jira.Issue.Search(existingIssuesQuery, &jira.SearchOptions{})
 	if err != nil {
 		err := fmt.Errorf("searching Jira for previous issues: %w", err)

@@ -25,7 +25,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"text/template"
 
 	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/RiskIdent/jelease/pkg/git"
@@ -138,13 +137,8 @@ func patchSingleLine(patch config.PackagePatch, version string, line []byte) ([]
 	everythingBefore := line[:fullMatchStart]
 	everythingAfter := line[fullMatchEnd:]
 
-	tmpl, err := template.New("match replace").Parse(patch.Replace)
-	if err != nil {
-		return nil, fmt.Errorf("patch replace template: %w", err)
-	}
-
 	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, struct {
+	if err := patch.Replace.Template().Execute(&buf, struct {
 		Groups  []string
 		Version string
 	}{

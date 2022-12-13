@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/RiskIdent/jelease/raw/main/jelease.schema.json",
+  "$ref": "#/$defs/config",
+  "$defs": {
+    "config": {
+      "properties": {
+        "dryRun": {
+          "type": "boolean"
+        },
+        "packages": {
+          "items": {
+            "$ref": "#/$defs/package"
+          },
+          "type": "array"
+        },
+        "jira": {
+          "$ref": "#/$defs/jira"
+        },
+        "http": {
+          "$ref": "#/$defs/http"
+        },
+        "log": {
+          "$ref": "#/$defs/log"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "http": {
+      "properties": {
+        "port": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "jira": {
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "skipCertVerify": {
+          "type": "boolean"
+        },
+        "auth": {
+          "$ref": "#/$defs/jiraAuth"
+        },
+        "issue": {
+          "$ref": "#/$defs/jiraIssue"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "jiraAuth": {
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        },
+        "user": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "jiraIssue": {
+      "properties": {
+        "labels": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "status": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "project": {
+          "type": "string"
+        },
+        "projectNameCustomField": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "log": {
+      "properties": {
+        "format": {
+          "$ref": "#/$defs/logFormat"
+        },
+        "level": {
+          "$ref": "#/$defs/logLevel"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "logFormat": {
+      "type": "string",
+      "enum": [
+        "pretty",
+        "json"
+      ],
+      "title": "Logging format"
+    },
+    "logLevel": {
+      "type": "string",
+      "enum": [
+        "debug",
+        "info",
+        "warn",
+        "error",
+        "fatal",
+        "panic",
+        "disabled",
+        "trace"
+      ],
+      "title": "Logging level"
+    },
+    "package": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "patches": {
+          "items": {
+            "$ref": "#/$defs/packagePatch"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "packagePatch": {
+      "properties": {
+        "repo": {
+          "type": "string",
+          "format": "uri-reference"
+        },
+        "file": {
+          "type": "string"
+        },
+        "match": {
+          "$ref": "#/$defs/regexPattern"
+        },
+        "replace": {
+          "$ref": "#/$defs/template"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "regexPattern": {
+      "type": "string",
+      "format": "regex",
+      "title": "Regular Expression pattern (regex)"
+    },
+    "template": {
+      "type": "string",
+      "title": "Go template"
+    }
+  }
+}

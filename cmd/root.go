@@ -99,7 +99,7 @@ func configSetup() error {
 
 	log.Debug().
 		Str("url", cfg.Jira.URL).
-		Uint("customField", cfg.Jira.Issue.PorjectNameCustomField).
+		Uint("customField", cfg.Jira.Issue.ProjectNameCustomField).
 		Msg("Loaded configuration.")
 
 	return nil
