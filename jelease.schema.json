@@ -56,9 +56,6 @@
         },
         "token": {
           "type": "string"
-        },
-        "user": {
-          "type": "string"
         }
       },
       "additionalProperties": false,
@@ -203,9 +200,9 @@
         "name": {
           "type": "string"
         },
-        "patches": {
+        "repos": {
           "items": {
-            "$ref": "#/$defs/packagePatch"
+            "$ref": "#/$defs/packageRepo"
           },
           "type": "array"
         }
@@ -213,12 +210,24 @@
       "additionalProperties": false,
       "type": "object"
     },
-    "packagePatch": {
+    "packageRepo": {
       "properties": {
-        "repo": {
+        "url": {
           "type": "string",
           "format": "uri-reference"
         },
+        "patches": {
+          "items": {
+            "$ref": "#/$defs/packageRepoPatch"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "packageRepoPatch": {
+      "properties": {
         "file": {
           "type": "string"
         },

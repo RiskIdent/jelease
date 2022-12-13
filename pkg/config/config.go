@@ -29,12 +29,16 @@ type Config struct {
 }
 
 type Package struct {
-	Name    string
-	Patches []PackagePatch
+	Name  string
+	Repos []PackageRepo
 }
 
-type PackagePatch struct {
-	Repo    string `jsonschema_extras:"format=uri-reference"`
+type PackageRepo struct {
+	URL     string `jsonschema_extras:"format=uri-reference"`
+	Patches []PackageRepoPatch
+}
+
+type PackageRepoPatch struct {
 	File    string
 	Match   *RegexPattern
 	Replace *Template
@@ -49,7 +53,6 @@ type GitHub struct {
 type GitHubAuth struct {
 	Type  GitHubAuthType
 	Token string
-	User  string
 }
 
 type GitHubPR struct {

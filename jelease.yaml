@@ -16,11 +16,12 @@ dryRun: false
 
 packages:
   - name: foobar
-    patches:
-      - repo: tmp/upstream-test
-        file: go.mod
-        match: (github.com/joho/godotenv) v.*
-        replace: "{{ index .Groups 1 }} {{ .Version }}"
+    repos:
+      - url: tmp/upstream-test
+        patches:
+          - file: go.mod
+            match: (github.com/joho/godotenv) v.*
+            replace: "{{ index .Groups 1 }} {{ .Version }}"
 
 github:
   # Allows setting for GitHub Enterprise
@@ -29,7 +30,6 @@ github:
   auth:
     type: pat # only "pat" supported
     token: abc123xyz # Generate new token at: https://github.com/settings/tokens
-    user: "" # Required if type is "pat"
 
   pr:
     title: "Update `{{ .Package }}` to {{ .Version }}"

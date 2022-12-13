@@ -50,9 +50,14 @@ var applyCmd = &cobra.Command{
 		}
 		log.Info().Str("package", pkgName).Msg("Found package config")
 
-		for _, patch := range pkg.Patches {
-			log.Info().Str("file", patch.File).Msg("Patching file")
-			if err := applyPatch(patch, pkg.Name, version); err != nil {
+		if len(pkg.Repos) == 0 {
+			log.Warn().Str("package", pkgName).Msg("No repos configured for package.")
+			return nil
+		}
+
+		for _, pkgRepo := range pkg.Repos {
+			log.Info().Str("repo", pkgRepo.URL).Msg("Patching repo")
+			if err := applyRepoPatches(pkgRepo, pkg.Name, version); err != nil {
 				return err
 			}
 		}
@@ -75,23 +80,29 @@ func tryFindPackageConfig(pkgName string) (config.Package, bool) {
 	return config.Package{}, false
 }
 
-func applyPatch(patch config.PackagePatch, pkgName, version string) error {
+func applyRepoPatches(pkgRepo config.PackageRepo, pkgName, version string) error {
+	if len(pkgRepo.Patches) == 0 {
+		log.Warn().Str("package", pkgName).Str("repo", pkgRepo.URL).Msg("No patches configured for repository.")
+	}
+
 	// Check this early so we don't fail right on the finish line
-	repoRef, err := getGitHubRepoRef(patch.Repo)
+	repoRef, err := getGitHubRepoRef(pkgRepo.URL)
 	if err != nil {
 		return err
 	}
 
 	g := git.Cmd{Credentials: git.Credentials{}}
-	repo, err := prepareRepo(g, patch.Repo, pkgName, version)
+	repo, err := prepareRepo(g, pkgRepo.URL, pkgName, version)
 	if err != nil {
 		return err
 	}
 	// TODO: uncomment
 	//defer repo.Close()
 
-	if err := applyPatchToRepo(repo, patch, version); err != nil {
-		return err
+	for _, patch := range pkgRepo.Patches {
+		if err := applyPatchToRepo(repo, patch, version); err != nil {
+			return err
+		}
 	}
 
 	if err := commitAndPushChanges(g, repo, pkgName, version); err != nil {
@@ -101,7 +112,7 @@ func applyPatch(patch config.PackagePatch, pkgName, version string) error {
 	return createPR(repo, repoRef, pkgName, version)
 }
 
-func applyPatchToRepo(repo git.Repo, patch config.PackagePatch, version string) error {
+func applyPatchToRepo(repo git.Repo, patch config.PackageRepoPatch, version string) error {
 	path := filepath.Join(repo.Directory(), patch.File)
 
 	lines, err := readLines(path)
@@ -121,7 +132,7 @@ func applyPatchToRepo(repo git.Repo, patch config.PackagePatch, version string) 
 	return nil
 }
 
-func patchLines(patch config.PackagePatch, version string, lines [][]byte) error {
+func patchLines(patch config.PackageRepoPatch, version string, lines [][]byte) error {
 	for i, line := range lines {
 		newLine, err := patchSingleLine(patch, version, line)
 		if err != nil {
@@ -139,7 +150,7 @@ func patchLines(patch config.PackagePatch, version string, lines [][]byte) error
 	return errors.New("no match in file")
 }
 
-func patchSingleLine(patch config.PackagePatch, version string, line []byte) ([]byte, error) {
+func patchSingleLine(patch config.PackageRepoPatch, version string, line []byte) ([]byte, error) {
 	regex := patch.Match.Regexp()
 	groupIndices := regex.FindSubmatchIndex(line)
 	if groupIndices == nil {
