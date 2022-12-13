@@ -98,6 +98,55 @@ func newTemplate(t *testing.T, text string) *config.Template {
 	return (*config.Template)(tmpl)
 }
 
+func TestGetGitHubRepoRef(t *testing.T) {
+	tests := []struct {
+		name      string
+		remote    string
+		wantOwner string
+		wantRepo  string
+	}{
+		{
+			name:      "regular",
+			remote:    "https://github.com/RiskIdent/jelease",
+			wantOwner: "RiskIdent",
+			wantRepo:  "jelease",
+		},
+		{
+			name:      "with .git",
+			remote:    "https://github.com/RiskIdent/jelease.git",
+			wantOwner: "RiskIdent",
+			wantRepo:  "jelease",
+		},
+		{
+			name:      "enterprise",
+			remote:    "https://some-github-enterprise.example.com/RiskIdent/jelease.git?ignore=this#please",
+			wantOwner: "RiskIdent",
+			wantRepo:  "jelease",
+		},
+		{
+			name:      "ignores extra stuff",
+			remote:    "https://some-github-enterprise.example.com/RiskIdent/jelease.git/woa?ignore=this#please",
+			wantOwner: "RiskIdent",
+			wantRepo:  "jelease",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := getGitHubRepoRef(tc.remote)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.Owner != tc.wantOwner {
+				t.Errorf("want owner %q, got owner %q", tc.wantOwner, got.Owner)
+			}
+			if got.Repo != tc.wantRepo {
+				t.Errorf("want repo %q, got repo %q", tc.wantRepo, got.Repo)
+			}
+		})
+	}
+}
+
 func slicesEqual[S ~[]E, E comparable](a, b S) bool {
 	if len(a) != len(b) {
 		return false

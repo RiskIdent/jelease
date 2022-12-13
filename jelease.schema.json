@@ -14,6 +14,9 @@
           },
           "type": "array"
         },
+        "github": {
+          "$ref": "#/$defs/github"
+        },
         "jira": {
           "$ref": "#/$defs/jira"
         },
@@ -22,6 +25,62 @@
         },
         "log": {
           "$ref": "#/$defs/log"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "github": {
+      "properties": {
+        "url": {
+          "format": "uri",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "auth": {
+          "$ref": "#/$defs/githubAuth"
+        },
+        "pr": {
+          "$ref": "#/$defs/githubPr"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "githubAuth": {
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/githubAuthType"
+        },
+        "token": {
+          "type": "string"
+        },
+        "user": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "githubAuthType": {
+      "type": "string",
+      "enum": [
+        "pat"
+      ],
+      "title": "GitHub auth type"
+    },
+    "githubPr": {
+      "properties": {
+        "title": {
+          "$ref": "#/$defs/template"
+        },
+        "description": {
+          "$ref": "#/$defs/template"
+        },
+        "branch": {
+          "$ref": "#/$defs/template"
         }
       },
       "additionalProperties": false,

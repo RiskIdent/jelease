@@ -67,6 +67,8 @@ var camelCaseReplacer = strings.NewReplacer(
 	"ID", "Id",
 	"URL", "Url",
 	"HTTP", "Http",
+	"GitHub", "Github",
+	"PR", "Pr",
 )
 
 func toCamelCase(s string) string {

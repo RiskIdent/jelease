@@ -20,16 +20,21 @@ package cmd
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/RiskIdent/jelease/pkg/git"
+	"github.com/google/go-github/v48/github"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"golang.org/x/oauth2"
 )
 
 // applyCmd represents the apply command
@@ -71,8 +76,14 @@ func tryFindPackageConfig(pkgName string) (config.Package, bool) {
 }
 
 func applyPatch(patch config.PackagePatch, pkgName, version string) error {
+	// Check this early so we don't fail right on the finish line
+	repoRef, err := getGitHubRepoRef(patch.Repo)
+	if err != nil {
+		return err
+	}
+
 	g := git.Cmd{Credentials: git.Credentials{}}
-	repo, err := prepareRepo(g, patch.Repo)
+	repo, err := prepareRepo(g, patch.Repo, pkgName, version)
 	if err != nil {
 		return err
 	}
@@ -83,7 +94,11 @@ func applyPatch(patch config.PackagePatch, pkgName, version string) error {
 		return err
 	}
 
-	return commitAndPushChanges(g, repo, pkgName, version)
+	if err := commitAndPushChanges(g, repo, pkgName, version); err != nil {
+		return err
+	}
+
+	return createPR(repo, repoRef, pkgName, version)
 }
 
 func applyPatchToRepo(repo git.Repo, patch config.PackagePatch, version string) error {
@@ -222,7 +237,7 @@ func readLinesFromReader(r io.Reader) ([][]byte, error) {
 	return lines, nil
 }
 
-func prepareRepo(g git.Git, repoURL string) (git.Repo, error) {
+func prepareRepo(g git.Git, repoURL, pkgName, version string) (git.Repo, error) {
 	dir, err := os.MkdirTemp("tmp", "jelease-repo-*")
 	if err != nil {
 		return nil, err
@@ -232,7 +247,19 @@ func prepareRepo(g git.Git, repoURL string) (git.Repo, error) {
 		return nil, err
 	}
 	log.Info().Str("branch", repo.CurrentBranch()).Str("dir", repo.Directory()).Msg("Cloned repo.")
-	if err := repo.CheckoutNewBranch("jelease/is/awesome"); err != nil {
+	branchName, err := cfg.GitHub.PR.Branch.Render(struct {
+		Package     string
+		PackageSafe string
+		Version     string
+	}{
+		Package:     pkgName,
+		PackageSafe: strings.ReplaceAll(pkgName, "/", "-"),
+		Version:     version,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("template branch name: %w", err)
+	}
+	if err := repo.CheckoutNewBranch(branchName); err != nil {
 		return nil, err
 	}
 	log.Info().Str("branch", repo.CurrentBranch()).Str("mainBranch", repo.MainBranch()).Msg("Checked out new branch.")
@@ -255,4 +282,85 @@ func commitAndPushChanges(g git.Git, repo git.Repo, pkgName, version string) err
 	}
 	log.Info().Msg("Pushed changes.")
 	return nil
+}
+
+func createPR(repo git.Repo, repoRef GitHubRepoRef, pkgName, version string) error {
+	gh, err := newGitHubClient()
+	if err != nil {
+		return fmt.Errorf("new GitHub client: %w", err)
+	}
+
+	tmplData := struct {
+		Package string
+		Version string
+	}{
+		Package: pkgName,
+		Version: version,
+	}
+	title, err := cfg.GitHub.PR.Title.Render(tmplData)
+	if err != nil {
+		return fmt.Errorf("template PR title: %w", err)
+	}
+	description, err := cfg.GitHub.PR.Description.Render(tmplData)
+	if err != nil {
+		return fmt.Errorf("template PR description: %w", err)
+	}
+
+	pr, _, err := gh.PullRequests.Create(context.TODO(), repoRef.Owner, repoRef.Repo, &github.NewPullRequest{
+		Title:               &title,
+		Body:                &description,
+		Head:                ref(repo.CurrentBranch()),
+		Base:                ref(repo.MainBranch()),
+		MaintainerCanModify: ref(true),
+	})
+	if err != nil {
+		return fmt.Errorf("create GitHub PR: %w", err)
+	}
+	log.Info().
+		Int("pr", deref(pr.Number, -1)).
+		Str("url", deref(pr.HTMLURL, "")).
+		Msg("GitHub PR created.")
+	return nil
+}
+
+func ref[T any](v T) *T {
+	return &v
+}
+
+func deref[T any](v *T, or T) T {
+	if v == nil {
+		return or
+	}
+	return *v
+}
+
+func newGitHubClient() (*github.Client, error) {
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: cfg.GitHub.Auth.Token})
+	tc := oauth2.NewClient(context.TODO(), ts)
+	if cfg.GitHub.URL != nil {
+		return github.NewEnterpriseClient(*cfg.GitHub.URL, "", tc)
+	}
+	return github.NewClient(tc), nil
+}
+
+type GitHubRepoRef struct {
+	Owner string
+	Repo  string
+}
+
+func getGitHubRepoRef(remote string) (GitHubRepoRef, error) {
+	u, err := url.Parse(remote)
+	if err != nil {
+		return GitHubRepoRef{}, err
+	}
+	u.User = nil
+	path := u.Path
+	segments := strings.Split(strings.TrimPrefix(path, "/"), "/")
+	if len(segments) < 2 {
+		return GitHubRepoRef{}, fmt.Errorf("expected https://host/OWNER/REPO in URL, got: %s", u.String())
+	}
+	return GitHubRepoRef{
+		Owner: segments[0],
+		Repo:  strings.TrimSuffix(segments[1], ".git"),
+	}, nil
 }

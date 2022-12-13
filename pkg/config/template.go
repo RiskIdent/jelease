@@ -18,6 +18,7 @@
 package config
 
 import (
+	"bytes"
 	"encoding"
 	"text/template"
 
@@ -66,4 +67,12 @@ func (Template) JSONSchema() *jsonschema.Schema {
 		Type:  "string",
 		Title: "Go template",
 	}
+}
+
+func (t *Template) Render(data any) (string, error) {
+	var buf bytes.Buffer
+	if err := t.Template().Execute(&buf, data); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }

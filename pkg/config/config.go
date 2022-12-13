@@ -22,6 +22,7 @@ import "github.com/invopop/jsonschema"
 type Config struct {
 	DryRun   bool
 	Packages []Package
+	GitHub   GitHub
 	Jira     Jira
 	HTTP     HTTP
 	Log      Log
@@ -37,6 +38,24 @@ type PackagePatch struct {
 	File    string
 	Match   *RegexPattern
 	Replace *Template
+}
+
+type GitHub struct {
+	URL  *string `jsonschema:"type=" jsonschema_extras:"format=uri,type=string,type=null"`
+	Auth GitHubAuth
+	PR   GitHubPR
+}
+
+type GitHubAuth struct {
+	Type  GitHubAuthType
+	Token string
+	User  string
+}
+
+type GitHubPR struct {
+	Title       *Template
+	Description *Template
+	Branch      *Template
 }
 
 type Jira struct {
