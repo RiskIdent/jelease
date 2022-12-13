@@ -8,6 +8,10 @@ all: jelease.schema.json
 jelease.schema.json: pkg/config/*.go cmd/config_schema.go
 	go run . config schema > jelease.schema.json
 
+.PHONY: test
+test:
+	go test ./...
+
 .PHONY: deps
 deps: deps-npm deps-pip
 

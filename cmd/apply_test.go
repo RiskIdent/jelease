@@ -62,13 +62,9 @@ func TestConcat(t *testing.T) {
 
 func TestPatchSingleLine(t *testing.T) {
 	line := []byte("<<my-pkg v0.1.0>>")
-	tmpl, err := template.New("").Parse(`{{ index .Groups 1 }} {{ .Version }}`)
-	if err != nil {
-		t.Fatal(err)
-	}
 	patch := config.PackagePatch{
-		Match:   (*config.RegexPattern)(regexp.MustCompile(`(my-pkg) v0.1.0`)),
-		Replace: (*config.Template)(tmpl),
+		Match:   newRegex(t, `(my-pkg) v0.1.0`),
+		Replace: newTemplate(t, `{{ index .Groups 1 }} {{ .Version }}`),
 	}
 
 	version := "v1.2.3"
@@ -84,6 +80,22 @@ func TestPatchSingleLine(t *testing.T) {
 	if got != want {
 		t.Errorf("want %q, got %q", want, got)
 	}
+}
+
+func newRegex(t *testing.T, text string) *config.RegexPattern {
+	r, err := regexp.Compile(`(my-pkg) v0.1.0`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return (*config.RegexPattern)(r)
+}
+
+func newTemplate(t *testing.T, text string) *config.Template {
+	tmpl, err := template.New("").Parse(text)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return (*config.Template)(tmpl)
 }
 
 func slicesEqual[S ~[]E, E comparable](a, b S) bool {
