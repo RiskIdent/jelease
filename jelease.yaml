@@ -10,6 +10,16 @@
 #   ~/.jelease.yaml
 #   jelease.yaml (in current directory)
 
+dryRun: false
+
+packages:
+  - name: foobar
+    patches:
+      - repo: tmp/upstream-test
+        file: go.mod
+        match: (github.com/joho/godotenv) v.*
+        replace: "{{ index .Groups 1 }} {{ .Version }}"
+
 jira:
   url: https://jira.example.com
   skipCertVerify: false
@@ -32,8 +42,6 @@ jira:
 
 http:
   port: 8080
-
-dryRun: false
 
 log:
   format: pretty # pretty | json

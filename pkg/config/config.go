@@ -20,16 +20,75 @@ package config
 import (
 	"encoding"
 	"fmt"
+	"regexp"
 
 	"github.com/rs/zerolog"
 	"github.com/spf13/pflag"
 )
 
 type Config struct {
-	Jira   Jira
-	HTTP   HTTP
-	DryRun bool
-	Log    Log
+	DryRun   bool
+	Packages []Package
+	Jira     Jira
+	HTTP     HTTP
+	Log      Log
+}
+
+/*
+packages:
+  - name: foobar
+    patches:
+      - repo: https://github.com/RiskIdent/jelease
+        file: go.mod
+        match: (github.com/joho/godotenv) v.*
+        replace: "{{ .Groups[1] }} {{ .Version }}"
+*/
+
+type Package struct {
+	Name    string
+	Patches []PackagePatch
+}
+
+type PackagePatch struct {
+	Repo    string
+	File    string
+	Match   *RegexPattern
+	Replace string
+}
+
+type RegexPattern regexp.Regexp
+
+// Ensure the type implements the interfaces
+var _ pflag.Value = &RegexPattern{}
+var _ encoding.TextUnmarshaler = &RegexPattern{}
+
+func (r *RegexPattern) Regexp() *regexp.Regexp {
+	return (*regexp.Regexp)(r)
+}
+
+func (r *RegexPattern) String() string {
+	return r.Regexp().String()
+}
+
+func (r *RegexPattern) Set(value string) error {
+	parsed, err := regexp.Compile(value)
+	if err != nil {
+		return err
+	}
+	*r = RegexPattern(*parsed)
+	return nil
+}
+
+func (r *RegexPattern) Type() string {
+	return "regex"
+}
+
+func (r *RegexPattern) UnmarshalText(text []byte) error {
+	return r.Set(string(text))
+}
+
+func (r *RegexPattern) MarshalText() ([]byte, error) {
+	return []byte(r.String()), nil
 }
 
 type Jira struct {
