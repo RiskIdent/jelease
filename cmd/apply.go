@@ -296,6 +296,11 @@ func commitAndPushChanges(g git.Git, repo git.Repo, pkgName, version string) err
 	}
 	log.Info().Str("hash", commit.AbbrHash).Str("subject", commit.Subject).Msg("Commit created.")
 
+	if cfg.DryRun {
+		log.Info().Msg("Dry run: skipping pushing changes.")
+		return nil
+	}
+
 	if err := repo.PushChanges(); err != nil {
 		return err
 	}
@@ -323,6 +328,11 @@ func createPR(repo git.Repo, repoRef GitHubRepoRef, pkgName, version string) err
 	description, err := cfg.GitHub.PR.Description.Render(tmplData)
 	if err != nil {
 		return fmt.Errorf("template PR description: %w", err)
+	}
+
+	if cfg.DryRun {
+		log.Info().Msg("Dry run: skipping creating GitHub pull request.")
+		return nil
 	}
 
 	pr, _, err := gh.PullRequests.Create(context.TODO(), repoRef.Owner, repoRef.Repo, &github.NewPullRequest{
