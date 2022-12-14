@@ -18,55 +18,60 @@
 package patch
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/RiskIdent/jelease/pkg/git"
+	"github.com/RiskIdent/jelease/pkg/github"
 	"github.com/RiskIdent/jelease/pkg/util"
-	"github.com/google/go-github/v48/github"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"golang.org/x/oauth2"
 )
 
-func CloneAllAndPublishPatches(cfg *config.Config, pkgRepos []config.PackageRepo, tmplCtx TemplateContext) error {
+func CloneAllAndPublishPatches(cfg *config.Config, pkgRepos []config.PackageRepo, tmplCtx TemplateContext) ([]github.PullRequest, error) {
 	if len(pkgRepos) == 0 {
 		log.Warn().Str("package", tmplCtx.Package).Msg("No repos configured for package.")
-		return nil
+		return nil, nil
 	}
 	g := git.Cmd{Credentials: git.Credentials{}}
+	gh, err := github.New(&cfg.GitHub)
+	if err != nil {
+		return nil, err
+	}
 
+	var prs []github.PullRequest
 	for _, pkgRepo := range pkgRepos {
 		log.Info().Str("repo", pkgRepo.URL).Msg("Patching repo")
-		if err := CloneRepoAndPublishPatches(cfg, g, pkgRepo, tmplCtx); err != nil {
-			return err
+		pr, err := CloneRepoAndPublishPatches(cfg, g, gh, pkgRepo, tmplCtx)
+		if err != nil {
+			return prs, err
 		}
+		prs = append(prs, pr)
 	}
 
 	log.Info().Str("package", tmplCtx.Package).Msg("Done applying patches")
-	return nil
+	return prs, nil
 }
 
-func CloneRepoAndPublishPatches(cfg *config.Config, g git.Git, pkgRepo config.PackageRepo, tmplCtx TemplateContext) error {
-	patcher, err := CloneRepoForPatching(cfg, g, pkgRepo.URL, tmplCtx)
+func CloneRepoAndPublishPatches(cfg *config.Config, g git.Git, gh github.Client, pkgRepo config.PackageRepo, tmplCtx TemplateContext) (github.PullRequest, error) {
+	patcher, err := CloneRepoForPatching(cfg, g, gh, pkgRepo.URL, tmplCtx)
 	if err != nil {
-		return err
+		return github.PullRequest{}, err
 	}
 	defer patcher.Close()
 
 	if err := patcher.ApplyManyInNewBranch(pkgRepo.Patches); err != nil {
-		return err
+		return github.PullRequest{}, err
 	}
 
 	return patcher.PublishChangesUnlessDryRun()
 }
 
-func CloneRepoForPatching(cfg *config.Config, g git.Git, remote string, tmplCtx TemplateContext) (*PackagePatcher, error) {
+func CloneRepoForPatching(cfg *config.Config, g git.Git, gh github.Client, remote string, tmplCtx TemplateContext) (*PackagePatcher, error) {
 	// Check this early so we don't fail right on the finish line
-	ghRef, err := ParseGitHubRepoRef(remote)
+	ghRef, err := github.ParseRepoRef(remote)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +102,8 @@ func cloneRepoTemp(g git.Git, tempDir, repoURL string, tmplCtx TemplateContext) 
 }
 
 type PackagePatcher struct {
-	ghRef   GitHubRepoRef
+	gh      github.Client
+	ghRef   github.RepoRef
 	remote  string
 	repo    git.Repo
 	cfg     *config.Config
@@ -169,37 +175,37 @@ func (p *PackagePatcher) ApplyMany(patches []config.PackageRepoPatch) error {
 	return nil
 }
 
-func (p *PackagePatcher) PublishChanges(gh *github.Client) error {
+func (p *PackagePatcher) PublishChanges() (github.PullRequest, error) {
 	if err := p.repo.PushChanges(); err != nil {
-		return err
+		return github.PullRequest{}, err
 	}
 	log.Info().Str("branch", p.repo.CurrentBranch()).
 		Msg("Pushed changes to remote repository.")
 
 	title, err := p.cfg.GitHub.PR.Title.Render(p.tmplCtx)
 	if err != nil {
-		return fmt.Errorf("template PR title: %w", err)
+		return github.PullRequest{}, fmt.Errorf("template PR title: %w", err)
 	}
 	description, err := p.cfg.GitHub.PR.Description.Render(p.tmplCtx)
 	if err != nil {
-		return fmt.Errorf("template PR description: %w", err)
+		return github.PullRequest{}, fmt.Errorf("template PR description: %w", err)
 	}
 
-	pr, _, err := gh.PullRequests.Create(context.TODO(), p.ghRef.Owner, p.ghRef.Repo, &github.NewPullRequest{
-		Title:               &title,
-		Body:                &description,
-		Head:                util.Ref(p.repo.CurrentBranch()),
-		Base:                util.Ref(p.repo.MainBranch()),
-		MaintainerCanModify: util.Ref(true),
+	pr, err := p.gh.CreatePullRequest(github.NewPullRequest{
+		RepoRef:     p.ghRef,
+		Title:       title,
+		Description: description,
+		Head:        p.repo.CurrentBranch(),
+		Base:        p.repo.MainBranch(),
 	})
 	if err != nil {
-		return fmt.Errorf("create GitHub PR: %w", err)
+		return github.PullRequest{}, fmt.Errorf("create GitHub PR: %w", err)
 	}
 	log.Info().
-		Int("pr", util.Deref(pr.Number, -1)).
-		Str("url", util.Deref(pr.HTMLURL, "")).
+		Int("pr", pr.Number).
+		Str("url", pr.URL).
 		Msg("GitHub PR created.")
-	return nil
+	return pr, nil
 }
 
 func (p *PackagePatcher) logDiff() {
@@ -217,28 +223,15 @@ func (p *PackagePatcher) logDiff() {
 	log.Debug().Msgf("Diff:\n%s", diff)
 }
 
-func (p *PackagePatcher) PublishChangesUnlessDryRun() error {
+func (p *PackagePatcher) PublishChangesUnlessDryRun() (github.PullRequest, error) {
 	if p.cfg.DryRun {
 		log.Info().Msg("Dry run: skipping publishing changes.")
-		return nil
+		return github.PullRequest{}, nil
 	}
-	gh, err := newGitHubClient(p.cfg)
+	pr, err := p.PublishChanges()
 	if err != nil {
-		return fmt.Errorf("new GitHub client: %w", err)
-	}
-
-	if err := p.PublishChanges(gh); err != nil {
-		return err
+		return github.PullRequest{}, err
 	}
 	log.Info().Msg("Pushed changes to remote repository.")
-	return nil
-}
-
-func newGitHubClient(cfg *config.Config) (*github.Client, error) {
-	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: cfg.GitHub.Auth.Token})
-	tc := oauth2.NewClient(context.TODO(), ts)
-	if cfg.GitHub.URL != nil {
-		return github.NewEnterpriseClient(*cfg.GitHub.URL, "", tc)
-	}
-	return github.NewClient(tc), nil
+	return pr, nil
 }

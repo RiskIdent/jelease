@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License along
 // with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package patch
+package github
 
 import (
 	"fmt"
@@ -23,24 +23,33 @@ import (
 	"strings"
 )
 
-type GitHubRepoRef struct {
+type RepoRef struct {
+	URL   string
 	Owner string
 	Repo  string
 }
 
-func ParseGitHubRepoRef(remote string) (GitHubRepoRef, error) {
+func ParseRepoRef(remote string) (RepoRef, error) {
 	u, err := url.Parse(remote)
 	if err != nil {
-		return GitHubRepoRef{}, err
+		return RepoRef{}, err
 	}
 	u.User = nil
 	path := u.Path
 	segments := strings.Split(strings.TrimPrefix(path, "/"), "/")
 	if len(segments) < 2 {
-		return GitHubRepoRef{}, fmt.Errorf("expected https://host/OWNER/REPO in URL, got: %s", u.String())
+		return RepoRef{}, fmt.Errorf("expected https://host/OWNER/REPO in URL, got: %s", u.String())
 	}
-	return GitHubRepoRef{
-		Owner: segments[0],
-		Repo:  strings.TrimSuffix(segments[1], ".git"),
+	owner := segments[0]
+	repo := strings.TrimSuffix(segments[1], ".git")
+
+	u.Path = fmt.Sprintf("%s/%s", owner, repo)
+	u.Fragment = ""
+	u.RawFragment = ""
+	u.RawQuery = ""
+	return RepoRef{
+		URL:   u.String(),
+		Owner: owner,
+		Repo:  repo,
 	}, nil
 }

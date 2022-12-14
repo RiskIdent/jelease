@@ -15,40 +15,45 @@
 // You should have received a copy of the GNU General Public License along
 // with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package patch
+package github
 
 import (
 	"testing"
 )
 
-func TestGetGitHubRepoRef(t *testing.T) {
+func TestGetRepoRef(t *testing.T) {
 	tests := []struct {
 		name      string
 		remote    string
+		wantURL   string
 		wantOwner string
 		wantRepo  string
 	}{
 		{
 			name:      "regular",
 			remote:    "https://github.com/RiskIdent/jelease",
+			wantURL:   "https://github.com/RiskIdent/jelease",
 			wantOwner: "RiskIdent",
 			wantRepo:  "jelease",
 		},
 		{
 			name:      "with .git",
 			remote:    "https://github.com/RiskIdent/jelease.git",
+			wantURL:   "https://github.com/RiskIdent/jelease",
 			wantOwner: "RiskIdent",
 			wantRepo:  "jelease",
 		},
 		{
 			name:      "enterprise",
-			remote:    "https://some-github-enterprise.example.com/RiskIdent/jelease.git?ignore=this#please",
+			remote:    "https://some-github-enterprise.example.com/RiskIdent/jelease",
+			wantURL:   "https://some-github-enterprise.example.com/RiskIdent/jelease",
 			wantOwner: "RiskIdent",
 			wantRepo:  "jelease",
 		},
 		{
 			name:      "ignores extra stuff",
 			remote:    "https://some-github-enterprise.example.com/RiskIdent/jelease.git/woa?ignore=this#please",
+			wantURL:   "https://some-github-enterprise.example.com/RiskIdent/jelease",
 			wantOwner: "RiskIdent",
 			wantRepo:  "jelease",
 		},
@@ -56,7 +61,7 @@ func TestGetGitHubRepoRef(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := ParseGitHubRepoRef(tc.remote)
+			got, err := ParseRepoRef(tc.remote)
 			if err != nil {
 				t.Fatal(err)
 			}
