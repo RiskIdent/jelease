@@ -32,7 +32,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-func CloneAndPublishPatches(cfg *config.Config, pkgRepos []config.PackageRepo, tmplCtx TemplateContext) error {
+func CloneAllAndPublishPatches(cfg *config.Config, pkgRepos []config.PackageRepo, tmplCtx TemplateContext) error {
 	if len(pkgRepos) == 0 {
 		log.Warn().Str("package", tmplCtx.Package).Msg("No repos configured for package.")
 		return nil
