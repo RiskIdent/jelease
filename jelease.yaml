@@ -29,9 +29,6 @@ packages:
             regex:
               match: '(github.com/joho/godotenv) v.*'
               replace: '{{ index .Groups 1 }} {{ .Version }}'
-          - file: jelease.yaml
-            yq:
-              expression: ".version = strenv(Version)"
 
 # GitHub settings
 github:
