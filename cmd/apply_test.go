@@ -60,16 +60,16 @@ func TestConcat(t *testing.T) {
 	}
 }
 
-func TestPatchSingleLine(t *testing.T) {
+func TestPatchSingleLineRegex(t *testing.T) {
 	line := []byte("<<my-pkg v0.1.0>>")
-	patch := config.PackageRepoPatch{
+	patch := config.PatchRegex{
 		Match:   newRegex(t, `(my-pkg) v0.1.0`),
 		Replace: newTemplate(t, `{{ index .Groups 1 }} {{ .Version }}`),
 	}
 
 	version := "v1.2.3"
 
-	newLine, err := patchSingleLine(patch, version, line)
+	newLine, err := patchSingleLineRegex(patch, version, line)
 	if err != nil {
 		t.Fatal(err)
 	}
