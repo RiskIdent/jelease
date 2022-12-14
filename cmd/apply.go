@@ -18,12 +18,8 @@
 package cmd
 
 import (
-	"bufio"
-	"bytes"
 	"context"
-	"errors"
 	"fmt"
-	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -31,6 +27,7 @@ import (
 
 	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/RiskIdent/jelease/pkg/git"
+	"github.com/RiskIdent/jelease/pkg/patch"
 	"github.com/RiskIdent/jelease/pkg/util"
 	"github.com/google/go-github/v48/github"
 	"github.com/rs/zerolog"
@@ -108,8 +105,8 @@ func applyRepoPatches(pkgRepo config.PackageRepo, pkgName, version string) error
 		}
 	}()
 
-	for _, patch := range pkgRepo.Patches {
-		if err := applyPatchToRepo(repo, patch, version); err != nil {
+	for _, p := range pkgRepo.Patches {
+		if err := patch.Apply(repo.Directory(), p, version); err != nil {
 			return err
 		}
 	}
@@ -119,137 +116,6 @@ func applyRepoPatches(pkgRepo config.PackageRepo, pkgName, version string) error
 	}
 
 	return createPR(repo, repoRef, pkgName, version)
-}
-
-func applyPatchToRepo(repo git.Repo, patch config.PackageRepoPatch, version string) error {
-	path := filepath.Join(repo.Directory(), patch.File)
-
-	lines, err := readLines(path)
-	if err != nil {
-		return fmt.Errorf("read file for patch: %w", err)
-	}
-
-	if err := patchLines(patch, version, lines); err != nil {
-		return fmt.Errorf("patch lines: %w", err)
-	}
-
-	if err := writeLines(path, lines); err != nil {
-		return fmt.Errorf("write patch: %w", err)
-	}
-
-	log.Info().Str("file", patch.File).Msg("Patched file.")
-	return nil
-}
-
-func patchLines(patch config.PackageRepoPatch, version string, lines [][]byte) error {
-	for i, line := range lines {
-		newLine, err := patchSingleLine(patch, version, line)
-		if err != nil {
-			return err
-		}
-		if newLine == nil { // No match
-			continue
-		}
-		if bytes.Equal(line, newLine) {
-			return errors.New("found matching line, but already up-to-date")
-		}
-		lines[i] = newLine
-		return nil // Stop after first match
-	}
-	return errors.New("no match in file")
-}
-
-func patchSingleLine(patch config.PackageRepoPatch, version string, line []byte) ([]byte, error) {
-	switch {
-	case patch.Regex != nil:
-		return patchSingleLineRegex(*patch.Regex, version, line)
-	default:
-		return nil, errors.New("missing patch type config")
-	}
-}
-
-func patchSingleLineRegex(patch config.PatchRegex, version string, line []byte) ([]byte, error) {
-	regex := patch.Match.Regexp()
-	groupIndices := regex.FindSubmatchIndex(line)
-	if groupIndices == nil {
-		// No match
-		return nil, nil
-	}
-	fullMatchStart := groupIndices[0]
-	fullMatchEnd := groupIndices[1]
-
-	everythingBefore := line[:fullMatchStart]
-	everythingAfter := line[fullMatchEnd:]
-
-	var buf bytes.Buffer
-	if err := patch.Replace.Template().Execute(&buf, struct {
-		Groups  []string
-		Version string
-	}{
-		Groups:  regexSubmatchIndicesToStrings(line, groupIndices),
-		Version: version,
-	}); err != nil {
-		return nil, fmt.Errorf("execute replace template: %w", err)
-	}
-
-	return util.Concat(everythingBefore, buf.Bytes(), everythingAfter), nil
-}
-
-func regexSubmatchIndicesToStrings(line []byte, indices []int) []string {
-	strs := make([]string, 0, len(indices)/2)
-	for i := 0; i < len(indices); i += 2 {
-		start := indices[i]
-		end := indices[i+1]
-		strs = append(strs, string(line[start:end]))
-	}
-	return strs
-}
-
-func writeLines(path string, lines [][]byte) error {
-	stat, err := os.Stat(path)
-	if err != nil {
-		return err
-	}
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_TRUNC, stat.Mode())
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	for _, line := range lines {
-		for len(line) > 0 {
-			n, err := file.Write(line)
-			if err != nil {
-				return err
-			}
-			if n == 0 {
-				return errors.New("wrote 0 bytes, stopping infinite loop")
-			}
-			line = line[n:]
-		}
-		file.Write([]byte("\n"))
-	}
-	return nil
-}
-
-func readLines(path string) ([][]byte, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	return readLinesFromReader(file)
-}
-
-func readLinesFromReader(r io.Reader) ([][]byte, error) {
-	var lines [][]byte
-	scanner := bufio.NewScanner(r)
-	for scanner.Scan() {
-		lines = append(lines, scanner.Bytes())
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-	return lines, nil
 }
 
 func prepareRepo(g git.Git, repoURL, pkgName, version string) (git.Repo, error) {

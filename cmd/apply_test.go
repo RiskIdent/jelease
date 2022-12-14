@@ -18,50 +18,8 @@
 package cmd
 
 import (
-	"regexp"
 	"testing"
-	"text/template"
-
-	"github.com/RiskIdent/jelease/pkg/config"
 )
-
-func TestPatchSingleLineRegex(t *testing.T) {
-	line := []byte("<<my-pkg v0.1.0>>")
-	patch := config.PatchRegex{
-		Match:   newRegex(t, `(my-pkg) v0.1.0`),
-		Replace: newTemplate(t, `{{ index .Groups 1 }} {{ .Version }}`),
-	}
-
-	version := "v1.2.3"
-
-	newLine, err := patchSingleLineRegex(patch, version, line)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	got := string(newLine)
-	want := "<<my-pkg v1.2.3>>"
-
-	if got != want {
-		t.Errorf("want %q, got %q", want, got)
-	}
-}
-
-func newRegex(t *testing.T, text string) *config.RegexPattern {
-	r, err := regexp.Compile(`(my-pkg) v0.1.0`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return (*config.RegexPattern)(r)
-}
-
-func newTemplate(t *testing.T, text string) *config.Template {
-	tmpl, err := template.New("").Parse(text)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return (*config.Template)(tmpl)
-}
 
 func TestGetGitHubRepoRef(t *testing.T) {
 	tests := []struct {
