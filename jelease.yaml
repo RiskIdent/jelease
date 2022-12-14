@@ -2,7 +2,9 @@
 #
 # SPDX-License-Identifier: CC0-1.0
 
-# yaml-language-server: $schema=https://github.com/RiskIdent/jelease/raw/main/jelease.schema.json
+## To make this portable, change the ./jelease.schema.json to:
+##   https://github.com/RiskIdent/jelease/raw/main/jelease.schema.json
+# yaml-language-server: $schema=./jelease.schema.json
 
 # This is the default config embedded into the program.
 # Can be overridden with a different file at:
