@@ -17,15 +17,19 @@
 
 package config
 
-import "github.com/invopop/jsonschema"
+import (
+	"github.com/RiskIdent/jelease/pkg/newreleases"
+	"github.com/invopop/jsonschema"
+)
 
 type Config struct {
-	DryRun   bool
-	Packages []Package
-	GitHub   GitHub
-	Jira     Jira
-	HTTP     HTTP
-	Log      Log
+	DryRun      bool
+	Packages    []Package
+	GitHub      GitHub
+	Jira        Jira
+	NewReleases NewReleases
+	HTTP        HTTP
+	Log         Log
 }
 
 type Package struct {
@@ -69,6 +73,15 @@ type GitHubPR struct {
 	Title       *Template
 	Description *Template
 	Branch      *Template
+}
+
+type NewReleases struct {
+	Auth     NewReleasesAuth
+	Projects []newreleases.Project
+}
+
+type NewReleasesAuth struct {
+	Key string
 }
 
 type Jira struct {
