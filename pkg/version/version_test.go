@@ -41,8 +41,12 @@ func TestParse_intactAfterStringer(t *testing.T) {
 			version: "v0.1.2",
 		},
 		{
-			name:    "3-seg-suffix",
+			name:    "3-seg-dash-suffix",
 			version: "0.1.2-rc.12+3331",
+		},
+		{
+			name:    "3-seg-plus-suffix",
+			version: "0.1.2+3331",
 		},
 		{
 			name:    "v3-seg-suffix",
@@ -92,6 +96,82 @@ func TestParse_errors(t *testing.T) {
 			_, err := Parse(tc.version)
 			if err == nil {
 				t.Fatalf("want error for %q, got nil", tc.version)
+			}
+		})
+	}
+}
+
+func TestAdd(t *testing.T) {
+	tests := []struct {
+		name string
+		a    string
+		b    string
+		want string
+	}{
+		{
+			name: "add many",
+			a:    "1",
+			b:    "1.2.3.4",
+			want: "2.2.3.4",
+		},
+		{
+			name: "add to many",
+			a:    "1.2.3.4",
+			b:    "1",
+			want: "2.2.3.4",
+		},
+		{
+			name: "add prefix",
+			a:    "1.2.3",
+			b:    "v0.0.0",
+			want: "v1.2.3",
+		},
+		{
+			name: "remove prefix",
+			a:    "v1.2.3",
+			b:    "0.0.0",
+			want: "1.2.3",
+		},
+		{
+			name: "keep prefix intact",
+			a:    "v1.2.3",
+			b:    "v0.0.0",
+			want: "v1.2.3",
+		},
+		{
+			name: "add suffix",
+			a:    "1.2.3",
+			b:    "0.0.0-rc.1",
+			want: "1.2.3-rc.1",
+		},
+		{
+			name: "remove suffix",
+			a:    "1.2.3-rc.1",
+			b:    "0.0.0",
+			want: "1.2.3",
+		},
+		{
+			name: "keep suffix intact",
+			a:    "1.2.3-rc.1",
+			b:    "0.0.0-rc.1",
+			want: "1.2.3-rc.1",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			aVer, err := Parse(tc.a)
+			if err != nil {
+				t.Errorf("parse %q: %s", tc.a, err)
+			}
+			bVer, err := Parse(tc.b)
+			if err != nil {
+				t.Errorf("parse %q: %s", tc.b, err)
+			}
+			result := aVer.Add(bVer)
+			got := result.String()
+			if got != tc.want {
+				t.Errorf("want %q, got %q", tc.want, got)
 			}
 		})
 	}

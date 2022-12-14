@@ -75,14 +75,20 @@ func (v Version) String() string {
 
 func (v Version) Add(other Version) Version {
 	max := typ.Max(len(v.Segments), len(other.Segments))
-	min := typ.Min(len(v.Segments), len(other.Segments))
 	segments := make([]uint, max)
-	for i := 0; i < min; i++ {
-		segments[i] = v.Segments[i] + other.Segments[i]
+	for i := 0; i < max; i++ {
+		segments[i] = indexOrZero(v.Segments, i) + indexOrZero(other.Segments, i)
 	}
 	return Version{
 		Prefix:   other.Prefix,
 		Segments: segments,
 		Suffix:   other.Suffix,
 	}
+}
+
+func indexOrZero(slice []uint, index int) uint {
+	if index < 0 || index >= len(slice) {
+		return 0
+	}
+	return slice[index]
 }
