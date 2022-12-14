@@ -17,6 +17,7 @@ require (
 	github.com/spf13/viper v1.14.0
 	github.com/trivago/tgo v1.0.7
 	golang.org/x/oauth2 v0.0.0-20221014153046-6fdb5e3db783
+	gopkg.in/typ.v4 v4.2.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

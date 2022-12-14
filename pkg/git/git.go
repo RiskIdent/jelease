@@ -30,6 +30,7 @@ type Repo interface {
 	MainBranch() string
 
 	CheckoutNewBranch(branchName string) error
+	DiffChanges() (string, error)
 	StageChanges() error
 	CreateCommit(message string) (Commit, error)
 	PushChanges() error

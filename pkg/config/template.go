@@ -26,6 +26,8 @@ import (
 	"github.com/spf13/pflag"
 )
 
+var FuncsMap template.FuncMap
+
 type Template template.Template
 
 // Ensure the type implements the interfaces
@@ -42,7 +44,7 @@ func (t *Template) String() string {
 }
 
 func (t *Template) Set(value string) error {
-	parsed, err := template.New("").Parse(value)
+	parsed, err := template.New("").Funcs(FuncsMap).Parse(value)
 	if err != nil {
 		return err
 	}

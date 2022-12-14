@@ -32,6 +32,7 @@ import (
 	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/RiskIdent/jelease/pkg/git"
 	"github.com/google/go-github/v48/github"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
@@ -258,13 +259,11 @@ func prepareRepo(g git.Git, repoURL, pkgName, version string) (git.Repo, error) 
 	}
 	log.Info().Str("branch", repo.CurrentBranch()).Str("dir", repo.Directory()).Msg("Cloned repo.")
 	branchName, err := cfg.GitHub.PR.Branch.Render(struct {
-		Package     string
-		PackageSafe string
-		Version     string
+		Package string
+		Version string
 	}{
-		Package:     pkgName,
-		PackageSafe: strings.ReplaceAll(pkgName, "/", "-"),
-		Version:     version,
+		Package: pkgName,
+		Version: version,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("template branch name: %w", err)
@@ -278,13 +277,22 @@ func prepareRepo(g git.Git, repoURL, pkgName, version string) (git.Repo, error) 
 
 func createRepoTempDirectory() (string, error) {
 	parentDir := filepath.Join(deref(cfg.GitHub.TempDir, os.TempDir()), "jelease-cloned-repos")
-	if err := os.MkdirAll(parentDir, 0600); err != nil {
+	if err := os.MkdirAll(parentDir, 0700); err != nil {
 		return "", err
 	}
 	return os.MkdirTemp(parentDir, "jelease-repo-*")
 }
 
 func commitAndPushChanges(g git.Git, repo git.Repo, pkgName, version string) error {
+	if log.Logger.GetLevel() <= zerolog.DebugLevel {
+		diff, err := repo.DiffChanges()
+		if err != nil {
+			log.Warn().Err(err).Msg("Failed diffing changes. Trying to continue anyways.")
+		} else {
+			log.Debug().Msgf("Diff:\n%s", diff)
+		}
+	}
+
 	if err := repo.StageChanges(); err != nil {
 		return err
 	}

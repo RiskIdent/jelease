@@ -18,10 +18,15 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
+	"text/template"
 
 	"github.com/RiskIdent/jelease/pkg/config"
+	"github.com/RiskIdent/jelease/pkg/version"
 	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -66,6 +71,48 @@ func Execute(defaultConfig config.Config) {
 	if err != nil {
 		log.Error().Msgf("Failed: %s", err)
 		os.Exit(1)
+	}
+}
+
+func init() {
+	var (
+		pathCharRegex        = regexp.MustCompile(`[^a-zA-Z0-9/,._-]`)
+		pathSegmentCharRegex = regexp.MustCompile(`[^a-zA-Z0-9,._-]`)
+	)
+
+	config.FuncsMap = template.FuncMap{
+		"versionBump": func(add string, to string) string {
+			addVer, err := version.Parse(add)
+			if err != nil {
+				panic(fmt.Sprintf("parse version %q: %s", add, err))
+			}
+			toVer, err := version.Parse(to)
+			if err != nil {
+				panic(fmt.Sprintf("parse version %q: %s", to, err))
+			}
+			return toVer.Add(addVer).String()
+		},
+		"sanitizePath": func(path string) string {
+			path = strings.ToLower(path)
+			path = filepath.ToSlash(path)
+			return pathCharRegex.ReplaceAllLiteralString(path, "-")
+		},
+		"sanitizePathSegment": func(path string) string {
+			path = strings.ToLower(path)
+			return pathSegmentCharRegex.ReplaceAllLiteralString(path, "-")
+		},
+		"basename": func(path string) string {
+			return filepath.Base(path)
+		},
+		"dirname": func(path string) string {
+			return filepath.Dir(path)
+		},
+		"print": func(args ...any) string {
+			return fmt.Sprint(args...)
+		},
+		"printf": func(format string, args ...any) string {
+			return fmt.Sprintf(format, args...)
+		},
 	}
 }
 

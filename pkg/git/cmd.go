@@ -104,6 +104,14 @@ func (r *CmdRepo) CheckoutNewBranch(branchName string) error {
 	return nil
 }
 
+func (r *CmdRepo) DiffChanges() (string, error) {
+	output, err := r.runGitCmdInRepo("diff")
+	if err != nil {
+		return "", fmt.Errorf("diff changes: %w", err)
+	}
+	return string(output), nil
+}
+
 func (r *CmdRepo) StageChanges() error {
 	_, err := r.runGitCmdInRepo("add", "--all")
 	if err != nil {
