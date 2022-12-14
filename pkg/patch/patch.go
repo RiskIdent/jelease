@@ -41,6 +41,15 @@ type TemplateContextRegex struct {
 	Groups []string
 }
 
+func ApplyMany(repoDir string, patches []config.PackageRepoPatch, tmplCtx TemplateContext) error {
+	for _, p := range patches {
+		if err := Apply(repoDir, p, tmplCtx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func Apply(repoDir string, patch config.PackageRepoPatch, tmplCtx TemplateContext) error {
 	// TODO: Check that the patch path doesn't go outside the repo dir.
 	// For example, reject stuff like "../../../somefile.txt"

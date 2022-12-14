@@ -20,17 +20,11 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"net/url"
-	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/RiskIdent/jelease/pkg/git"
 	"github.com/RiskIdent/jelease/pkg/patch"
-	"github.com/RiskIdent/jelease/pkg/util"
 	"github.com/google/go-github/v48/github"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
@@ -85,162 +79,34 @@ func tryFindPackageConfig(pkgName string) (config.Package, bool) {
 }
 
 func applyRepoPatches(pkgRepo config.PackageRepo, tmplCtx patch.TemplateContext) error {
-	if len(pkgRepo.Patches) == 0 {
-		log.Warn().
-			Str("package", tmplCtx.Package).
-			Str("repo", pkgRepo.URL).
-			Msg("No patches configured for repository.")
-		return nil
-	}
-
-	// Check this early so we don't fail right on the finish line
-	repoRef, err := getGitHubRepoRef(pkgRepo.URL)
-	if err != nil {
-		return err
-	}
-
 	g := git.Cmd{Credentials: git.Credentials{}}
-	repo, err := prepareRepo(g, pkgRepo.URL, tmplCtx)
+	patcher, err := patch.CloneRepoForPatching(&cfg, g, pkgRepo.URL, tmplCtx)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if err := repo.Close(); err != nil {
-			log.Warn().Err(err).Str("dir", repo.Directory()).
-				Msg("Failed to clean up cloned temporary repo directory.")
-		} else {
-			log.Debug().Str("dir", repo.Directory()).
-				Msg("Cleaned up cloned temporary repo directory.")
-		}
-	}()
+	defer patcher.Close()
 
-	for _, p := range pkgRepo.Patches {
-		if err := patch.Apply(repo.Directory(), p, tmplCtx); err != nil {
-			return err
-		}
-	}
-
-	if err := commitAndPushChanges(g, repo, tmplCtx); err != nil {
+	if err := patcher.ApplyManyInNewBranch(pkgRepo.Patches); err != nil {
 		return err
 	}
 
-	return createPR(repo, repoRef, tmplCtx)
+	return publishChangesUnlessDryRun(patcher)
 }
 
-func prepareRepo(g git.Git, repoURL string, tmplCtx patch.TemplateContext) (git.Repo, error) {
-	dir, err := createRepoTempDirectory()
-	if err != nil {
-		return nil, err
-	}
-	repo, err := g.Clone(dir, repoURL)
-	if err != nil {
-		return nil, err
-	}
-	log.Info().
-		Str("branch", repo.CurrentBranch()).
-		Str("dir", repo.Directory()).
-		Msg("Cloned repo.")
-	branchName, err := cfg.GitHub.PR.Branch.Render(tmplCtx)
-	if err != nil {
-		return nil, fmt.Errorf("template branch name: %w", err)
-	}
-	if err := repo.CheckoutNewBranch(branchName); err != nil {
-		return nil, err
-	}
-	log.Info().Str("branch", repo.CurrentBranch()).Str("mainBranch", repo.MainBranch()).Msg("Checked out new branch.")
-	return repo, nil
-}
-
-func createRepoTempDirectory() (string, error) {
-	parentDir := filepath.Join(util.Deref(cfg.GitHub.TempDir, os.TempDir()), "jelease-cloned-repos")
-	if err := os.MkdirAll(parentDir, 0700); err != nil {
-		return "", err
-	}
-	return os.MkdirTemp(parentDir, "jelease-repo-*")
-}
-
-func commitAndPushChanges(g git.Git, repo git.Repo, tmplCtx patch.TemplateContext) error {
-	logDiff(repo)
-
-	if err := repo.StageChanges(); err != nil {
-		return err
-	}
-	log.Debug().Msg("Staged changes.")
-
-	commitMsg, err := cfg.GitHub.PR.Commit.Render(tmplCtx)
-	if err != nil {
-		return fmt.Errorf("template commit message: %w", err)
-	}
-	commit, err := repo.CreateCommit(commitMsg)
-	if err != nil {
-		return err
-	}
-	log.Debug().
-		Str("hash", commit.AbbrHash).
-		Str("subject", commit.Subject).
-		Msg("Created commit.")
-
+func publishChangesUnlessDryRun(patcher *patch.PackagePatcher) error {
 	if cfg.DryRun {
-		log.Info().Msg("Dry run: skipping pushing changes.")
+		log.Info().Msg("Dry run: skipping publishing changes.")
 		return nil
 	}
-
-	if err := repo.PushChanges(); err != nil {
-		return err
-	}
-	log.Info().Msg("Pushed changes to remote repository.")
-	return nil
-}
-
-func logDiff(repo git.Repo) {
-	if log.Logger.GetLevel() > zerolog.DebugLevel {
-		return
-	}
-	diff, err := repo.DiffChanges()
-	if err != nil {
-		log.Warn().Err(err).Msg("Failed diffing changes. Trying to continue anyways.")
-		return
-	}
-	if cfg.Log.Format == config.LogFormatPretty {
-		diff = git.ColorizeDiff(diff)
-	}
-	log.Debug().Msgf("Diff:\n%s", diff)
-}
-
-func createPR(repo git.Repo, repoRef GitHubRepoRef, tmplCtx patch.TemplateContext) error {
 	gh, err := newGitHubClient()
 	if err != nil {
 		return fmt.Errorf("new GitHub client: %w", err)
 	}
 
-	title, err := cfg.GitHub.PR.Title.Render(tmplCtx)
-	if err != nil {
-		return fmt.Errorf("template PR title: %w", err)
+	if err := patcher.PublishChanges(gh); err != nil {
+		return err
 	}
-	description, err := cfg.GitHub.PR.Description.Render(tmplCtx)
-	if err != nil {
-		return fmt.Errorf("template PR description: %w", err)
-	}
-
-	if cfg.DryRun {
-		log.Info().Msg("Dry run: skipping creating GitHub pull request.")
-		return nil
-	}
-
-	pr, _, err := gh.PullRequests.Create(context.TODO(), repoRef.Owner, repoRef.Repo, &github.NewPullRequest{
-		Title:               &title,
-		Body:                &description,
-		Head:                util.Ref(repo.CurrentBranch()),
-		Base:                util.Ref(repo.MainBranch()),
-		MaintainerCanModify: util.Ref(true),
-	})
-	if err != nil {
-		return fmt.Errorf("create GitHub PR: %w", err)
-	}
-	log.Info().
-		Int("pr", util.Deref(pr.Number, -1)).
-		Str("url", util.Deref(pr.HTMLURL, "")).
-		Msg("GitHub PR created.")
+	log.Info().Msg("Pushed changes to remote repository.")
 	return nil
 }
 
@@ -251,26 +117,4 @@ func newGitHubClient() (*github.Client, error) {
 		return github.NewEnterpriseClient(*cfg.GitHub.URL, "", tc)
 	}
 	return github.NewClient(tc), nil
-}
-
-type GitHubRepoRef struct {
-	Owner string
-	Repo  string
-}
-
-func getGitHubRepoRef(remote string) (GitHubRepoRef, error) {
-	u, err := url.Parse(remote)
-	if err != nil {
-		return GitHubRepoRef{}, err
-	}
-	u.User = nil
-	path := u.Path
-	segments := strings.Split(strings.TrimPrefix(path, "/"), "/")
-	if len(segments) < 2 {
-		return GitHubRepoRef{}, fmt.Errorf("expected https://host/OWNER/REPO in URL, got: %s", u.String())
-	}
-	return GitHubRepoRef{
-		Owner: segments[0],
-		Repo:  strings.TrimSuffix(segments[1], ".git"),
-	}, nil
 }

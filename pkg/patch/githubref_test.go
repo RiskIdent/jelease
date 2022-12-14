@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License along
 // with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package cmd
+package patch
 
 import (
 	"testing"
@@ -56,7 +56,7 @@ func TestGetGitHubRepoRef(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := getGitHubRepoRef(tc.remote)
+			got, err := ParseGitHubRepoRef(tc.remote)
 			if err != nil {
 				t.Fatal(err)
 			}
