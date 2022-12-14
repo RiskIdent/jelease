@@ -39,7 +39,11 @@ type PackageRepo struct {
 }
 
 type PackageRepoPatch struct {
-	File    string
+	File  string
+	Regex *PatchRegex
+}
+
+type PatchRegex struct {
 	Match   *RegexPattern
 	Replace *Template
 }

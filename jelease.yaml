@@ -24,8 +24,9 @@ packages:
       - url: tmp/upstream-test
         patches:
           - file: go.mod
-            match: '(github.com/joho/godotenv) v.*'
-            replace: '{{ index .Groups 1 }} {{ .Version }}'
+            regex:
+              match: '(github.com/joho/godotenv) v.*'
+              replace: '{{ index .Groups 1 }} {{ .Version }}'
 
 # GitHub settings
 github:

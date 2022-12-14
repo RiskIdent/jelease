@@ -160,6 +160,15 @@ func patchLines(patch config.PackageRepoPatch, version string, lines [][]byte) e
 }
 
 func patchSingleLine(patch config.PackageRepoPatch, version string, line []byte) ([]byte, error) {
+	switch {
+	case patch.Regex != nil:
+		return patchSingleLineRegex(*patch.Regex, version, line)
+	default:
+		return nil, errors.New("missing patch type config")
+	}
+}
+
+func patchSingleLineRegex(patch config.PatchRegex, version string, line []byte) ([]byte, error) {
 	regex := patch.Match.Regexp()
 	groupIndices := regex.FindSubmatchIndex(line)
 	if groupIndices == nil {
