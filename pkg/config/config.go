@@ -45,9 +45,10 @@ type PackageRepoPatch struct {
 }
 
 type GitHub struct {
-	URL  *string `jsonschema:"type=" jsonschema_extras:"format=uri,type=string,type=null"`
-	Auth GitHubAuth
-	PR   GitHubPR
+	URL     *string `jsonschema:"type=" jsonschema_extras:"format=uri,type=string,type=null"`
+	TempDir *string `jsonschema:"type=" jsonschema_extras:"format=uri,type=string,type=null"`
+	Auth    GitHubAuth
+	PR      GitHubPR
 }
 
 type GitHubAuth struct {

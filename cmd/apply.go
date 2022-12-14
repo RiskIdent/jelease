@@ -96,8 +96,7 @@ func applyRepoPatches(pkgRepo config.PackageRepo, pkgName, version string) error
 	if err != nil {
 		return err
 	}
-	// TODO: uncomment
-	//defer repo.Close()
+	defer repo.Close()
 
 	for _, patch := range pkgRepo.Patches {
 		if err := applyPatchToRepo(repo, patch, version); err != nil {
@@ -249,7 +248,7 @@ func readLinesFromReader(r io.Reader) ([][]byte, error) {
 }
 
 func prepareRepo(g git.Git, repoURL, pkgName, version string) (git.Repo, error) {
-	dir, err := os.MkdirTemp("tmp", "jelease-repo-*")
+	dir, err := createRepoTempDirectory()
 	if err != nil {
 		return nil, err
 	}
@@ -275,6 +274,14 @@ func prepareRepo(g git.Git, repoURL, pkgName, version string) (git.Repo, error) 
 	}
 	log.Info().Str("branch", repo.CurrentBranch()).Str("mainBranch", repo.MainBranch()).Msg("Checked out new branch.")
 	return repo, nil
+}
+
+func createRepoTempDirectory() (string, error) {
+	parentDir := filepath.Join(deref(cfg.GitHub.TempDir, os.TempDir()), "jelease-cloned-repos")
+	if err := os.MkdirAll(parentDir, 0600); err != nil {
+		return "", err
+	}
+	return os.MkdirTemp(parentDir, "jelease-repo-*")
 }
 
 func commitAndPushChanges(g git.Git, repo git.Repo, pkgName, version string) error {

@@ -26,7 +26,14 @@ packages:
 github:
   # Allows setting for GitHub Enterprise
   url: # https://github.example.com
-  
+
+  # Temporary directory to store cloned repositories.
+  # On Unix systems, it returns $TMPDIR if non-empty, else /tmp.
+  # On Windows, it uses GetTempPath, returning the first non-empty
+  #   value from %TMP%, %TEMP%, %USERPROFILE%, or the Windows directory.
+  # On Plan 9, it returns /tmp.
+  tempDir:
+
   auth:
     type: pat # only "pat" supported
     token: abc123xyz # Generate new token at: https://github.com/settings/tokens
