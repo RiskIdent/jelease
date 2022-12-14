@@ -80,6 +80,7 @@ func CloneRepoForPatching(cfg *config.Config, g git.Git, gh github.Client, remot
 		return nil, err
 	}
 	return &PackagePatcher{
+		gh:      gh,
 		ghRef:   ghRef,
 		remote:  remote,
 		repo:    repo,
@@ -88,9 +89,9 @@ func CloneRepoForPatching(cfg *config.Config, g git.Git, gh github.Client, remot
 	}, nil
 }
 
-func cloneRepoTemp(g git.Git, tempDir, repoURL string, tmplCtx TemplateContext) (git.Repo, error) {
+func cloneRepoTemp(g git.Git, tempDir, remote string, tmplCtx TemplateContext) (git.Repo, error) {
 	targetDir := filepath.Join(tempDir, "jelease-cloned-repos", "jelease-repo-*")
-	repo, err := git.CloneTemp(g, targetDir, repoURL)
+	repo, err := git.CloneTemp(g, targetDir, remote)
 	if err != nil {
 		return nil, err
 	}

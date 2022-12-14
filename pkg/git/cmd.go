@@ -25,6 +25,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 // Cmd implements [Git] using the command-line version of Git.
@@ -51,6 +53,7 @@ func addCredentialsToRemote(remote string, cred Credentials) (string, error) {
 }
 
 func (g Cmd) Clone(targetDir, remote string) (Repo, error) {
+	log.Debug().Str("dir", targetDir).Str("remote", remote).Msg("Cloning into dir")
 	remoteWithCred, err := addCredentialsToRemote(remote, g.Credentials)
 	if err != nil {
 		return nil, err

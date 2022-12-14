@@ -57,7 +57,7 @@ func (c Commit) String() string {
 	return c.Hash
 }
 
-func CloneTemp(g Git, remote, tmpDirPattern string) (Repo, error) {
+func CloneTemp(g Git, tmpDirPattern, remote string) (Repo, error) {
 	parentDir, filePattern := filepath.Split(tmpDirPattern)
 	if err := os.MkdirAll(parentDir, 0700); err != nil {
 		return nil, err

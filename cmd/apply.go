@@ -43,10 +43,8 @@ var applyCmd = &cobra.Command{
 			Version: version,
 		}
 
-		patch.CloneAllAndPublishPatches(&cfg, pkg.Repos, tmplCtx)
-
-		log.Info().Str("package", pkgName).Msg("Done applying patches")
-		return nil
+		_, err := patch.CloneAllAndPublishPatches(&cfg, pkg.Repos, tmplCtx)
+		return err
 	},
 }
 
