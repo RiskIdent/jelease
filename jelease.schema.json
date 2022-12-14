@@ -33,18 +33,26 @@
     "github": {
       "properties": {
         "url": {
-          "format": "uri",
-          "type": [
-            "string",
-            "null"
-          ]
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "format": "uri"
         },
         "tempDir": {
-          "format": "uri",
-          "type": [
-            "string",
-            "null"
-          ]
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "format": "uri"
         },
         "auth": {
           "$ref": "#/$defs/githubAuth"
@@ -234,12 +242,29 @@
       "type": "object"
     },
     "packageRepoPatch": {
+      "oneOf": [
+        {
+          "required": [
+            "regex"
+          ],
+          "title": "regex"
+        },
+        {
+          "required": [
+            "yq"
+          ],
+          "title": "yq"
+        }
+      ],
       "properties": {
         "file": {
           "type": "string"
         },
         "regex": {
           "$ref": "#/$defs/patchRegex"
+        },
+        "yq": {
+          "$ref": "#/$defs/patchYq"
         }
       },
       "additionalProperties": false,
@@ -255,7 +280,23 @@
         }
       },
       "additionalProperties": false,
-      "type": "object"
+      "type": "object",
+      "required": [
+        "match",
+        "replace"
+      ]
+    },
+    "patchYq": {
+      "properties": {
+        "expression": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "expression"
+      ]
     },
     "regexPattern": {
       "type": "string",

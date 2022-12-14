@@ -67,6 +67,10 @@ var camelCaseReplacer = strings.NewReplacer(
 	"ID", "Id",
 	"URL", "Url",
 	"HTTP", "Http",
+	"JSON", "Json",
+	"JQ", "Jq",
+	"YAML", "Yaml",
+	"YQ", "Yq",
 	"GitHub", "Github",
 	"PR", "Pr",
 )

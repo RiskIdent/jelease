@@ -40,17 +40,22 @@ type PackageRepo struct {
 
 type PackageRepoPatch struct {
 	File  string
-	Regex *PatchRegex
+	Regex *PatchRegex `yaml:",omitempty" json:",omitempty" jsonschema:"oneof_required=regex"`
+	YQ    *PatchYQ    `yaml:",omitempty" json:",omitempty" jsonschema:"oneof_required=yq"`
 }
 
 type PatchRegex struct {
-	Match   *RegexPattern
-	Replace *Template
+	Match   *RegexPattern `jsonschema:"required"`
+	Replace *Template     `jsonschema:"required"`
+}
+
+type PatchYQ struct {
+	Expression string `jsonschema:"required"`
 }
 
 type GitHub struct {
-	URL     *string `jsonschema:"type=" jsonschema_extras:"format=uri,type=string,type=null"`
-	TempDir *string `jsonschema:"type=" jsonschema_extras:"format=uri,type=string,type=null"`
+	URL     *string `jsonschema:"oneof_type=string;null" jsonschema_extras:"format=uri"`
+	TempDir *string `jsonschema:"oneof_type=string;null" jsonschema_extras:"format=uri"`
 	Auth    GitHubAuth
 	PR      GitHubPR
 }
