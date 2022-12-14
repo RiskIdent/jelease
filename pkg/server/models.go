@@ -21,9 +21,7 @@ import (
 	"fmt"
 
 	"github.com/RiskIdent/jelease/pkg/config"
-	"github.com/andygrunwald/go-jira"
-	"github.com/rs/zerolog/log"
-	"github.com/trivago/tgo/tcontainer"
+	"github.com/RiskIdent/jelease/pkg/jira"
 )
 
 // Release object unmarshaled from the newreleases.io webhook.
@@ -39,34 +37,14 @@ func (r Release) IssueSummary() string {
 	return fmt.Sprintf("Update %v to version %v", r.Project, r.Version)
 }
 
-func (r Release) JiraIssue(cfg *config.Config) jira.Issue {
-	labels := cfg.Jira.Issue.Labels
-	var extraFields tcontainer.MarshalMap
-
-	if cfg.Jira.Issue.ProjectNameCustomField == 0 {
-		log.Trace().Msg("Create ticket with project name in labels.")
-		labels = append(labels, r.Project)
-	} else {
-		log.Trace().
-			Uint("customField", cfg.Jira.Issue.ProjectNameCustomField).
-			Msg("Create ticket with project name in custom field.")
-		customFieldName := fmt.Sprintf("customfield_%d", cfg.Jira.Issue.ProjectNameCustomField)
-		extraFields = tcontainer.MarshalMap{
-			customFieldName: r.Project,
-		}
-	}
+func (r Release) JiraIssue(cfg *config.JiraIssue) jira.Issue {
 	return jira.Issue{
-		Fields: &jira.IssueFields{
-			Description: cfg.Jira.Issue.Description,
-			Project: jira.Project{
-				Key: cfg.Jira.Issue.Project,
-			},
-			Type: jira.IssueType{
-				Name: cfg.Jira.Issue.Type,
-			},
-			Labels:   labels,
-			Summary:  r.IssueSummary(),
-			Unknowns: extraFields,
-		},
+		Description:        cfg.Description,
+		ProjectKey:         cfg.Project,
+		TypeName:           cfg.Type,
+		Labels:             cfg.Labels,
+		Summary:            r.IssueSummary(),
+		PackageName:        r.Project,
+		PackageNameFieldID: cfg.ProjectNameCustomField,
 	}
 }
