@@ -75,6 +75,9 @@ func Execute(defaultConfig config.Config) {
 }
 
 func init() {
+	// config.FuncsMap must be set before the first time the config is parsed,
+	// which happens first in the main() function in main.go (in repo root)
+
 	var (
 		pathCharRegex        = regexp.MustCompile(`[^a-zA-Z0-9/,._-]`)
 		pathSegmentCharRegex = regexp.MustCompile(`[^a-zA-Z0-9,._-]`)
@@ -82,6 +85,9 @@ func init() {
 
 	config.FuncsMap = template.FuncMap{
 		"versionBump": func(add string, to string) string {
+			// "1.2.3" | versionBump "0.1.0"
+			// add = 0.1.0
+			// to = 1.2.3
 			addVer, err := version.Parse(add)
 			if err != nil {
 				panic(fmt.Sprintf("parse version %q: %s", add, err))
@@ -111,6 +117,8 @@ func init() {
 			return fmt.Sprint(args...)
 		},
 		"printf": func(format string, args ...any) string {
+			// "a" | printf "%s-%s" "b"
+			// => "b-a"
 			return fmt.Sprintf(format, args...)
 		},
 	}
