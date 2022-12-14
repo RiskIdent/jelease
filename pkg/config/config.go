@@ -28,6 +28,15 @@ type Config struct {
 	Log      Log
 }
 
+func (c Config) TryFindPackage(pkgName string) (Package, bool) {
+	for _, pkg := range c.Packages {
+		if pkg.Name == pkgName {
+			return pkg, true
+		}
+	}
+	return Package{}, false
+}
+
 type Package struct {
 	Name  string
 	Repos []PackageRepo

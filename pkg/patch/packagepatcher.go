@@ -29,7 +29,40 @@ import (
 	"github.com/google/go-github/v48/github"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/oauth2"
 )
+
+func CloneAndPublishPatches(cfg *config.Config, pkgRepos []config.PackageRepo, tmplCtx TemplateContext) error {
+	if len(pkgRepos) == 0 {
+		log.Warn().Str("package", tmplCtx.Package).Msg("No repos configured for package.")
+		return nil
+	}
+	g := git.Cmd{Credentials: git.Credentials{}}
+
+	for _, pkgRepo := range pkgRepos {
+		log.Info().Str("repo", pkgRepo.URL).Msg("Patching repo")
+		if err := CloneRepoAndPublishPatches(cfg, g, pkgRepo, tmplCtx); err != nil {
+			return err
+		}
+	}
+
+	log.Info().Str("package", tmplCtx.Package).Msg("Done applying patches")
+	return nil
+}
+
+func CloneRepoAndPublishPatches(cfg *config.Config, g git.Git, pkgRepo config.PackageRepo, tmplCtx TemplateContext) error {
+	patcher, err := CloneRepoForPatching(cfg, g, pkgRepo.URL, tmplCtx)
+	if err != nil {
+		return err
+	}
+	defer patcher.Close()
+
+	if err := patcher.ApplyManyInNewBranch(pkgRepo.Patches); err != nil {
+		return err
+	}
+
+	return patcher.PublishChangesUnlessDryRun()
+}
 
 func CloneRepoForPatching(cfg *config.Config, g git.Git, remote string, tmplCtx TemplateContext) (*PackagePatcher, error) {
 	// Check this early so we don't fail right on the finish line
@@ -182,4 +215,30 @@ func (p *PackagePatcher) logDiff() {
 		diff = git.ColorizeDiff(diff)
 	}
 	log.Debug().Msgf("Diff:\n%s", diff)
+}
+
+func (p *PackagePatcher) PublishChangesUnlessDryRun() error {
+	if p.cfg.DryRun {
+		log.Info().Msg("Dry run: skipping publishing changes.")
+		return nil
+	}
+	gh, err := newGitHubClient(p.cfg)
+	if err != nil {
+		return fmt.Errorf("new GitHub client: %w", err)
+	}
+
+	if err := p.PublishChanges(gh); err != nil {
+		return err
+	}
+	log.Info().Msg("Pushed changes to remote repository.")
+	return nil
+}
+
+func newGitHubClient(cfg *config.Config) (*github.Client, error) {
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: cfg.GitHub.Auth.Token})
+	tc := oauth2.NewClient(context.TODO(), ts)
+	if cfg.GitHub.URL != nil {
+		return github.NewEnterpriseClient(*cfg.GitHub.URL, "", tc)
+	}
+	return github.NewClient(tc), nil
 }
