@@ -31,6 +31,7 @@ import (
 
 	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/RiskIdent/jelease/pkg/git"
+	"github.com/fatih/color"
 	"github.com/google/go-github/v48/github"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -284,14 +285,7 @@ func createRepoTempDirectory() (string, error) {
 }
 
 func commitAndPushChanges(g git.Git, repo git.Repo, pkgName, version string) error {
-	if log.Logger.GetLevel() <= zerolog.DebugLevel {
-		diff, err := repo.DiffChanges()
-		if err != nil {
-			log.Warn().Err(err).Msg("Failed diffing changes. Trying to continue anyways.")
-		} else {
-			log.Debug().Msgf("Diff:\n%s", diff)
-		}
-	}
+	logDiff(repo)
 
 	if err := repo.StageChanges(); err != nil {
 		return err
@@ -314,6 +308,51 @@ func commitAndPushChanges(g git.Git, repo git.Repo, pkgName, version string) err
 	}
 	log.Info().Msg("Pushed changes.")
 	return nil
+}
+
+func logDiff(repo git.Repo) {
+	if log.Logger.GetLevel() > zerolog.DebugLevel {
+		return
+	}
+	diff, err := repo.DiffChanges()
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed diffing changes. Trying to continue anyways.")
+		return
+	}
+	if !color.NoColor {
+		diff = colorizeDiff(diff)
+	}
+	log.Debug().Msgf("Diff:\n%s", diff)
+}
+
+var (
+	colorDiffTrippleDash   = color.New(color.FgHiRed, color.Italic)
+	colorDiffRemove        = color.New(color.FgRed)
+	colorDiffTripplePlus   = color.New(color.FgHiGreen, color.Italic)
+	colorDiffAdd           = color.New(color.FgGreen)
+	colorDiffDoubleAt      = color.New(color.FgMagenta, color.Italic)
+	colorDiffOtherNonSpace = color.New(color.FgHiBlack, color.Italic)
+)
+
+func colorizeDiff(diff string) string {
+	lines := strings.Split(diff, "\n")
+	for i, line := range lines {
+		switch {
+		case strings.HasPrefix(line, "---"):
+			lines[i] = colorDiffTrippleDash.Sprint(line)
+		case strings.HasPrefix(line, "-"):
+			lines[i] = colorDiffRemove.Sprint(line)
+		case strings.HasPrefix(line, "+++"):
+			lines[i] = colorDiffTripplePlus.Sprint(line)
+		case strings.HasPrefix(line, "+"):
+			lines[i] = colorDiffAdd.Sprint(line)
+		case strings.HasPrefix(line, "@@"):
+			lines[i] = colorDiffDoubleAt.Sprint(line)
+		case !strings.HasPrefix(line, " "):
+			lines[i] = colorDiffOtherNonSpace.Sprint(line)
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 func createPR(repo git.Repo, repoRef GitHubRepoRef, pkgName, version string) error {

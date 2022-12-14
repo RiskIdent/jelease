@@ -8,6 +8,7 @@ go 1.19
 
 require (
 	github.com/andygrunwald/go-jira v1.15.1
+	github.com/fatih/color v1.13.0
 	github.com/google/go-github/v48 v48.2.0
 	github.com/invopop/jsonschema v0.7.0
 	github.com/mitchellh/mapstructure v1.5.0
