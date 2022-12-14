@@ -98,7 +98,15 @@ func applyRepoPatches(pkgRepo config.PackageRepo, pkgName, version string) error
 	if err != nil {
 		return err
 	}
-	defer repo.Close()
+	defer func() {
+		if err := repo.Close(); err != nil {
+			log.Warn().Err(err).Str("dir", repo.Directory()).
+				Msg("Failed to clean up cloned temporary repo directory.")
+		} else {
+			log.Debug().Str("dir", repo.Directory()).
+				Msg("Cleaned up cloned temporary repo directory.")
+		}
+	}()
 
 	for _, patch := range pkgRepo.Patches {
 		if err := applyPatchToRepo(repo, patch, version); err != nil {
@@ -290,13 +298,16 @@ func commitAndPushChanges(g git.Git, repo git.Repo, pkgName, version string) err
 	if err := repo.StageChanges(); err != nil {
 		return err
 	}
-	log.Info().Msg("Staged changes.")
+	log.Debug().Msg("Staged changes.")
 
 	commit, err := repo.CreateCommit(fmt.Sprintf("Updated %v to %v", pkgName, version))
 	if err != nil {
 		return err
 	}
-	log.Info().Str("hash", commit.AbbrHash).Str("subject", commit.Subject).Msg("Commit created.")
+	log.Debug().
+		Str("hash", commit.AbbrHash).
+		Str("subject", commit.Subject).
+		Msg("Created commit.")
 
 	if cfg.DryRun {
 		log.Info().Msg("Dry run: skipping pushing changes.")
@@ -306,7 +317,7 @@ func commitAndPushChanges(g git.Git, repo git.Repo, pkgName, version string) err
 	if err := repo.PushChanges(); err != nil {
 		return err
 	}
-	log.Info().Msg("Pushed changes.")
+	log.Info().Msg("Pushed changes to remote repository.")
 	return nil
 }
 
@@ -319,7 +330,7 @@ func logDiff(repo git.Repo) {
 		log.Warn().Err(err).Msg("Failed diffing changes. Trying to continue anyways.")
 		return
 	}
-	if !color.NoColor {
+	if !color.NoColor && cfg.Log.Format == config.LogFormatPretty {
 		diff = colorizeDiff(diff)
 	}
 	log.Debug().Msgf("Diff:\n%s", diff)
