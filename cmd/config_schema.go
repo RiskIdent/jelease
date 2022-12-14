@@ -20,18 +20,14 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"reflect"
 
-	"github.com/RiskIdent/jelease/pkg/util"
-	"github.com/invopop/jsonschema"
+	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/spf13/cobra"
 )
 
 var configSchemaFlags = struct {
-	version  string
 	indented bool
 }{
-	version:  jsonschema.Version,
 	indented: true,
 }
 
@@ -40,15 +36,7 @@ var configSchemaCmd = &cobra.Command{
 	Use:   "schema",
 	Short: "Prints the JSON schema for the config file",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		jsonschema.Version = configSchemaFlags.version
-		r := new(jsonschema.Reflector)
-		r.KeyNamer = util.ToCamelCase
-		r.Namer = func(t reflect.Type) string {
-			return util.ToCamelCase(t.Name())
-		}
-		r.RequiredFromJSONSchemaTags = true
-		s := r.Reflect(&cfg)
-		s.ID = "https://github.com/RiskIdent/jelease/raw/main/jelease.schema.json"
+		s := config.Schema()
 		data, err := marshalJSON(s, configSchemaFlags.indented)
 		if err != nil {
 			return err
@@ -72,6 +60,5 @@ func marshalJSON(v any, indented bool) ([]byte, error) {
 func init() {
 	configCmd.AddCommand(configSchemaCmd)
 
-	configSchemaCmd.Flags().StringVar(&configSchemaFlags.version, "version", configSchemaFlags.version, "JSON schema version")
 	configSchemaCmd.Flags().BoolVarP(&configSchemaFlags.indented, "indent", "i", configSchemaFlags.indented, "Print indented output")
 }
