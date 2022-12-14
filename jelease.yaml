@@ -12,8 +12,12 @@
 #   ~/.jelease.yaml
 #   jelease.yaml (in current directory)
 
+# If set to true, or if `--dryrun` flag is passed, then the program will not
+# perform any persisting actions. I.e, it will not push any changes via Git,
+# not create any GitHub pull requests, and not create any Jira tickets.
 dryRun: false
 
+# Definitons of how to update packages, based on package name.
 packages:
   - name: foobar
     repos:
@@ -23,8 +27,11 @@ packages:
             match: (github.com/joho/godotenv) v.*
             replace: "{{ index .Groups 1 }} {{ .Version }}"
 
+# GitHub settings
 github:
-  # Allows setting for GitHub Enterprise
+  # Allows targeting a GitHub Enterprise (self-hosted or cloud) server.
+  # If set, it will add the /api/v3/ to the end of the path if missing.
+  # If unset, it will use https://api.github.com/v3/.
   url: # https://github.example.com
 
   # Temporary directory to store cloned repositories.
@@ -34,6 +41,7 @@ github:
   # On Plan 9, it returns /tmp.
   tempDir:
 
+  # Config for how to authenticate with GitHub
   auth:
     type: pat # only "pat" supported
     token: abc123xyz # Generate new token at: https://github.com/settings/tokens
@@ -46,15 +54,35 @@ github:
       - Changed version of `{{ .Package }}` to {{ .Version }}
     branch: "jelease/{{ .PackageSafe }}-{{ .Version }}"
 
+# Jira settings
 jira:
+  # Sets the Jira URL. If you host Jira under a different base path (e.g /jira)
+  # then you need to include that in the URL, like so:
+  #   url: https://issues.apache.org/jira/
+  #
+  # If when browsing the Jira your URL says:
+  #   https://jira.example.com/secure/Dashboard.jspa
+  # then you should set the URL to:
+  #   url: https://jira.example.com
+  #
+  # However, if it says:
+  #   https://jira.example.com/jira/secure/Dashboard.jspa
+  # then you should set the URL to:
+  #   url: https://jira.example.com/jira
   url: https://jira.example.com
+
+  # (INSECURE) Disables TLS/SSL certificate verification for HTTPS traffic.
+  # This can be VERY DANGEROUS, and should never be disabled
+  # (i.e this config set to true) on a production system.
   skipCertVerify: false
 
+  # Config for how to authenticate with Jira
   auth:
     type: pat # pat | token
     token: abc123xyz
     user: "" # Unused if auth type is "pat"
 
+  # Jira issue/ticket creation config
   issue:
     labels:
       - jelease
@@ -66,9 +94,12 @@ jira:
     project: ""
     projectNameCustomField: 1084
 
+# HTTP server settings. The HTTP server is used to accept webhooks from
+# newreleases.io and GitHub.
 http:
   port: 8080
 
+# Console logging settings.
 log:
   format: pretty # pretty | json
   level: debug # trace | debug | info | warn | error | fatal | panic
