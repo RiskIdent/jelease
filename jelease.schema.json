@@ -93,6 +93,9 @@
         },
         "branch": {
           "$ref": "#/$defs/template"
+        },
+        "commit": {
+          "$ref": "#/$defs/template"
         }
       },
       "additionalProperties": false,

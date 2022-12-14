@@ -54,9 +54,14 @@ var applyCmd = &cobra.Command{
 			return nil
 		}
 
+		tmplCtx := patch.TemplateContext{
+			Package: pkgName,
+			Version: version,
+		}
+
 		for _, pkgRepo := range pkg.Repos {
 			log.Info().Str("repo", pkgRepo.URL).Msg("Patching repo")
-			if err := applyRepoPatches(pkgRepo, pkg.Name, version); err != nil {
+			if err := applyRepoPatches(pkgRepo, tmplCtx); err != nil {
 				return err
 			}
 		}
@@ -79,9 +84,13 @@ func tryFindPackageConfig(pkgName string) (config.Package, bool) {
 	return config.Package{}, false
 }
 
-func applyRepoPatches(pkgRepo config.PackageRepo, pkgName, version string) error {
+func applyRepoPatches(pkgRepo config.PackageRepo, tmplCtx patch.TemplateContext) error {
 	if len(pkgRepo.Patches) == 0 {
-		log.Warn().Str("package", pkgName).Str("repo", pkgRepo.URL).Msg("No patches configured for repository.")
+		log.Warn().
+			Str("package", tmplCtx.Package).
+			Str("repo", pkgRepo.URL).
+			Msg("No patches configured for repository.")
+		return nil
 	}
 
 	// Check this early so we don't fail right on the finish line
@@ -91,7 +100,7 @@ func applyRepoPatches(pkgRepo config.PackageRepo, pkgName, version string) error
 	}
 
 	g := git.Cmd{Credentials: git.Credentials{}}
-	repo, err := prepareRepo(g, pkgRepo.URL, pkgName, version)
+	repo, err := prepareRepo(g, pkgRepo.URL, tmplCtx)
 	if err != nil {
 		return err
 	}
@@ -106,19 +115,19 @@ func applyRepoPatches(pkgRepo config.PackageRepo, pkgName, version string) error
 	}()
 
 	for _, p := range pkgRepo.Patches {
-		if err := patch.Apply(repo.Directory(), p, version); err != nil {
+		if err := patch.Apply(repo.Directory(), p, tmplCtx); err != nil {
 			return err
 		}
 	}
 
-	if err := commitAndPushChanges(g, repo, pkgName, version); err != nil {
+	if err := commitAndPushChanges(g, repo, tmplCtx); err != nil {
 		return err
 	}
 
-	return createPR(repo, repoRef, pkgName, version)
+	return createPR(repo, repoRef, tmplCtx)
 }
 
-func prepareRepo(g git.Git, repoURL, pkgName, version string) (git.Repo, error) {
+func prepareRepo(g git.Git, repoURL string, tmplCtx patch.TemplateContext) (git.Repo, error) {
 	dir, err := createRepoTempDirectory()
 	if err != nil {
 		return nil, err
@@ -131,13 +140,7 @@ func prepareRepo(g git.Git, repoURL, pkgName, version string) (git.Repo, error) 
 		Str("branch", repo.CurrentBranch()).
 		Str("dir", repo.Directory()).
 		Msg("Cloned repo.")
-	branchName, err := cfg.GitHub.PR.Branch.Render(struct {
-		Package string
-		Version string
-	}{
-		Package: pkgName,
-		Version: version,
-	})
+	branchName, err := cfg.GitHub.PR.Branch.Render(tmplCtx)
 	if err != nil {
 		return nil, fmt.Errorf("template branch name: %w", err)
 	}
@@ -156,7 +159,7 @@ func createRepoTempDirectory() (string, error) {
 	return os.MkdirTemp(parentDir, "jelease-repo-*")
 }
 
-func commitAndPushChanges(g git.Git, repo git.Repo, pkgName, version string) error {
+func commitAndPushChanges(g git.Git, repo git.Repo, tmplCtx patch.TemplateContext) error {
 	logDiff(repo)
 
 	if err := repo.StageChanges(); err != nil {
@@ -164,7 +167,11 @@ func commitAndPushChanges(g git.Git, repo git.Repo, pkgName, version string) err
 	}
 	log.Debug().Msg("Staged changes.")
 
-	commit, err := repo.CreateCommit(fmt.Sprintf("Updated %v to %v", pkgName, version))
+	commitMsg, err := cfg.GitHub.PR.Commit.Render(tmplCtx)
+	if err != nil {
+		return fmt.Errorf("template commit message: %w", err)
+	}
+	commit, err := repo.CreateCommit(commitMsg)
 	if err != nil {
 		return err
 	}
@@ -200,24 +207,17 @@ func logDiff(repo git.Repo) {
 	log.Debug().Msgf("Diff:\n%s", diff)
 }
 
-func createPR(repo git.Repo, repoRef GitHubRepoRef, pkgName, version string) error {
+func createPR(repo git.Repo, repoRef GitHubRepoRef, tmplCtx patch.TemplateContext) error {
 	gh, err := newGitHubClient()
 	if err != nil {
 		return fmt.Errorf("new GitHub client: %w", err)
 	}
 
-	tmplData := struct {
-		Package string
-		Version string
-	}{
-		Package: pkgName,
-		Version: version,
-	}
-	title, err := cfg.GitHub.PR.Title.Render(tmplData)
+	title, err := cfg.GitHub.PR.Title.Render(tmplCtx)
 	if err != nil {
 		return fmt.Errorf("template PR title: %w", err)
 	}
-	description, err := cfg.GitHub.PR.Description.Render(tmplData)
+	description, err := cfg.GitHub.PR.Description.Render(tmplCtx)
 	if err != nil {
 		return fmt.Errorf("template PR description: %w", err)
 	}

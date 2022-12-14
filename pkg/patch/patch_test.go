@@ -26,29 +26,35 @@ import (
 )
 
 func TestPatchSingleLineRegex(t *testing.T) {
-	line := []byte("<<my-pkg v0.1.0>>")
+	line := []byte("<<my-dep v0.1.0>>")
 	patch := config.PatchRegex{
-		Match:   newRegex(t, `(my-pkg) v0.1.0`),
+		Match:   newRegex(t, `(my-dep) v0.1.0`),
 		Replace: newTemplate(t, `{{ index .Groups 1 }} {{ .Version }}`),
 	}
 
-	version := "v1.2.3"
+	tmplCtx := TemplateContext{
+		Package: "my-pkg",
+		Version: "v1.2.3",
+	}
 
-	newLine, err := patchSingleLineRegex(patch, version, line)
+	newLine, err := patchSingleLineRegex(patch, tmplCtx, line)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	got := string(newLine)
-	want := "<<my-pkg v1.2.3>>"
+	want := "<<my-dep v1.2.3>>"
+	if newLine == nil {
+		t.Fatalf("want %q, got nil", want)
+	}
 
+	got := string(newLine)
 	if got != want {
 		t.Errorf("want %q, got %q", want, got)
 	}
 }
 
 func newRegex(t *testing.T, text string) *config.RegexPattern {
-	r, err := regexp.Compile(`(my-pkg) v0.1.0`)
+	r, err := regexp.Compile(text)
 	if err != nil {
 		t.Fatal(err)
 	}

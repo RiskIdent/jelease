@@ -31,7 +31,17 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func Apply(repoDir string, patch config.PackageRepoPatch, version string) error {
+type TemplateContext struct {
+	Package string
+	Version string
+}
+
+type TemplateContextRegex struct {
+	TemplateContext
+	Groups []string
+}
+
+func Apply(repoDir string, patch config.PackageRepoPatch, tmplCtx TemplateContext) error {
 	// TODO: Check that the patch path doesn't go outside the repo dir.
 	// For example, reject stuff like "../../../somefile.txt"
 	path := filepath.Join(repoDir, patch.File)
@@ -41,7 +51,7 @@ func Apply(repoDir string, patch config.PackageRepoPatch, version string) error 
 		return fmt.Errorf("read file for patch: %w", err)
 	}
 
-	if err := patchLines(patch, version, lines); err != nil {
+	if err := patchLines(patch, tmplCtx, lines); err != nil {
 		return fmt.Errorf("patch lines: %w", err)
 	}
 
@@ -53,9 +63,9 @@ func Apply(repoDir string, patch config.PackageRepoPatch, version string) error 
 	return nil
 }
 
-func patchLines(patch config.PackageRepoPatch, version string, lines [][]byte) error {
+func patchLines(patch config.PackageRepoPatch, tmplCtx TemplateContext, lines [][]byte) error {
 	for i, line := range lines {
-		newLine, err := patchSingleLine(patch, version, line)
+		newLine, err := patchSingleLine(patch, tmplCtx, line)
 		if err != nil {
 			return err
 		}
@@ -71,16 +81,16 @@ func patchLines(patch config.PackageRepoPatch, version string, lines [][]byte) e
 	return errors.New("no match in file")
 }
 
-func patchSingleLine(patch config.PackageRepoPatch, version string, line []byte) ([]byte, error) {
+func patchSingleLine(patch config.PackageRepoPatch, tmplCtx TemplateContext, line []byte) ([]byte, error) {
 	switch {
 	case patch.Regex != nil:
-		return patchSingleLineRegex(*patch.Regex, version, line)
+		return patchSingleLineRegex(*patch.Regex, tmplCtx, line)
 	default:
 		return nil, errors.New("missing patch type config")
 	}
 }
 
-func patchSingleLineRegex(patch config.PatchRegex, version string, line []byte) ([]byte, error) {
+func patchSingleLineRegex(patch config.PatchRegex, tmplCtx TemplateContext, line []byte) ([]byte, error) {
 	regex := patch.Match.Regexp()
 	groupIndices := regex.FindSubmatchIndex(line)
 	if groupIndices == nil {
@@ -94,12 +104,9 @@ func patchSingleLineRegex(patch config.PatchRegex, version string, line []byte) 
 	everythingAfter := line[fullMatchEnd:]
 
 	var buf bytes.Buffer
-	if err := patch.Replace.Template().Execute(&buf, struct {
-		Groups  []string
-		Version string
-	}{
-		Groups:  regexSubmatchIndicesToStrings(line, groupIndices),
-		Version: version,
+	if err := patch.Replace.Template().Execute(&buf, TemplateContextRegex{
+		TemplateContext: tmplCtx,
+		Groups:          regexSubmatchIndicesToStrings(line, groupIndices),
 	}); err != nil {
 		return nil, fmt.Errorf("execute replace template: %w", err)
 	}

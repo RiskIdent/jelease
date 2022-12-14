@@ -69,6 +69,7 @@ type GitHubPR struct {
 	Title       *Template
 	Description *Template
 	Branch      *Template
+	Commit      *Template
 }
 
 type Jira struct {
