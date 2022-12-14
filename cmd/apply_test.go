@@ -25,41 +25,6 @@ import (
 	"github.com/RiskIdent/jelease/pkg/config"
 )
 
-func TestConcat(t *testing.T) {
-	tests := []struct {
-		a, b []int
-		want []int
-	}{
-		{
-			a:    nil,
-			b:    nil,
-			want: nil,
-		},
-		{
-			a:    []int{1},
-			b:    nil,
-			want: []int{1},
-		},
-		{
-			a:    nil,
-			b:    []int{1},
-			want: []int{1},
-		},
-		{
-			a:    []int{1, 2},
-			b:    []int{3, 4},
-			want: []int{1, 2, 3, 4},
-		},
-	}
-
-	for _, tc := range tests {
-		got := concat(tc.a, tc.b)
-		if !slicesEqual(tc.want, got) {
-			t.Errorf("%v + %v: want %v, got %v", tc.a, tc.b, tc.want, got)
-		}
-	}
-}
-
 func TestPatchSingleLineRegex(t *testing.T) {
 	line := []byte("<<my-pkg v0.1.0>>")
 	patch := config.PatchRegex{
@@ -145,16 +110,4 @@ func TestGetGitHubRepoRef(t *testing.T) {
 			}
 		})
 	}
-}
-
-func slicesEqual[S ~[]E, E comparable](a, b S) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i, value := range a {
-		if value != b[i] {
-			return false
-		}
-	}
-	return true
 }

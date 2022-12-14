@@ -31,6 +31,7 @@ import (
 
 	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/RiskIdent/jelease/pkg/git"
+	"github.com/RiskIdent/jelease/pkg/util"
 	"github.com/google/go-github/v48/github"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -191,7 +192,7 @@ func patchSingleLineRegex(patch config.PatchRegex, version string, line []byte) 
 		return nil, fmt.Errorf("execute replace template: %w", err)
 	}
 
-	return concat(everythingBefore, buf.Bytes(), everythingAfter), nil
+	return util.Concat(everythingBefore, buf.Bytes(), everythingAfter), nil
 }
 
 func regexSubmatchIndicesToStrings(line []byte, indices []int) []string {
@@ -202,20 +203,6 @@ func regexSubmatchIndicesToStrings(line []byte, indices []int) []string {
 		strs = append(strs, string(line[start:end]))
 	}
 	return strs
-}
-
-func concat[S ~[]E, E any](slices ...S) S {
-	var totalLen int
-	for _, s := range slices {
-		totalLen += len(s)
-	}
-	result := make(S, totalLen)
-	var offset int
-	for _, s := range slices {
-		copy(result[offset:], s)
-		offset += len(s)
-	}
-	return result
 }
 
 func writeLines(path string, lines [][]byte) error {
@@ -274,7 +261,10 @@ func prepareRepo(g git.Git, repoURL, pkgName, version string) (git.Repo, error) 
 	if err != nil {
 		return nil, err
 	}
-	log.Info().Str("branch", repo.CurrentBranch()).Str("dir", repo.Directory()).Msg("Cloned repo.")
+	log.Info().
+		Str("branch", repo.CurrentBranch()).
+		Str("dir", repo.Directory()).
+		Msg("Cloned repo.")
 	branchName, err := cfg.GitHub.PR.Branch.Render(struct {
 		Package string
 		Version string
@@ -293,7 +283,7 @@ func prepareRepo(g git.Git, repoURL, pkgName, version string) (git.Repo, error) 
 }
 
 func createRepoTempDirectory() (string, error) {
-	parentDir := filepath.Join(deref(cfg.GitHub.TempDir, os.TempDir()), "jelease-cloned-repos")
+	parentDir := filepath.Join(util.Deref(cfg.GitHub.TempDir, os.TempDir()), "jelease-cloned-repos")
 	if err := os.MkdirAll(parentDir, 0700); err != nil {
 		return "", err
 	}
@@ -374,29 +364,18 @@ func createPR(repo git.Repo, repoRef GitHubRepoRef, pkgName, version string) err
 	pr, _, err := gh.PullRequests.Create(context.TODO(), repoRef.Owner, repoRef.Repo, &github.NewPullRequest{
 		Title:               &title,
 		Body:                &description,
-		Head:                ref(repo.CurrentBranch()),
-		Base:                ref(repo.MainBranch()),
-		MaintainerCanModify: ref(true),
+		Head:                util.Ref(repo.CurrentBranch()),
+		Base:                util.Ref(repo.MainBranch()),
+		MaintainerCanModify: util.Ref(true),
 	})
 	if err != nil {
 		return fmt.Errorf("create GitHub PR: %w", err)
 	}
 	log.Info().
-		Int("pr", deref(pr.Number, -1)).
-		Str("url", deref(pr.HTMLURL, "")).
+		Int("pr", util.Deref(pr.Number, -1)).
+		Str("url", util.Deref(pr.HTMLURL, "")).
 		Msg("GitHub PR created.")
 	return nil
-}
-
-func ref[T any](v T) *T {
-	return &v
-}
-
-func deref[T any](v *T, or T) T {
-	if v == nil {
-		return or
-	}
-	return *v
 }
 
 func newGitHubClient() (*github.Client, error) {

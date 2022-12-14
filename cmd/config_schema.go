@@ -18,12 +18,12 @@
 package cmd
 
 import (
+	"RiskIdent/jelease/pkg/util"
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"strings"
-	"unicode"
 
+	"github.com/RiskIdent/jelease/pkg/util"
 	"github.com/invopop/jsonschema"
 	"github.com/spf13/cobra"
 )
@@ -43,9 +43,9 @@ var configSchemaCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		jsonschema.Version = configSchemaFlags.version
 		r := new(jsonschema.Reflector)
-		r.KeyNamer = toCamelCase
+		r.KeyNamer = util.ToCamelCase
 		r.Namer = func(t reflect.Type) string {
-			return toCamelCase(t.Name())
+			return util.ToCamelCase(t.Name())
 		}
 		r.RequiredFromJSONSchemaTags = true
 		s := r.Reflect(&cfg)
@@ -61,28 +61,6 @@ var configSchemaCmd = &cobra.Command{
 		// Intentionally overrides the config loading from root.go
 		return nil
 	},
-}
-
-var camelCaseReplacer = strings.NewReplacer(
-	"ID", "Id",
-	"URL", "Url",
-	"HTTP", "Http",
-	"JSON", "Json",
-	"JQ", "Jq",
-	"YAML", "Yaml",
-	"YQ", "Yq",
-	"GitHub", "Github",
-	"PR", "Pr",
-)
-
-func toCamelCase(s string) string {
-	if len(s) == 0 {
-		return s
-	}
-	s = camelCaseReplacer.Replace(s)
-	b := []byte(s)
-	b[0] = byte(unicode.ToLower(rune(b[0])))
-	return string(b)
 }
 
 func marshalJSON(v any, indented bool) ([]byte, error) {
