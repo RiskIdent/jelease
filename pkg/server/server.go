@@ -77,7 +77,7 @@ func (s HTTPServer) handlePostWebhook(c *gin.Context) {
 		return
 	}
 
-	_, err := ensureJiraIssue(s.jira, release, s.cfg)
+	issue, err := ensureJiraIssue(s.jira, release, s.cfg)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -91,8 +91,9 @@ func (s HTTPServer) handlePostWebhook(c *gin.Context) {
 		return
 	}
 	tmplCtx := patch.TemplateContext{
-		Package: release.Project,
-		Version: release.Version,
+		Package:   release.Project,
+		Version:   release.Version,
+		JiraIssue: issue.Key,
 	}
 	prs, err := patch.CloneAllAndPublishPatches(s.cfg, pkg.Repos, tmplCtx)
 	if err != nil {
