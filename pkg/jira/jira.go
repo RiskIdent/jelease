@@ -205,8 +205,14 @@ func (c *client) FindIssuesForPackage(packageName string) ([]Issue, error) {
 		return nil, err
 	}
 	issues := make([]Issue, 0, len(rawIssues))
-	for _, iss := range rawIssues {
-		issues = append(issues, newIssue(iss, c.cfg.Issue.ProjectNameCustomField))
+	for _, rawIssue := range rawIssues {
+		iss := newIssue(rawIssue, c.cfg.Issue.ProjectNameCustomField)
+		if iss.PackageName != packageName {
+			// Our search query matches substrings, so we need to filter out
+			// any invalid matches
+			continue
+		}
+		issues = append(issues, iss)
 	}
 	return issues, nil
 }
