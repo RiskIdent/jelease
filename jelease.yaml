@@ -142,7 +142,7 @@ jira:
 
       noPatches: >-
         {color:#C1C7D0}(i) Config found for package *{{ .Package }}*,
-        but no config for how to automatically apply version change patches.{color}
+        but no patches were applied.{color}
 
 
 # HTTP server settings. The HTTP server is used to accept webhooks from
