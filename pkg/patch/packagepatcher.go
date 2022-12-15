@@ -209,7 +209,6 @@ func (p *PackagePatcher) PublishChanges() (github.PullRequest, error) {
 		return github.PullRequest{}, fmt.Errorf("create GitHub PR: %w", err)
 	}
 	log.Info().
-		Int("pr", pr.Number).
 		Str("url", pr.URL).
 		Msg("GitHub PR created.")
 	return pr, nil

@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/RiskIdent/jelease/pkg/config"
+	"github.com/RiskIdent/jelease/pkg/util"
 	"github.com/andygrunwald/go-jira"
 	"github.com/rs/zerolog/log"
 	"github.com/trivago/tgo/tcontainer"
@@ -38,7 +39,12 @@ type Client interface {
 	StatusMustExist(statusName string) error
 	FindIssuesForPackage(packageName string) ([]Issue, error)
 	UpdateIssueSummary(issueID, issueKey, newSummary string) error
-	CreateIssue(issue Issue) (Issue, error)
+	CreateIssue(issue Issue) (IssueRef, error)
+}
+
+type IssueRef struct {
+	ID  string
+	Key string
 }
 
 type Issue struct {
@@ -54,10 +60,18 @@ type Issue struct {
 	PackageNameFieldID uint
 }
 
+func (i Issue) IssueRef() IssueRef {
+	return IssueRef{
+		ID:  i.ID,
+		Key: i.Key,
+	}
+}
+
 func newIssue(issue jira.Issue, pkgCustomFieldID uint) Issue {
+	fields := util.Deref(issue.Fields, jira.IssueFields{})
 	var pkgName string
 	if pkgCustomFieldID == 0 {
-		if str, ok := issue.Fields.Unknowns[customFieldName(pkgCustomFieldID)].(string); ok {
+		if str, ok := fields.Unknowns[customFieldName(pkgCustomFieldID)].(string); ok {
 			pkgName = str
 		}
 	} else {
@@ -67,9 +81,9 @@ func newIssue(issue jira.Issue, pkgCustomFieldID uint) Issue {
 	return Issue{
 		ID:          issue.ID,
 		Key:         issue.Key,
-		Summary:     issue.Fields.Summary,
-		Description: issue.Fields.Description,
-		Labels:      issue.Fields.Labels,
+		Summary:     fields.Summary,
+		Description: fields.Description,
+		Labels:      fields.Labels,
 
 		PackageName:        pkgName,
 		PackageNameFieldID: pkgCustomFieldID,
@@ -275,14 +289,18 @@ func (c *client) UpdateIssueSummary(issueID, issueKey, newSummary string) error 
 	return nil
 }
 
-func (c *client) CreateIssue(issue Issue) (Issue, error) {
+func (c *client) CreateIssue(issue Issue) (IssueRef, error) {
 	req := issue.rawIssue()
 	created, resp, err := c.raw.Issue.Create(&req)
 	if err != nil {
 		err := fmt.Errorf("creating Jira issue: %w", err)
 		logJiraErrResponse(resp, err)
-		return Issue{}, err
+		return IssueRef{}, err
 	}
 	log.Info().Str("issue", created.Key).Msg("Created issue.")
-	return newIssue(*created, c.cfg.Issue.ProjectNameCustomField), nil
+	// NOTE: Jira's "create issue" endpoint only contains the ID and Key fields
+	return IssueRef{
+		ID:  created.ID,
+		Key: created.Key,
+	}, nil
 }

@@ -78,7 +78,7 @@ func (s HTTPServer) handlePostWebhook(c *gin.Context) {
 		return
 	}
 
-	issue, err := ensureJiraIssue(s.jira, release, s.cfg)
+	issueRef, err := ensureJiraIssue(s.jira, release, s.cfg)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -94,7 +94,7 @@ func (s HTTPServer) handlePostWebhook(c *gin.Context) {
 	tmplCtx := patch.TemplateContext{
 		Package:   release.Project,
 		Version:   release.Version,
-		JiraIssue: issue.Key,
+		JiraIssue: issueRef.Key,
 	}
 	prs, err := patch.CloneAllAndPublishPatches(s.cfg, pkg.Repos, tmplCtx)
 	if err != nil {
@@ -117,7 +117,7 @@ func (s HTTPServer) handlePostWebhook(c *gin.Context) {
 }
 
 type newJiraIssue struct {
-	jira.Issue
+	jira.IssueRef
 	Created bool
 }
 
@@ -137,17 +137,17 @@ func ensureJiraIssue(j jira.Client, r Release, cfg *config.Config) (newJiraIssue
 				Str("issue", i.Key).
 				Msg("Skipping creation of issue because Config.DryRun is enabled.")
 			return newJiraIssue{
-				Issue:   i,
-				Created: false,
+				IssueRef: i.IssueRef(),
+				Created:  false,
 			}, nil
 		}
-
-		if _, err := j.CreateIssue(i); err != nil {
+		issueRef, err := j.CreateIssue(i)
+		if err != nil {
 			return newJiraIssue{}, err
 		}
 		return newJiraIssue{
-			Issue:   i,
-			Created: true,
+			IssueRef: issueRef,
+			Created:  true,
 		}, nil
 	}
 
@@ -170,15 +170,15 @@ func ensureJiraIssue(j jira.Client, r Release, cfg *config.Config) (newJiraIssue
 			Str("issue", mostRecentIssue.Key).
 			Msg("Skipping update of issue because Config.DryRun is enabled.")
 		return newJiraIssue{
-			Issue:   mostRecentIssue,
-			Created: false,
+			IssueRef: mostRecentIssue.IssueRef(),
+			Created:  false,
 		}, nil
 	}
 	if err := j.UpdateIssueSummary(mostRecentIssue.ID, mostRecentIssue.Key, r.IssueSummary()); err != nil {
 		return newJiraIssue{}, err
 	}
 	return newJiraIssue{
-		Issue:   mostRecentIssue,
-		Created: false,
+		IssueRef: mostRecentIssue.IssueRef(),
+		Created:  false,
 	}, nil
 }
