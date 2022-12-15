@@ -96,7 +96,7 @@ func init() {
 			if err != nil {
 				panic(fmt.Sprintf("parse version %q: %s", to, err))
 			}
-			return toVer.Add(addVer).String()
+			return toVer.Bump(addVer).String()
 		},
 		"sanitizePath": func(path string) string {
 			path = strings.ToLower(path)
