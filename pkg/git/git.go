@@ -45,7 +45,7 @@ type Credentials struct {
 	Password string
 }
 
-type Author struct {
+type Committer struct {
 	Name  string // maps to Git config user.name
 	Email string // maps to Git config user.email
 }

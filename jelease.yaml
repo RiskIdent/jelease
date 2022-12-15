@@ -74,7 +74,7 @@ github:
     # To disable this override, set both fields to null or empty strings,
     # and then Jelease would instead rely on the user.name and user.email
     # configs from your .gitconfig file.
-    commitAuthor:
+    committer:
       name: Jelease
       email: jelease@riskident.com
 

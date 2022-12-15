@@ -80,14 +80,14 @@ type GitHubAuth struct {
 }
 
 type GitHubPR struct {
-	Title        *Template
-	Description  *Template
-	Branch       *Template
-	Commit       *Template
-	CommitAuthor GitHubCommitAuthor
+	Title       *Template
+	Description *Template
+	Branch      *Template
+	Commit      *Template
+	Committer   GitHubCommitter
 }
 
-type GitHubCommitAuthor struct {
+type GitHubCommitter struct {
 	Name  *string `jsonschema:"oneof_type=string;null"`
 	Email *string `jsonschema:"oneof_type=string;null" jsonschema_extras:"format=idn-email"`
 }

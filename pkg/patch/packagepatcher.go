@@ -37,9 +37,9 @@ func CloneAllAndPublishPatches(cfg *config.Config, pkgRepos []config.PackageRepo
 	}
 	g := git.Cmd{
 		Credentials: git.Credentials{Username: "git", Password: cfg.GitHub.Auth.Token},
-		Author: git.Author{
-			Name:  util.Deref(cfg.GitHub.PR.CommitAuthor.Name, ""),
-			Email: util.Deref(cfg.GitHub.PR.CommitAuthor.Email, ""),
+		Committer: git.Committer{
+			Name:  util.Deref(cfg.GitHub.PR.Committer.Name, ""),
+			Email: util.Deref(cfg.GitHub.PR.Committer.Email, ""),
 		},
 	}
 	gh, err := github.New(&cfg.GitHub)

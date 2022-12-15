@@ -83,7 +83,7 @@
       ],
       "title": "GitHub auth type"
     },
-    "githubCommitAuthor": {
+    "githubCommitter": {
       "properties": {
         "name": {
           "oneOf": [
@@ -124,8 +124,8 @@
         "commit": {
           "$ref": "#/$defs/template"
         },
-        "commitAuthor": {
-          "$ref": "#/$defs/githubCommitAuthor"
+        "committer": {
+          "$ref": "#/$defs/githubCommitter"
         }
       },
       "additionalProperties": false,
