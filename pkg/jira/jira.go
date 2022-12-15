@@ -40,6 +40,7 @@ type Client interface {
 	FindIssuesForPackage(packageName string) ([]Issue, error)
 	UpdateIssueSummary(issueRef IssueRef, newSummary string) error
 	CreateIssue(issue Issue) (IssueRef, error)
+	CreateIssueComment(issueRef IssueRef, newComment string) error
 }
 
 type IssueRef struct {
@@ -307,4 +308,17 @@ func (c *client) CreateIssue(issue Issue) (IssueRef, error) {
 		ID:  created.ID,
 		Key: created.Key,
 	}, nil
+}
+
+func (c *client) CreateIssueComment(issueRef IssueRef, newComment string) error {
+	_, resp, err := c.raw.Issue.AddComment(issueRef.ID, &jira.Comment{
+		Body: newComment,
+	})
+	if err != nil {
+		err := fmt.Errorf("creating Jira comment: %w", err)
+		logJiraErrResponse(resp, err)
+		return err
+	}
+	log.Info().Str("issue", issueRef.Key).Msg("Created comment on issue.")
+	return nil
 }

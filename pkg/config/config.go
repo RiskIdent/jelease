@@ -69,7 +69,7 @@ type PatchYQ struct {
 
 type GitHub struct {
 	URL     *string `jsonschema:"oneof_type=string;null" jsonschema_extras:"format=uri"`
-	TempDir *string `jsonschema:"oneof_type=string;null" jsonschema_extras:"format=uri"`
+	TempDir *string `yaml:"tempDir" jsonschema:"oneof_type=string;null" jsonschema_extras:"format=uri"`
 	Auth    GitHubAuth
 	PR      GitHubPR
 }
@@ -94,7 +94,7 @@ type GitHubCommitter struct {
 
 type Jira struct {
 	URL            string `jsonschema_extras:"format=uri"`
-	SkipCertVerify bool
+	SkipCertVerify bool `yaml:"skipCertVerify"`
 	Auth           JiraAuth
 	Issue          JiraIssue
 }
@@ -112,7 +112,17 @@ type JiraIssue struct {
 	Description            string
 	Type                   string
 	Project                string
-	ProjectNameCustomField uint
+	ProjectNameCustomField uint `yaml:"projectNameCustomField"`
+
+	Comments JiraIssueComments
+}
+
+type JiraIssueComments struct {
+	UpdatedIssue *Template `yaml:"updatedIssue"`
+	NoConfig     *Template `yaml:"noConfig"`
+	NoPatches    *Template `yaml:"noPatches"`
+	PRCreated    *Template `yaml:"prCreated"`
+	PRFailed     *Template `yaml:"prFailed"`
 }
 
 type HTTP struct {

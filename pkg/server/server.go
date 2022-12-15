@@ -22,6 +22,7 @@ import (
 	"net/http"
 
 	"github.com/RiskIdent/jelease/pkg/config"
+	"github.com/RiskIdent/jelease/pkg/github"
 	"github.com/RiskIdent/jelease/pkg/jira"
 	"github.com/RiskIdent/jelease/pkg/patch"
 	"github.com/gin-gonic/gin"
@@ -84,29 +85,33 @@ func (s HTTPServer) handlePostWebhook(c *gin.Context) {
 		return
 	}
 
-	pkg, ok := s.cfg.TryFindPackage(release.Project)
-	if !ok {
-		log.Info().Str("project", release.Project).Msg("No package patching config was found. Skipping patching.")
-		c.Status(http.StatusOK)
-		// TODO: Post comment in Jira ticket.
-		return
-	}
 	tmplCtx := patch.TemplateContext{
 		Package:   release.Project,
 		Version:   release.Version,
 		JiraIssue: issueRef.Key,
 	}
+
+	pkg, ok := s.cfg.TryFindPackage(release.Project)
+	if !ok {
+		log.Info().Str("project", release.Project).Msg("No package patching config was found. Skipping patching.")
+		c.Status(http.StatusOK)
+		createTemplatedComment(s.jira, issueRef.IssueRef, s.cfg.Jira.Issue.Comments.NoConfig, tmplCtx)
+		return
+	}
 	prs, err := patch.CloneAllAndPublishPatches(s.cfg, pkg.Repos, tmplCtx)
 	if err != nil {
 		log.Error().Err(err).Str("project", release.Project).Msg("Failed creating patches.")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		// TODO: Post comment in Jira ticket.
+		createTemplatedComment(s.jira, issueRef.IssueRef, s.cfg.Jira.Issue.Comments.PRFailed, TemplateContextError{
+			TemplateContext: tmplCtx,
+			Error:           err.Error(),
+		})
 		return
 	}
 	if len(prs) == 0 {
 		log.Warn().Str("project", release.Project).Msg("Found package config, but no repositories were patched.")
 		c.Status(http.StatusOK)
-		// TODO: Post comment in Jira ticket.
+		createTemplatedComment(s.jira, issueRef.IssueRef, s.cfg.Jira.Issue.Comments.NoPatches, tmplCtx)
 		return
 	}
 	log.Info().
@@ -114,7 +119,33 @@ func (s HTTPServer) handlePostWebhook(c *gin.Context) {
 		Int("count", len(prs)).
 		Msg("Successfully created PRs for update.")
 	c.Status(http.StatusOK)
-	// TODO: Post comment in Jira ticket.
+
+	createTemplatedComment(s.jira, issueRef.IssueRef, s.cfg.Jira.Issue.Comments.PRCreated, TemplateContextPullRequests{
+		TemplateContext: tmplCtx,
+		PullRequests:    prs,
+	})
+}
+
+func createTemplatedComment(j jira.Client, issueRef jira.IssueRef, tmpl *config.Template, tmplCtx any) {
+	comment, err := tmpl.Render(tmplCtx)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed templating Jira issue comment.")
+		return
+	}
+
+	if err := j.CreateIssueComment(issueRef, comment); err != nil {
+		log.Error().Err(err).Msg("Failed creating Jira issue comment.")
+	}
+}
+
+type TemplateContextError struct {
+	patch.TemplateContext
+	Error string
+}
+
+type TemplateContextPullRequests struct {
+	patch.TemplateContext
+	PullRequests []github.PullRequest
 }
 
 type newJiraIssue struct {
@@ -174,9 +205,15 @@ func ensureJiraIssue(j jira.Client, r Release, cfg *config.Config) (newJiraIssue
 			Created:  false,
 		}, nil
 	}
-	if err := j.UpdateIssueSummary(mostRecentIssue.IssueRef(), r.IssueSummary()); err != nil {
+	issueRef := mostRecentIssue.IssueRef()
+	if err := j.UpdateIssueSummary(issueRef, r.IssueSummary()); err != nil {
 		return newJiraIssue{}, err
 	}
+	createTemplatedComment(j, issueRef, cfg.Jira.Issue.Comments.UpdatedIssue, patch.TemplateContext{
+		Package:   r.Project,
+		Version:   r.Version,
+		JiraIssue: issueRef.Key,
+	})
 	return newJiraIssue{
 		IssueRef: mostRecentIssue.IssueRef(),
 		Created:  false,
