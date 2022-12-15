@@ -4,9 +4,11 @@ SPDX-FileCopyrightText: 2022 Risk.Ident GmbH <contact@riskident.com>
 SPDX-License-Identifier: CC-BY-4.0
 -->
 
-<img align="center" src="./docs/jelease-gopher-card-512.jpg" alt="jelease gopher logo"/>
+<p align="center">
+  <img src="./docs/jelease-gopher-card-512.jpg" alt="jelease gopher logo"/>
+</p>
 
-# jelease - A newreleases.io ➡️ Jira connector
+<h1 align="center">jelease - A newreleases.io ➡️ Jira connector</h1>
 
 [![REUSE status](https://api.reuse.software/badge/github.com/RiskIdent/jelease)](https://api.reuse.software/info/github.com/RiskIdent/jelease)
 
