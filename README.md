@@ -79,7 +79,7 @@ REGISTRY=docker.io/my-username
 
 ## Logo
 
-The gopher logo is designed by an employee at [Risk.Ident](https://riskident.com).
+The gopher logo is designed by Kristin Weyand, an employee at [Risk.Ident](https://riskident.com).
 
 The gopher logo of Jelease was inspired by the original Go gopher,
 designed by [Renee French](https://reneefrench.blogspot.com/).
