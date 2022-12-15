@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime/debug"
 	"strings"
 	"text/template"
 
@@ -76,6 +77,10 @@ func Execute(defaultConfig config.Config) {
 }
 
 func init() {
+	if buildInfo, ok := debug.ReadBuildInfo(); ok {
+		rootCmd.Version = buildInfo.Main.Version
+	}
+
 	// config.FuncsMap must be set before the first time the config is parsed,
 	// which happens first in the main() function in main.go (in repo root)
 
