@@ -83,6 +83,33 @@
       ],
       "title": "GitHub auth type"
     },
+    "githubCommitAuthor": {
+      "properties": {
+        "name": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "email": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "format": "idn-email"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
     "githubPr": {
       "properties": {
         "title": {
@@ -96,6 +123,9 @@
         },
         "commit": {
           "$ref": "#/$defs/template"
+        },
+        "commitAuthor": {
+          "$ref": "#/$defs/githubCommitAuthor"
         }
       },
       "additionalProperties": false,

@@ -35,7 +35,13 @@ func CloneAllAndPublishPatches(cfg *config.Config, pkgRepos []config.PackageRepo
 		log.Warn().Str("package", tmplCtx.Package).Msg("No repos configured for package.")
 		return nil, nil
 	}
-	g := git.Cmd{Credentials: git.Credentials{Username: "git", Password: cfg.GitHub.Auth.Token}}
+	g := git.Cmd{
+		Credentials: git.Credentials{Username: "git", Password: cfg.GitHub.Auth.Token},
+		Author: git.Author{
+			Name:  util.Deref(cfg.GitHub.PR.CommitAuthor.Name, ""),
+			Email: util.Deref(cfg.GitHub.PR.CommitAuthor.Email, ""),
+		},
+	}
 	gh, err := github.New(&cfg.GitHub)
 	if err != nil {
 		return nil, err

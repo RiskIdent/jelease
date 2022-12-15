@@ -26,12 +26,14 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/RiskIdent/jelease/pkg/util"
 	"github.com/rs/zerolog/log"
 )
 
 // Cmd implements [Git] using the command-line version of Git.
 type Cmd struct {
 	Credentials Credentials
+	Author      Author
 }
 
 var _ Git = Cmd{}
@@ -68,6 +70,7 @@ func (g Cmd) Clone(targetDir, remote string) (Repo, error) {
 	}
 	branchName := strings.TrimSpace(string(branchOutput))
 	return &CmdRepo{
+		Author:        g.Author,
 		directory:     targetDir,
 		currentBranch: branchName,
 		mainBranch:    branchName,
@@ -75,6 +78,7 @@ func (g Cmd) Clone(targetDir, remote string) (Repo, error) {
 }
 
 type CmdRepo struct {
+	Author        Author
 	directory     string
 	currentBranch string
 	mainBranch    string
@@ -82,8 +86,15 @@ type CmdRepo struct {
 
 var _ Repo = &CmdRepo{}
 
-func (r *CmdRepo) runGitCmdInRepo(args ...string) ([]byte, error) {
-	return runGitCmdInDir(r.directory, args...)
+func (r *CmdRepo) run(args ...string) ([]byte, error) {
+	var authorArgs []string
+	if r.Author.Name != "" {
+		authorArgs = append(authorArgs, "-c", "user.name="+r.Author.Name)
+	}
+	if r.Author.Email != "" {
+		authorArgs = append(authorArgs, "-c", "user.email="+r.Author.Email)
+	}
+	return runGitCmdInDir(r.directory, util.Concat(authorArgs, args)...)
 }
 
 func (r *CmdRepo) Directory() string {
@@ -99,7 +110,7 @@ func (r *CmdRepo) MainBranch() string {
 }
 
 func (r *CmdRepo) CheckoutNewBranch(branchName string) error {
-	_, err := r.runGitCmdInRepo("checkout", "-b", branchName)
+	_, err := r.run("checkout", "-b", branchName)
 	if err != nil {
 		return fmt.Errorf("checkout branch: %s: %w", branchName, err)
 	}
@@ -108,7 +119,7 @@ func (r *CmdRepo) CheckoutNewBranch(branchName string) error {
 }
 
 func (r *CmdRepo) DiffChanges() (string, error) {
-	output, err := r.runGitCmdInRepo("diff")
+	output, err := r.run("diff")
 	if err != nil {
 		return "", fmt.Errorf("diff changes: %w", err)
 	}
@@ -116,7 +127,7 @@ func (r *CmdRepo) DiffChanges() (string, error) {
 }
 
 func (r *CmdRepo) StageChanges() error {
-	_, err := r.runGitCmdInRepo("add", "--all")
+	_, err := r.run("add", "--all")
 	if err != nil {
 		return fmt.Errorf("stage all changes: %w", err)
 	}
@@ -124,11 +135,11 @@ func (r *CmdRepo) StageChanges() error {
 }
 
 func (r *CmdRepo) CreateCommit(message string) (Commit, error) {
-	_, err := r.runGitCmdInRepo("commit", "-m", message, "--no-gpg-sign")
+	_, err := r.run("commit", "-m", message, "--no-gpg-sign")
 	if err != nil {
 		return Commit{}, fmt.Errorf("commit changes: %w", err)
 	}
-	output, err := r.runGitCmdInRepo("show", "--no-notes", "--no-patch", "--format=%H%n%h%n%P%n%p%n%s")
+	output, err := r.run("show", "--no-notes", "--no-patch", "--format=%H%n%h%n%P%n%p%n%s")
 	if err != nil {
 		return Commit{}, fmt.Errorf("get commit details: %w", err)
 	}
@@ -146,7 +157,7 @@ func (r *CmdRepo) CreateCommit(message string) (Commit, error) {
 }
 
 func (r *CmdRepo) PushChanges() error {
-	_, err := r.runGitCmdInRepo("push", "--set-upstream", "origin", r.currentBranch)
+	_, err := r.run("push", "--set-upstream", "origin", r.currentBranch)
 	if err != nil {
 		return fmt.Errorf("push changes: %w", err)
 	}

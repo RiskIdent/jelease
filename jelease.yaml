@@ -70,6 +70,14 @@ github:
       {{ with .JiraIssue }}[{{ . }}] {{ end -}}
       Update `{{ .Package }}` to {{ .Version }}
 
+    # Committer details used when creating the Git commit.
+    # To disable this override, set both fields to null or empty strings,
+    # and then Jelease would instead rely on the user.name and user.email
+    # configs from your .gitconfig file.
+    commitAuthor:
+      name: Jelease
+      email: jelease@riskident.com
+
 # Jira settings
 jira:
   # Sets the Jira URL. If you host Jira under a different base path (e.g /jira)

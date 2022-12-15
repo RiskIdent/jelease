@@ -80,10 +80,16 @@ type GitHubAuth struct {
 }
 
 type GitHubPR struct {
-	Title       *Template
-	Description *Template
-	Branch      *Template
-	Commit      *Template
+	Title        *Template
+	Description  *Template
+	Branch       *Template
+	Commit       *Template
+	CommitAuthor GitHubCommitAuthor
+}
+
+type GitHubCommitAuthor struct {
+	Name  *string `jsonschema:"oneof_type=string;null"`
+	Email *string `jsonschema:"oneof_type=string;null" jsonschema_extras:"format=idn-email"`
 }
 
 type Jira struct {
