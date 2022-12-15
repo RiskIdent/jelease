@@ -71,9 +71,55 @@ config file:
 
 ## Local usage
 
-1. Populate a `.env` file with configuration values
-2. `go run main.go` / `./jelease`
-3. Direct newreleases.io webhooks to the `host:port/webhook` route.
+1. Create a GitHub PAT (e.g on <https://github.com/settings/tokens>)
+
+2. Create a local config file, e.g at `~/.config/jelease.yaml`
+
+3. Add your local config to test with, including your newly generated PAT. E.g:
+
+   ```yaml
+   # yaml-language-server: $schema=https://github.com/RiskIdent/jelease/raw/main/jelease.schema.json
+
+   packages:
+     - name: neuvector
+       repos:
+         - url: https://github.example.com/some-org/some-repo
+           patches:
+             - file: helm/charts/ri-neuvector/Chart.yaml
+               regex:
+                 match: '^appVersion: .*'
+                 replace: 'appVersion: {{ .Version }}'
+             - file: helm/charts/ri-neuvector/Chart.yaml
+               regex:
+                 match: '^version: (.*)'
+                 replace: 'version: {{ index .Groups 1 | versionBump "0.0.1" }}'
+
+   github:
+     url: https://github.example.com
+
+     auth:
+       type: pat
+       token: ghp_loremipsum
+   ```
+
+4. Test that your local config is read correctly:
+
+   ```bash
+   go run . config
+   ```
+
+5. Run Jelease locally, e.g:
+
+   ```bash
+   # To test applying changes
+   go run . apply neuvector v1.2.3 --dryrun
+
+   # To test creating PRs
+   go run . apply neuvector v1.2.3
+
+   # To test the webhook receiver server
+   go run . serve
+   ```
 
 ## Building the application and docker image
 
