@@ -38,7 +38,7 @@ var newReleasesDiffCmd = &cobra.Command{
 			return strings.Join(lines, "\n")
 		}
 
-		client := newreleases.FromCfg(cfg.NewReleases.Auth.Key, cfg.NewReleases.Projects)
+		client := newreleases.FromCfg(cfg.NewReleases)
 		diff, err := client.Diff()
 		if err != nil {
 			fmt.Printf("Error while diffing: %q", err)
@@ -48,7 +48,33 @@ var newReleasesDiffCmd = &cobra.Command{
 	},
 }
 
+var newReleasesDiffDivergedCmd = &cobra.Command{
+	Use: "diverged",
+	Run: func(cmd *cobra.Command, args []string) {
+		client := newreleases.FromCfg(cfg.NewReleases)
+		diff, err := client.Diff()
+		if err != nil {
+			fmt.Printf("Error while diffing: %q", err)
+
+		}
+		fmt.Println(diff.DescribeDiverged())
+	},
+}
+
+var newReleasesImportCmd = &cobra.Command{
+	Use: "import",
+	Run: func(cmd *cobra.Command, args []string) {
+		nr := newreleases.FromCfg(cfg.NewReleases)
+		_, err := nr.ImportProjects()
+		if err != nil {
+			fmt.Printf("error when importing projects: %v", err)
+		}
+	},
+}
+
 func init() {
+	newReleasesDiffCmd.AddCommand(newReleasesDiffDivergedCmd)
 	newReleasesCmd.AddCommand(newReleasesDiffCmd)
+	newReleasesCmd.AddCommand(newReleasesImportCmd)
 	rootCmd.AddCommand(newReleasesCmd)
 }

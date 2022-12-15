@@ -18,7 +18,6 @@
 package config
 
 import (
-	"github.com/RiskIdent/jelease/pkg/newreleases"
 	"github.com/invopop/jsonschema"
 )
 
@@ -77,7 +76,7 @@ type GitHubPR struct {
 
 type NewReleases struct {
 	Auth     NewReleasesAuth
-	Projects []newreleases.Project
+	Projects []ProjectCfg
 }
 
 type NewReleasesAuth struct {
