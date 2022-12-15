@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime/debug"
 	"strings"
 	"text/template"
 
@@ -44,6 +45,12 @@ var rootCmd = &cobra.Command{
 	SilenceErrors: true,
 	SilenceUsage:  true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		if buildInfo, ok := debug.ReadBuildInfo(); ok {
+			log.Debug().
+				Str("go", strings.TrimPrefix(buildInfo.GoVersion, "go")).
+				Str("version", buildInfo.Main.Version).
+				Msg("Jelease")
+		}
 		return configSetup()
 	},
 }
@@ -76,6 +83,10 @@ func Execute(defaultConfig config.Config) {
 }
 
 func init() {
+	if buildInfo, ok := debug.ReadBuildInfo(); ok {
+		rootCmd.Version = buildInfo.Main.Version
+	}
+
 	// config.FuncsMap must be set before the first time the config is parsed,
 	// which happens first in the main() function in main.go (in repo root)
 
