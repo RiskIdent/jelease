@@ -174,7 +174,7 @@ func ensureJiraIssue(j jira.Client, r Release, cfg *config.Config) (newJiraIssue
 			Created:  false,
 		}, nil
 	}
-	if err := j.UpdateIssueSummary(mostRecentIssue.ID, mostRecentIssue.Key, r.IssueSummary()); err != nil {
+	if err := j.UpdateIssueSummary(mostRecentIssue.IssueRef(), r.IssueSummary()); err != nil {
 		return newJiraIssue{}, err
 	}
 	return newJiraIssue{

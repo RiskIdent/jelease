@@ -38,7 +38,7 @@ type Client interface {
 	ProjectMustExist(projectKey string) error
 	StatusMustExist(statusName string) error
 	FindIssuesForPackage(packageName string) ([]Issue, error)
-	UpdateIssueSummary(issueID, issueKey, newSummary string) error
+	UpdateIssueSummary(issueRef IssueRef, newSummary string) error
 	CreateIssue(issue Issue) (IssueRef, error)
 }
 
@@ -262,7 +262,7 @@ func logJiraErrResponse(resp *jira.Response, err error) {
 	log.Error().Err(err).Msg("Failed to create Jira issue.")
 }
 
-func (c *client) UpdateIssueSummary(issueID, issueKey, newSummary string) error {
+func (c *client) UpdateIssueSummary(issueRef IssueRef, newSummary string) error {
 	// This seems hacky, but is taken from the official examples
 	// https://github.com/andygrunwald/go-jira/blob/47d27a76e84da43f6e27e1cd0f930e6763dc79d7/examples/addlabel/main.go
 	// There is also a jiraClient.Issue.Update() method, but it panics and does not provide a usage example
@@ -280,14 +280,14 @@ func (c *client) UpdateIssueSummary(issueID, issueKey, newSummary string) error 
 		},
 	}
 	log.Trace().Interface("updates", updates).Msg("Updating issue.")
-	resp, err := c.raw.Issue.UpdateIssue(issueID, updates)
+	resp, err := c.raw.Issue.UpdateIssue(issueRef.ID, updates)
 	if err != nil {
 		err := fmt.Errorf("update Jira issue: %w", err)
 		logJiraErrResponse(resp, err)
 		return err
 	}
 	log.Info().
-		Str("issue", issueKey).
+		Str("issue", issueRef.Key).
 		Str("summary", newSummary).
 		Msg("Updated issue summary")
 	return nil
