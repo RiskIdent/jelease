@@ -45,6 +45,12 @@ var rootCmd = &cobra.Command{
 	SilenceErrors: true,
 	SilenceUsage:  true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		if buildInfo, ok := debug.ReadBuildInfo(); ok {
+			log.Debug().
+				Str("go", strings.TrimPrefix(buildInfo.GoVersion, "go")).
+				Str("version", buildInfo.Main.Version).
+				Msg("Jelease")
+		}
 		return configSetup()
 	},
 }
