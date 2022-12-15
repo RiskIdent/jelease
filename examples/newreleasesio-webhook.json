@@ -1,12 +1,12 @@
 {
    "provider": "github",
    "project": "neuvector",
-   "version": "v11.5.0",
+   "version": "5.0.10",
    "time": "2018-12-30T16:08:51.864468Z",
    "is_prerelease": true,
    "is_updated": true,
    "note": {
-      "title": "Release v11.5.0",
+      "title": "Release 5.0.10",
       "message": "Release features\u003cbr\u003eBugfixes"
    },
    "account": {
