@@ -20,14 +20,18 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/RiskIdent/jelease/pkg/config"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
 var configSchemaFlags = struct {
+	output   string
 	indented bool
 }{
+	output:   "-",
 	indented: true,
 }
 
@@ -41,7 +45,16 @@ var configSchemaCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Println(string(data))
+		if configSchemaFlags.output == "-" {
+			fmt.Println(string(data))
+			return nil
+		}
+		if err := os.WriteFile(configSchemaFlags.output, data, 0644); err != nil {
+			return err
+		}
+		log.Info().
+			Str("file", configSchemaFlags.output).
+			Msg("Written config JSON Schema to file.")
 		return nil
 	},
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
@@ -61,4 +74,5 @@ func init() {
 	configCmd.AddCommand(configSchemaCmd)
 
 	configSchemaCmd.Flags().BoolVarP(&configSchemaFlags.indented, "indent", "i", configSchemaFlags.indented, "Print indented output")
+	configSchemaCmd.Flags().StringVarP(&configSchemaFlags.output, "output", "o", configSchemaFlags.output, `Write output to file, or "-" to write to console`)
 }
