@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2022 Risk.Ident GmbH <contact@riskident.com>
 SPDX-License-Identifier: CC-BY-4.0
 -->
 
-<img align="right" src="./docs/new-release-128.png" alt="new-release icon"/>
+<img align="center" src="./docs/jelease-gopher-card-512.jpg" alt="jelease gopher logo"/>
 
 # jelease - A newreleases.io ➡️ Jira connector
 
@@ -77,7 +77,10 @@ REGISTRY=docker.io/my-username
 
 ## Logo
 
-[New-release icons created by berkahicon - Flaticon](https://www.flaticon.com/free-icons/new-release)
+The gopher logo is designed by an employee at [Risk.Ident](https://riskident.com).
+
+The gopher logo of Jelease was inspired by the original Go gopher,
+designed by [Renee French](https://reneefrench.blogspot.com/).
 
 ## License
 
@@ -87,6 +90,7 @@ Different licenses are used for different files. In general:
 
 - Go code is licensed under GNU General Public License v3.0 or later ([LICENSES/GPL-3.0-or-later.txt](LICENSES/GPL-3.0-or-later.txt)).
 - Documentation licensed under Creative Commons Attribution 4.0 International ([LICENSES/CC-BY-4.0.txt](LICENSES/CC-BY-4.0.txt)).
+- The gopher logo is licensed under Creative Commons Attribution 4.0 International ([LICENSES/CC-BY-4.0.txt](LICENSES/CC-BY-4.0.txt)).
 - Miscellaneous files, e.g `.gitignore`, are licensed under CC0 1.0 Universal ([LICENSES/CC0-1.0.txt](LICENSES/CC0-1.0.txt)).
 
 Please see each file's header or accompanied `.license` file for specifics.
