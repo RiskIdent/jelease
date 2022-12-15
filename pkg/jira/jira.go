@@ -70,7 +70,7 @@ func (i Issue) IssueRef() IssueRef {
 func newIssue(issue jira.Issue, pkgCustomFieldID uint) Issue {
 	fields := util.Deref(issue.Fields, jira.IssueFields{})
 	var pkgName string
-	if pkgCustomFieldID == 0 {
+	if pkgCustomFieldID != 0 {
 		if str, ok := fields.Unknowns[customFieldName(pkgCustomFieldID)].(string); ok {
 			pkgName = str
 		}
@@ -222,6 +222,10 @@ func (c *client) FindIssuesForPackage(packageName string) ([]Issue, error) {
 	for _, rawIssue := range rawIssues {
 		iss := newIssue(rawIssue, c.cfg.Issue.ProjectNameCustomField)
 		if iss.PackageName != packageName {
+			log.Debug().
+				Str("package", packageName).
+				Str("issuePackage", iss.PackageName).
+				Msg("Ignoring ticket because it had the wrong package name.")
 			// Our search query matches substrings, so we need to filter out
 			// any invalid matches
 			continue
