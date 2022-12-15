@@ -2,6 +2,41 @@ package config
 
 import "golang.org/x/exp/slices"
 
+type NewReleases struct {
+	Auth              NewReleasesAuth      `yaml:"auth"`
+	Projects          []ProjectCfg         `yaml:"projects"`
+	EmailNotification EmailNotificationCfg `yaml:"emailNotifications"`
+}
+
+type NewReleasesAuth struct {
+	Key string
+}
+
+type EmailNotificationCfg string
+
+// Omits some field of [newreleases.io/newreleases/Project] that we don't want to store
+// namely, this omits the ID field and the tagIDs field
+type ProjectCfg struct {
+	Name                   string         `json:"name" yaml:"name"`
+	Provider               string         `json:"provider" yaml:"provider"`
+	URL                    string         `json:"url" yaml:"url"`
+	EmailNotification      string         `json:"email_notification,omitempty" yaml:"email_notification,omitempty"`
+	SlackIDs               []string       `json:"slack_channels,omitempty" yaml:"slack_channels,omitempty"`
+	TelegramChatIDs        []string       `json:"telegram_chats,omitempty" yaml:"telegram_chats,omitempty"`
+	DiscordIDs             []string       `json:"discord_channels,omitempty" yaml:"discord_channels,omitempty"`
+	HangoutsChatWebhookIDs []string       `json:"hangouts_chat_webhooks,omitempty" yaml:"hangouts_chat_webhooks,omitempty"`
+	MSTeamsWebhookIDs      []string       `json:"microsoft_teams_webhooks,omitempty" yaml:"microsoft_teams_webhooks,omitempty"`
+	MattermostWebhookIDs   []string       `json:"mattermost_webhooks,omitempty" yaml:"mattermost_webhooks,omitempty"`
+	RocketchatWebhookIDs   []string       `json:"rocketchat_webhooks,omitempty" yaml:"rocketchat_webhooks,omitempty"`
+	MatrixRoomIDs          []string       `json:"matrix_rooms,omitempty" yaml:"matrix_rooms,omitempty"`
+	WebhookIDs             []string       `json:"webhooks,omitempty" yaml:"webhooks,omitempty"`
+	Exclusions             []ExclusionCfg `json:"exclude_version_regexp,omitempty" yaml:"exclude_version_regexp,omitempty"`
+	ExcludePrereleases     bool           `json:"exclude_prereleases,omitempty" yaml:"exclude_prereleases,omitempty"`
+	ExcludeUpdated         bool           `json:"exclude_updated,omitempty" yaml:"exclude_updated,omitempty"`
+	Note                   string         `json:"note,omitempty" yaml:"note,omitempty"`
+	// TagIDs                 []string             `json:"tags,omitempty"`
+}
+
 type ExclusionCfg struct {
 	Value   string `json:"value"`
 	Inverse bool   `json:"inverse"`
@@ -23,31 +58,7 @@ func ExclusionCfgSliceEquals(left []ExclusionCfg, right []ExclusionCfg) bool {
 	return true
 }
 
-type EmailNotificationCfg = string
-
-// Omits some field of [newreleases.io/newreleases/Project] that we don't want to store
-// namely, this omits the ID field and the tagIDs field
-type ProjectCfg struct {
-	Name                   string               `json:"name"`
-	Provider               string               `json:"provider"`
-	URL                    string               `json:"url"`
-	EmailNotification      EmailNotificationCfg `json:"email_notification,omitempty"`
-	SlackIDs               []string             `json:"slack_channels,omitempty"`
-	TelegramChatIDs        []string             `json:"telegram_chats,omitempty"`
-	DiscordIDs             []string             `json:"discord_channels,omitempty"`
-	HangoutsChatWebhookIDs []string             `json:"hangouts_chat_webhooks,omitempty"`
-	MSTeamsWebhookIDs      []string             `json:"microsoft_teams_webhooks,omitempty"`
-	MattermostWebhookIDs   []string             `json:"mattermost_webhooks,omitempty"`
-	RocketchatWebhookIDs   []string             `json:"rocketchat_webhooks,omitempty"`
-	MatrixRoomIDs          []string             `json:"matrix_rooms,omitempty"`
-	WebhookIDs             []string             `json:"webhooks,omitempty"`
-	Exclusions             []ExclusionCfg       `json:"exclude_version_regexp,omitempty"`
-	ExcludePrereleases     bool                 `json:"exclude_prereleases,omitempty"`
-	ExcludeUpdated         bool                 `json:"exclude_updated,omitempty"`
-	Note                   string               `json:"note,omitempty"`
-	// TagIDs                 []string             `json:"tags,omitempty"`
-}
-
+// Thanks to Go, I now know how a compiler feels
 func (project ProjectCfg) Equals(other ProjectCfg) bool {
 	if project.Name != other.Name {
 		return false

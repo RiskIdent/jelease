@@ -47,7 +47,7 @@ func (nr NewReleases) Diff() (*ProjectDiff, error) {
 	if err != nil {
 		return nil, err
 	}
-	remoteProjectCfgs := ProjectCfgSliceFromProjectSlice(remoteProjects)
+	remoteProjectCfgs := ProjectSliceToCfg(remoteProjects)
 	localProjects := mapFromSlice(nr.localProjects)
 	diff := NewProjectDiff()
 
@@ -78,27 +78,51 @@ func mapFromSlice(slice []config.ProjectCfg) map[string]config.ProjectCfg {
 	return projectMap
 }
 
-func ExclusionCfgFromExclusion(exclusion newreleases.Exclusion) config.ExclusionCfg {
+func SliceFromMap(projectMap map[string]config.ProjectCfg) []config.ProjectCfg {
+	projectSlice := make([]config.ProjectCfg, len(projectMap))
+	i := 0
+	for _, project := range projectMap {
+		projectSlice[i] = project
+		i++
+	}
+	return projectSlice
+}
+
+func ExclusionToCfg(exclusion newreleases.Exclusion) config.ExclusionCfg {
 	return config.ExclusionCfg{
 		Value:   exclusion.Value,
 		Inverse: exclusion.Inverse,
 	}
 }
 
-func ExclusionCfgSliceFromExclusionSlice(exclusions []newreleases.Exclusion) []config.ExclusionCfg {
+func ExclusionFromCfg(exclusionCfg config.ExclusionCfg) newreleases.Exclusion {
+	return newreleases.Exclusion{
+		Value:   exclusionCfg.Value,
+		Inverse: exclusionCfg.Inverse,
+	}
+}
+
+func ExclusionSliceToCfg(exclusions []newreleases.Exclusion) []config.ExclusionCfg {
 	exclusionConfigs := make([]config.ExclusionCfg, len(exclusions))
 	for i, exclusion := range exclusions {
-		exclusionConfigs[i] = ExclusionCfgFromExclusion(exclusion)
+		exclusionConfigs[i] = ExclusionToCfg(exclusion)
 	}
 	return exclusionConfigs
 }
 
-func ProjectCfgFromProject(project newreleases.Project) config.ProjectCfg {
+func ExclusionSliceFromCfg(exclusions []config.ExclusionCfg) []newreleases.Exclusion {
+	exclusionConfigs := make([]newreleases.Exclusion, len(exclusions))
+	for i, exclusion := range exclusions {
+		exclusionConfigs[i] = ExclusionFromCfg(exclusion)
+	}
+	return exclusionConfigs
+}
+
+func ProjectToCfg(project newreleases.Project) config.ProjectCfg {
 	return config.ProjectCfg{
 		Name:                   project.Name,
 		Provider:               project.Provider,
 		URL:                    project.URL,
-		EmailNotification:      string(project.EmailNotification),
 		SlackIDs:               project.SlackIDs,
 		TelegramChatIDs:        project.TelegramChatIDs,
 		DiscordIDs:             project.DiscordIDs,
@@ -108,19 +132,54 @@ func ProjectCfgFromProject(project newreleases.Project) config.ProjectCfg {
 		RocketchatWebhookIDs:   project.RocketchatWebhookIDs,
 		MatrixRoomIDs:          project.MatrixRoomIDs,
 		WebhookIDs:             project.WebhookIDs,
-		Exclusions:             ExclusionCfgSliceFromExclusionSlice(project.Exclusions),
+		Exclusions:             ExclusionSliceToCfg(project.Exclusions),
 		ExcludePrereleases:     project.ExcludePrereleases,
 		ExcludeUpdated:         project.ExcludeUpdated,
 		Note:                   project.Note,
 	}
 }
 
-func ProjectCfgSliceFromProjectSlice(projects []newreleases.Project) []config.ProjectCfg {
+func ProjectFromCfg(nrConfig config.NewReleases, projectCfg config.ProjectCfg) newreleases.Project {
+	emailNotification := newreleases.EmailNotification(projectCfg.EmailNotification)
+	if string(emailNotification) == "" {
+		emailNotification = newreleases.EmailNotification(nrConfig.EmailNotification)
+	}
+	// use global setting if not specified
+	return newreleases.Project{
+		Name:                   projectCfg.Name,
+		Provider:               projectCfg.Provider,
+		URL:                    projectCfg.URL,
+		EmailNotification:      emailNotification,
+		SlackIDs:               projectCfg.SlackIDs,
+		TelegramChatIDs:        projectCfg.TelegramChatIDs,
+		DiscordIDs:             projectCfg.DiscordIDs,
+		HangoutsChatWebhookIDs: projectCfg.HangoutsChatWebhookIDs,
+		MSTeamsWebhookIDs:      projectCfg.MSTeamsWebhookIDs,
+		MattermostWebhookIDs:   projectCfg.MattermostWebhookIDs,
+		RocketchatWebhookIDs:   projectCfg.RocketchatWebhookIDs,
+		MatrixRoomIDs:          projectCfg.MatrixRoomIDs,
+		WebhookIDs:             projectCfg.WebhookIDs,
+		Exclusions:             ExclusionSliceFromCfg(projectCfg.Exclusions),
+		ExcludePrereleases:     projectCfg.ExcludePrereleases,
+		ExcludeUpdated:         projectCfg.ExcludeUpdated,
+		Note:                   projectCfg.Note,
+	}
+}
+
+func ProjectSliceToCfg(projects []newreleases.Project) []config.ProjectCfg {
 	projectCfgs := make([]config.ProjectCfg, len(projects))
-	for i, exclusion := range projects {
-		projectCfgs[i] = ProjectCfgFromProject(exclusion)
+	for i, project := range projects {
+		projectCfgs[i] = ProjectToCfg(project)
 	}
 	return projectCfgs
+}
+
+func ProjectSliceFromCfg(newReleasesConfig config.NewReleases, projectCfgs []config.ProjectCfg) []newreleases.Project {
+	projects := make([]newreleases.Project, len(projectCfgs))
+	for i, cfg := range projectCfgs {
+		projects[i] = ProjectFromCfg(newReleasesConfig, cfg)
+	}
+	return projects
 }
 
 // type Project = newreleases.Project
@@ -170,7 +229,7 @@ func (diff ProjectDiff) DescribeDiverged() string {
 	var sb strings.Builder
 	for projectName, divergedTuple := range diff.Diverged {
 		sb.WriteString(fmt.Sprintf("project %s\n", projectName))
-		sb.WriteString(fmt.Sprintf("local:\n%v\nremote:\n%v\n---\n", divergedTuple.local, divergedTuple.remote))
+		sb.WriteString(fmt.Sprintf("local:\n%+v\nremote:\n%+v\n---\n", divergedTuple.local, divergedTuple.remote))
 	}
 
 	return sb.String()
@@ -180,37 +239,52 @@ type ProjectTuple struct {
 	local, remote config.ProjectCfg
 }
 
-func (nr NewReleases) applyLocalConfig() {
-
+type ApplyLocalConfigOptions struct {
+	Destructive bool // indicates whether remote projects not present in local configuration should be removed
 }
 
-func (nr NewReleases) ImportProjects() (string, error) {
+func (nr NewReleases) ApplyLocalConfig(options ApplyLocalConfigOptions) error {
 	diff, err := nr.Diff()
 	if err != nil {
-		return "", err
+		return err
 	}
-	for _, project := range diff.MissingOnLocal {
+	for _, projectCfg := range diff.MissingOnRemote {
 
-		fmt.Println(project)
-		// yaml.Marshal()
-		// jsonBytes, err := json.Marshal(project)
-		// if err != nil {
-		// 	return "", err
-		// }
-		// jsonString := string(jsonBytes)
-		// // we don't care about the Id, remove
-		// withoutId, err := sjson.Delete(jsonString, "id")
-		// if err != nil {
-		// 	return "", err
-		// }
-		// yamlBytes, err := yaml.JSONToYAML([]byte(withoutId))
-		// if err != nil {
-		// 	return "", err
-		// }
-		// yamlString := string(yamlBytes)
-		// fmt.Println(yamlString)
+		projectOptions := newreleases.ProjectOptions{
+			EmailNotification:      (*newreleases.EmailNotification)(&projectCfg.EmailNotification),
+			SlackIDs:               projectCfg.SlackIDs,
+			TelegramChatIDs:        projectCfg.TelegramChatIDs,
+			DiscordIDs:             projectCfg.DiscordIDs,
+			HangoutsChatWebhookIDs: projectCfg.HangoutsChatWebhookIDs,
+			MSTeamsWebhookIDs:      projectCfg.MSTeamsWebhookIDs,
+			MattermostWebhookIDs:   projectCfg.MattermostWebhookIDs,
+			MatrixRoomIDs:          projectCfg.MatrixRoomIDs,
+			RocketchatWebhookIDs:   projectCfg.RocketchatWebhookIDs,
+			WebhookIDs:             projectCfg.WebhookIDs,
+			Exclusions:             ExclusionSliceFromCfg(projectCfg.Exclusions),
+			ExcludePrereleases:     &projectCfg.ExcludePrereleases,
+			ExcludeUpdated:         &projectCfg.ExcludeUpdated,
+			Note:                   &projectCfg.Note,
+			TagIDs:                 []string{},
+		}
+		_, err := nr.client.Projects.Add(context.Background(), projectCfg.Provider, projectCfg.Name, &projectOptions)
+		if err != nil {
+			return err
+		}
 	}
-
-	// TODO: fix return type
-	return "", nil
+	return nil
 }
+
+// 	enc := yaml.NewEncoder(os.Stdout)
+// 	enc.SetIndent(2)
+// 	defer enc.Close()
+// 	return enc.Encode(diff.MissingOnLocal)
+
+// 	// for _, project := range diff.MissingOnLocal {
+
+// 	// 	fmt.Println(project)
+// 	// }
+
+// 	// TODO: fix return type
+// 	return "", nil
+// }

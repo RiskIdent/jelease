@@ -74,15 +74,6 @@ type GitHubPR struct {
 	Branch      *Template
 }
 
-type NewReleases struct {
-	Auth     NewReleasesAuth
-	Projects []ProjectCfg
-}
-
-type NewReleasesAuth struct {
-	Key string
-}
-
 type Jira struct {
 	URL            string `jsonschema_extras:"format=uri"`
 	SkipCertVerify bool
