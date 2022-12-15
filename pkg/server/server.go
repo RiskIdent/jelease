@@ -108,7 +108,7 @@ func (s HTTPServer) handlePostWebhook(c *gin.Context) {
 	// in case of duplicate issues, update the oldest (probably original) one, ignore rest as duplicates
 	mostRecentIssue := existingIssues[0]
 	var duplicateIssueKeys []string
-	for _, issue := range existingIssues {
+	for _, issue := range existingIssues[1:] {
 		duplicateIssueKeys = append(duplicateIssueKeys, issue.Key)
 	}
 

@@ -62,7 +62,7 @@ func CloneRepoAndPublishPatches(cfg *config.Config, g git.Git, gh github.Client,
 	}
 	defer patcher.Close()
 
-	if err := patcher.ApplyManyInNewBranch(pkgRepo.Patches); err != nil {
+	if err := patcher.ApplyManyAndCommit(pkgRepo.Patches); err != nil {
 		return github.PullRequest{}, err
 	}
 
@@ -123,7 +123,7 @@ func (p *PackagePatcher) Close() error {
 	return err
 }
 
-func (p *PackagePatcher) ApplyManyInNewBranch(patches []config.PackageRepoPatch) error {
+func (p *PackagePatcher) ApplyManyAndCommit(patches []config.PackageRepoPatch) error {
 	if len(patches) == 0 {
 		log.Warn().
 			Str("package", p.tmplCtx.Package).
@@ -132,7 +132,7 @@ func (p *PackagePatcher) ApplyManyInNewBranch(patches []config.PackageRepoPatch)
 		return nil
 	}
 
-	if err := p.ApplyMany(patches); err != nil {
+	if err := p.ApplyManyInNewBranch(patches); err != nil {
 		return fmt.Errorf("template branch name: %w", err)
 	}
 
@@ -156,7 +156,7 @@ func (p *PackagePatcher) ApplyManyInNewBranch(patches []config.PackageRepoPatch)
 	return nil
 }
 
-func (p *PackagePatcher) ApplyMany(patches []config.PackageRepoPatch) error {
+func (p *PackagePatcher) ApplyManyInNewBranch(patches []config.PackageRepoPatch) error {
 	branchName, err := p.cfg.GitHub.PR.Branch.Render(p.tmplCtx)
 	if err != nil {
 		return fmt.Errorf("template branch name: %w", err)

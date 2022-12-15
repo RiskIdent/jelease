@@ -36,18 +36,6 @@ func Concat[S ~[]E, E any](slices ...S) S {
 	return result
 }
 
-func SlicesEqual[S ~[]E, E comparable](a, b S) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i, value := range a {
-		if value != b[i] {
-			return false
-		}
-	}
-	return true
-}
-
 func Ref[T any](v T) *T {
 	return &v
 }
@@ -71,6 +59,11 @@ var camelCaseReplacer = strings.NewReplacer(
 	"PR", "Pr",
 )
 
+// ToCamelCase is a very stupid implementation for converting
+// PascalCase to camelCase.
+//
+// NOTE: If we need to convert user-provided strings to camelCase,
+// then we should replace this with the community strcase package.
 func ToCamelCase(s string) string {
 	if len(s) == 0 {
 		return s

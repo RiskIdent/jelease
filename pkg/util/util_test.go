@@ -17,7 +17,11 @@
 
 package util
 
-import "testing"
+import (
+	"testing"
+
+	"golang.org/x/exp/slices"
+)
 
 func TestConcat(t *testing.T) {
 	tests := []struct {
@@ -48,7 +52,7 @@ func TestConcat(t *testing.T) {
 
 	for _, tc := range tests {
 		got := Concat(tc.a, tc.b)
-		if !SlicesEqual(tc.want, got) {
+		if !slices.Equal(tc.want, got) {
 			t.Errorf("%v + %v: want %v, got %v", tc.a, tc.b, tc.want, got)
 		}
 	}
