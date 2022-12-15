@@ -55,7 +55,7 @@ which gives you warnings and completion support inside your IDE.
 
 Make use of it via e.g:
 
-- [YAML extension](rttps://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml)
+- [YAML extension](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml)
   for [VS Code](https://code.visualstudio.com/).
 
 - [coc-yaml plugin](https://github.com/neoclide/coc-yaml)
