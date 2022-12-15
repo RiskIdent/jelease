@@ -98,6 +98,7 @@ func (s HTTPServer) handlePostWebhook(c *gin.Context) {
 	}
 	prs, err := patch.CloneAllAndPublishPatches(s.cfg, pkg.Repos, tmplCtx)
 	if err != nil {
+		log.Error().Err(err).Str("project", release.Project).Msg("Failed creating patches.")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		// TODO: Post comment in Jira ticket.
 		return
@@ -131,7 +132,6 @@ func ensureJiraIssue(j jira.Client, r Release, cfg *config.Config) (newJiraIssue
 		// no previous issues, create new jira issue
 		i := r.JiraIssue(&cfg.Jira.Issue)
 
-		log.Trace().Interface("issue", i).Msg("Creating issue.")
 		if cfg.DryRun {
 			log.Info().
 				Str("issue", i.Key).
@@ -166,7 +166,7 @@ func ensureJiraIssue(j jira.Client, r Release, cfg *config.Config) (newJiraIssue
 	}
 
 	if cfg.DryRun {
-		log.Debug().
+		log.Info().
 			Str("issue", mostRecentIssue.Key).
 			Msg("Skipping update of issue because Config.DryRun is enabled.")
 		return newJiraIssue{
