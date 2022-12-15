@@ -101,7 +101,7 @@ func cloneRepoTemp(g git.Git, tempDir, remote string, tmplCtx TemplateContext) (
 	if err != nil {
 		return nil, err
 	}
-	log.Info().
+	log.Debug().
 		Str("branch", repo.CurrentBranch()).
 		Str("dir", repo.Directory()).
 		Msg("Cloned repo.")

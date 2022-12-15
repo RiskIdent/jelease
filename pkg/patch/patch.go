@@ -69,7 +69,7 @@ func Apply(repoDir string, patch config.PackageRepoPatch, tmplCtx TemplateContex
 		return fmt.Errorf("write patch: %w", err)
 	}
 
-	log.Info().Str("file", patch.File).Msg("Patched file.")
+	log.Debug().Str("file", patch.File).Msg("Patched file.")
 	return nil
 }
 

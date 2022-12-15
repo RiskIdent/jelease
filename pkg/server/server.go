@@ -25,7 +25,6 @@ import (
 	"github.com/RiskIdent/jelease/pkg/jira"
 	"github.com/RiskIdent/jelease/pkg/patch"
 	"github.com/gin-gonic/gin"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -36,14 +35,16 @@ type HTTPServer struct {
 }
 
 func New(cfg *config.Config, jira jira.Client) *HTTPServer {
+	gin.DefaultErrorWriter = log.Logger
+	gin.DefaultWriter = log.Logger
+
 	r := gin.New()
 
 	r.Use(
 		gin.LoggerWithConfig(gin.LoggerConfig{
 			SkipPaths: []string{"/health"},
-			Output:    log.Logger.Level(zerolog.DebugLevel),
 		}),
-		gin.RecoveryWithWriter(log.Logger.Level(zerolog.ErrorLevel)),
+		gin.Recovery(),
 	)
 
 	s := &HTTPServer{
@@ -102,12 +103,12 @@ func (s HTTPServer) handlePostWebhook(c *gin.Context) {
 		return
 	}
 	if len(prs) == 0 {
-		log.Warn().Str("project", release.Project).Msg("No repositories were patched.")
+		log.Warn().Str("project", release.Project).Msg("Found package config, but no repositories were patched.")
 		c.Status(http.StatusOK)
 		// TODO: Post comment in Jira ticket.
 		return
 	}
-	log.Warn().
+	log.Info().
 		Str("project", release.Project).
 		Int("count", len(prs)).
 		Msg("Successfully created PRs for update.")
@@ -132,7 +133,7 @@ func ensureJiraIssue(j jira.Client, r Release, cfg *config.Config) (newJiraIssue
 
 		log.Trace().Interface("issue", i).Msg("Creating issue.")
 		if cfg.DryRun {
-			log.Debug().
+			log.Info().
 				Str("issue", i.Key).
 				Msg("Skipping creation of issue because Config.DryRun is enabled.")
 			return newJiraIssue{
