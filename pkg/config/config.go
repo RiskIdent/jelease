@@ -25,7 +25,7 @@ import (
 )
 
 type Config struct {
-	DryRun   bool
+	DryRun   bool `yaml:"dryRun"`
 	Packages []Package
 	GitHub   GitHub
 	Jira     Jira
@@ -94,7 +94,7 @@ type GitHubCommitter struct {
 
 type Jira struct {
 	URL            string `jsonschema_extras:"format=uri"`
-	SkipCertVerify bool `yaml:"skipCertVerify"`
+	SkipCertVerify bool   `yaml:"skipCertVerify"`
 	Auth           JiraAuth
 	Issue          JiraIssue
 }
