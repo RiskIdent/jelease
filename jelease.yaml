@@ -75,7 +75,7 @@ github:
     # and then Jelease would instead rely on the user.name and user.email
     # configs from your .gitconfig file.
     committer:
-      name: Jelease
+      name: Jelease[bot]
       email: jelease@riskident.com
 
 # Jira settings
