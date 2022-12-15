@@ -20,19 +20,14 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"reflect"
-	"strings"
-	"unicode"
 
-	"github.com/invopop/jsonschema"
+	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/spf13/cobra"
 )
 
 var configSchemaFlags = struct {
-	version  string
 	indented bool
 }{
-	version:  jsonschema.Version,
 	indented: true,
 }
 
@@ -41,15 +36,7 @@ var configSchemaCmd = &cobra.Command{
 	Use:   "schema",
 	Short: "Prints the JSON schema for the config file",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		jsonschema.Version = configSchemaFlags.version
-		r := new(jsonschema.Reflector)
-		r.KeyNamer = toCamelCase
-		r.Namer = func(t reflect.Type) string {
-			return toCamelCase(t.Name())
-		}
-		r.RequiredFromJSONSchemaTags = true
-		s := r.Reflect(&cfg)
-		s.ID = "https://github.com/RiskIdent/jelease/raw/main/jelease.schema.json"
+		s := config.Schema()
 		data, err := marshalJSON(s, configSchemaFlags.indented)
 		if err != nil {
 			return err
@@ -63,28 +50,6 @@ var configSchemaCmd = &cobra.Command{
 	},
 }
 
-var camelCaseReplacer = strings.NewReplacer(
-	"ID", "Id",
-	"URL", "Url",
-	"HTTP", "Http",
-	"JSON", "Json",
-	"JQ", "Jq",
-	"YAML", "Yaml",
-	"YQ", "Yq",
-	"GitHub", "Github",
-	"PR", "Pr",
-)
-
-func toCamelCase(s string) string {
-	if len(s) == 0 {
-		return s
-	}
-	s = camelCaseReplacer.Replace(s)
-	b := []byte(s)
-	b[0] = byte(unicode.ToLower(rune(b[0])))
-	return string(b)
-}
-
 func marshalJSON(v any, indented bool) ([]byte, error) {
 	if indented {
 		return json.MarshalIndent(v, "", "  ")
@@ -95,6 +60,5 @@ func marshalJSON(v any, indented bool) ([]byte, error) {
 func init() {
 	configCmd.AddCommand(configSchemaCmd)
 
-	configSchemaCmd.Flags().StringVar(&configSchemaFlags.version, "version", configSchemaFlags.version, "JSON schema version")
 	configSchemaCmd.Flags().BoolVarP(&configSchemaFlags.indented, "indent", "i", configSchemaFlags.indented, "Print indented output")
 }

@@ -15,39 +15,45 @@
 // You should have received a copy of the GNU General Public License along
 // with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package cmd
+package util
 
 import (
-	"fmt"
+	"testing"
 
-	"github.com/RiskIdent/jelease/pkg/patch"
-	"github.com/rs/zerolog/log"
-	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
 )
 
-// applyCmd represents the apply command
-var applyCmd = &cobra.Command{
-	Use:  "apply <package> <version>",
-	Args: cobra.ExactArgs(2),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		pkgName := args[0]
-		version := args[1]
-		pkg, ok := cfg.TryFindPackage(pkgName)
-		if !ok {
-			return fmt.Errorf("no such package found in config: %s", pkgName)
+func TestConcat(t *testing.T) {
+	tests := []struct {
+		a, b []int
+		want []int
+	}{
+		{
+			a:    nil,
+			b:    nil,
+			want: nil,
+		},
+		{
+			a:    []int{1},
+			b:    nil,
+			want: []int{1},
+		},
+		{
+			a:    nil,
+			b:    []int{1},
+			want: []int{1},
+		},
+		{
+			a:    []int{1, 2},
+			b:    []int{3, 4},
+			want: []int{1, 2, 3, 4},
+		},
+	}
+
+	for _, tc := range tests {
+		got := Concat(tc.a, tc.b)
+		if !slices.Equal(tc.want, got) {
+			t.Errorf("%v + %v: want %v, got %v", tc.a, tc.b, tc.want, got)
 		}
-		log.Info().Str("package", pkgName).Msg("Found package config")
-
-		tmplCtx := patch.TemplateContext{
-			Package: pkgName,
-			Version: version,
-		}
-
-		_, err := patch.CloneAllAndPublishPatches(&cfg, pkg.Repos, tmplCtx)
-		return err
-	},
-}
-
-func init() {
-	rootCmd.AddCommand(applyCmd)
+	}
 }

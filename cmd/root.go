@@ -26,6 +26,7 @@ import (
 	"text/template"
 
 	"github.com/RiskIdent/jelease/pkg/config"
+	"github.com/RiskIdent/jelease/pkg/util"
 	"github.com/RiskIdent/jelease/pkg/version"
 	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog"
@@ -59,7 +60,7 @@ func Execute(defaultConfig config.Config) {
 	rootCmd.PersistentFlags().String("jira.issue.type", cfg.Jira.Issue.Type, "Jira issue type on created issues")
 	rootCmd.PersistentFlags().String("jira.issue.project", cfg.Jira.Issue.Project, `Jira project name to search for issues in (example: "OP")`)
 	rootCmd.PersistentFlags().Uint16("http.port", cfg.HTTP.Port, "Which HTTP port to run the server on.")
-	rootCmd.PersistentFlags().String("github.tempdir", deref(cfg.GitHub.TempDir, os.TempDir()), "Which folder to clone repositories into")
+	rootCmd.PersistentFlags().String("github.tempdir", util.Deref(cfg.GitHub.TempDir, os.TempDir()), "Which folder to clone repositories into")
 	rootCmd.PersistentFlags().Bool("dryrun", cfg.DryRun, "Do not alter any state, e.g skip creating Jira tickets or GitHub PRs")
 	rootCmd.PersistentFlags().Var(&cfg.Log.Level, "log.level", "Sets the logging level")
 	rootCmd.PersistentFlags().Var(&cfg.Log.Format, "log.format", "Sets the logging format")

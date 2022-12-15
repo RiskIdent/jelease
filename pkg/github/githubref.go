@@ -15,39 +15,41 @@
 // You should have received a copy of the GNU General Public License along
 // with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package cmd
+package github
 
 import (
 	"fmt"
-
-	"github.com/RiskIdent/jelease/pkg/patch"
-	"github.com/rs/zerolog/log"
-	"github.com/spf13/cobra"
+	"net/url"
+	"strings"
 )
 
-// applyCmd represents the apply command
-var applyCmd = &cobra.Command{
-	Use:  "apply <package> <version>",
-	Args: cobra.ExactArgs(2),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		pkgName := args[0]
-		version := args[1]
-		pkg, ok := cfg.TryFindPackage(pkgName)
-		if !ok {
-			return fmt.Errorf("no such package found in config: %s", pkgName)
-		}
-		log.Info().Str("package", pkgName).Msg("Found package config")
-
-		tmplCtx := patch.TemplateContext{
-			Package: pkgName,
-			Version: version,
-		}
-
-		_, err := patch.CloneAllAndPublishPatches(&cfg, pkg.Repos, tmplCtx)
-		return err
-	},
+type RepoRef struct {
+	URL   string
+	Owner string
+	Repo  string
 }
 
-func init() {
-	rootCmd.AddCommand(applyCmd)
+func ParseRepoRef(remote string) (RepoRef, error) {
+	u, err := url.Parse(remote)
+	if err != nil {
+		return RepoRef{}, err
+	}
+	u.User = nil
+	path := u.Path
+	segments := strings.Split(strings.TrimPrefix(path, "/"), "/")
+	if len(segments) < 2 {
+		return RepoRef{}, fmt.Errorf("expected https://host/OWNER/REPO in URL, got: %s", u.String())
+	}
+	owner := segments[0]
+	repo := strings.TrimSuffix(segments[1], ".git")
+
+	u.Path = fmt.Sprintf("%s/%s", owner, repo)
+	u.Fragment = ""
+	u.RawFragment = ""
+	u.RawQuery = ""
+	return RepoRef{
+		URL:   u.String(),
+		Owner: owner,
+		Repo:  repo,
+	}, nil
 }

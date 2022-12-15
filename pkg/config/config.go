@@ -17,7 +17,12 @@
 
 package config
 
-import "github.com/invopop/jsonschema"
+import (
+	"reflect"
+
+	"github.com/RiskIdent/jelease/pkg/util"
+	"github.com/invopop/jsonschema"
+)
 
 type Config struct {
 	DryRun   bool
@@ -26,6 +31,15 @@ type Config struct {
 	Jira     Jira
 	HTTP     HTTP
 	Log      Log
+}
+
+func (c Config) TryFindPackage(pkgName string) (Package, bool) {
+	for _, pkg := range c.Packages {
+		if pkg.Name == pkgName {
+			return pkg, true
+		}
+	}
+	return Package{}, false
 }
 
 type Package struct {
@@ -69,6 +83,7 @@ type GitHubPR struct {
 	Title       *Template
 	Description *Template
 	Branch      *Template
+	Commit      *Template
 }
 
 type Jira struct {
@@ -105,4 +120,16 @@ type Log struct {
 
 type jsonSchemaInterface interface {
 	JSONSchema() *jsonschema.Schema
+}
+
+func Schema() *jsonschema.Schema {
+	r := new(jsonschema.Reflector)
+	r.KeyNamer = util.ToCamelCase
+	r.Namer = func(t reflect.Type) string {
+		return util.ToCamelCase(t.Name())
+	}
+	r.RequiredFromJSONSchemaTags = true
+	s := r.Reflect(&Config{})
+	s.ID = "https://github.com/RiskIdent/jelease/raw/main/jelease.schema.json"
+	return s
 }

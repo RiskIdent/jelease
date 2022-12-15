@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License along
 // with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package cmd
+package jira
 
 import "testing"
 
@@ -32,14 +32,14 @@ func TestNewJiraIssueSearchQuery(t *testing.T) {
 			status:      "Grooming",
 			project:     "platform/jelease",
 			customField: 0,
-			want:        `status = "Grooming" and labels = "platform/jelease"`,
+			want:        `status = "Grooming" and labels = "platform/jelease" ORDER BY created DESC`,
 		},
 		{
 			name:        "with custom field",
 			status:      "Grooming",
 			project:     "platform/jelease",
 			customField: 12500,
-			want:        `status = "Grooming" and (labels = "platform/jelease" or cf[12500] ~ "platform/jelease")`,
+			want:        `status = "Grooming" and (labels = "platform/jelease" or cf[12500] ~ "platform/jelease") ORDER BY created DESC`,
 		},
 	}
 
