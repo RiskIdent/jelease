@@ -23,6 +23,7 @@ import (
 
 	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/RiskIdent/jelease/pkg/jira"
+	"github.com/RiskIdent/jelease/pkg/patch"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -76,16 +77,41 @@ func (s HTTPServer) handlePostWebhook(c *gin.Context) {
 		return
 	}
 
-	issue, err := ensureJiraIssue(s.jira, release, s.cfg)
+	_, err := ensureJiraIssue(s.jira, release, s.cfg)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	if issue.Created {
-		c.Status(http.StatusCreated)
+
+	pkg, ok := s.cfg.TryFindPackage(release.Project)
+	if !ok {
+		log.Info().Str("project", release.Project).Msg("No package patching config was found. Skipping patching.")
+		c.Status(http.StatusOK)
+		// TODO: Post comment in Jira ticket.
 		return
 	}
-	c.Status(http.StatusNoContent)
+	tmplCtx := patch.TemplateContext{
+		Package: release.Project,
+		Version: release.Version,
+	}
+	prs, err := patch.CloneAllAndPublishPatches(s.cfg, pkg.Repos, tmplCtx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		// TODO: Post comment in Jira ticket.
+		return
+	}
+	if len(prs) == 0 {
+		log.Warn().Str("project", release.Project).Msg("No repositories were patched.")
+		c.Status(http.StatusOK)
+		// TODO: Post comment in Jira ticket.
+		return
+	}
+	log.Warn().
+		Str("project", release.Project).
+		Int("count", len(prs)).
+		Msg("Successfully created PRs for update.")
+	c.Status(http.StatusOK)
+	// TODO: Post comment in Jira ticket.
 }
 
 type newJiraIssue struct {
