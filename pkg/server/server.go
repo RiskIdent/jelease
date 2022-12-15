@@ -76,33 +76,51 @@ func (s HTTPServer) handlePostWebhook(c *gin.Context) {
 		return
 	}
 
-	existingIssues, err := s.jira.FindIssuesForPackage(release.Project)
+	issue, err := ensureJiraIssue(s.jira, release, s.cfg)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	if issue.Created {
+		c.Status(http.StatusCreated)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+type newJiraIssue struct {
+	jira.Issue
+	Created bool
+}
+
+func ensureJiraIssue(j jira.Client, r Release, cfg *config.Config) (newJiraIssue, error) {
+	existingIssues, err := j.FindIssuesForPackage(r.Project)
+	if err != nil {
+		return newJiraIssue{}, err
+	}
 
 	if len(existingIssues) == 0 {
 		// no previous issues, create new jira issue
-		i := release.JiraIssue(&s.cfg.Jira.Issue)
+		i := r.JiraIssue(&cfg.Jira.Issue)
 
 		log.Trace().Interface("issue", i).Msg("Creating issue.")
-		if s.cfg.DryRun {
+		if cfg.DryRun {
 			log.Debug().
 				Str("issue", i.Key).
 				Msg("Skipping creation of issue because Config.DryRun is enabled.")
-			c.Status(http.StatusNoContent)
-			return
+			return newJiraIssue{
+				Issue:   i,
+				Created: false,
+			}, nil
 		}
 
-		if _, err := s.jira.CreateIssue(i); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": err.Error(),
-			})
-			return
+		if _, err := j.CreateIssue(i); err != nil {
+			return newJiraIssue{}, err
 		}
-		c.Status(http.StatusCreated)
-		return
+		return newJiraIssue{
+			Issue:   i,
+			Created: true,
+		}, nil
 	}
 
 	// in case of duplicate issues, update the oldest (probably original) one, ignore rest as duplicates
@@ -119,18 +137,20 @@ func (s HTTPServer) handlePostWebhook(c *gin.Context) {
 			Msg("Ignoring the duplicate issues in favor of recent issue.")
 	}
 
-	if s.cfg.DryRun {
+	if cfg.DryRun {
 		log.Debug().
 			Str("issue", mostRecentIssue.Key).
 			Msg("Skipping update of issue because Config.DryRun is enabled.")
-		c.Status(http.StatusNoContent)
-		return
+		return newJiraIssue{
+			Issue:   mostRecentIssue,
+			Created: false,
+		}, nil
 	}
-	if err := s.jira.UpdateIssueSummary(mostRecentIssue.ID, mostRecentIssue.Key, release.IssueSummary()); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
-		return
+	if err := j.UpdateIssueSummary(mostRecentIssue.ID, mostRecentIssue.Key, r.IssueSummary()); err != nil {
+		return newJiraIssue{}, err
 	}
-	c.Status(http.StatusNoContent)
+	return newJiraIssue{
+		Issue:   mostRecentIssue,
+		Created: false,
+	}, nil
 }
