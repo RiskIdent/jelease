@@ -17,22 +17,14 @@ type EmailNotificationCfg string
 // Omits some field of [newreleases.io/newreleases/Project] that we don't want to store
 // namely, this omits the ID field and the tagIDs field
 type ProjectCfg struct {
-	Name                   string
-	Provider               string
-	EmailNotification      string         `json:",omitempty" yaml:",omitempty"`
-	SlackIDs               []string       `json:",omitempty" yaml:",omitempty"`
-	TelegramChatIDs        []string       `json:",omitempty" yaml:",omitempty"`
-	DiscordIDs             []string       `json:",omitempty" yaml:",omitempty"`
-	HangoutsChatWebhookIDs []string       `json:",omitempty" yaml:",omitempty"`
-	MSTeamsWebhookIDs      []string       `json:",omitempty" yaml:",omitempty"`
-	MattermostWebhookIDs   []string       `json:",omitempty" yaml:",omitempty"`
-	RocketchatWebhookIDs   []string       `json:",omitempty" yaml:",omitempty"`
-	MatrixRoomIDs          []string       `json:",omitempty" yaml:",omitempty"`
-	WebhookIDs             []string       `json:",omitempty" yaml:",omitempty"`
-	Exclusions             []ExclusionCfg `json:"excludeVersionRegexp,omitempty" yaml:"excludeVersionRegexp,omitempty" mapstructure:"excludeVersionRegexp"`
-	ExcludePrereleases     bool           `json:",omitempty" yaml:",omitempty"`
-	ExcludeUpdated         bool           `json:",omitempty" yaml:",omitempty"`
-	Note                   string         `json:",omitempty" yaml:",omitempty"`
+	Name               string
+	Provider           string
+	EmailNotification  string         `json:",omitempty" yaml:",omitempty"`
+	WebhookIDs         []string       `json:",omitempty" yaml:",omitempty"`
+	Exclusions         []ExclusionCfg `json:"excludeVersionRegexp,omitempty" yaml:"excludeVersionRegexp,omitempty" mapstructure:"excludeVersionRegexp"`
+	ExcludePrereleases bool           `json:",omitempty" yaml:",omitempty"`
+	ExcludeUpdated     bool           `json:",omitempty" yaml:",omitempty"`
+	Note               string         `json:",omitempty" yaml:",omitempty"`
 	// TagIDs                 []string             `json:"tags,omitempty"`
 }
 
@@ -66,30 +58,6 @@ func (project ProjectCfg) Equals(other ProjectCfg) bool {
 		return false
 	}
 	if project.EmailNotification != other.EmailNotification {
-		return false
-	}
-	if !slices.Equal(project.SlackIDs, other.SlackIDs) {
-		return false
-	}
-	if !slices.Equal(project.TelegramChatIDs, other.TelegramChatIDs) {
-		return false
-	}
-	if !slices.Equal(project.DiscordIDs, other.DiscordIDs) {
-		return false
-	}
-	if !slices.Equal(project.HangoutsChatWebhookIDs, other.HangoutsChatWebhookIDs) {
-		return false
-	}
-	if !slices.Equal(project.MSTeamsWebhookIDs, other.MSTeamsWebhookIDs) {
-		return false
-	}
-	if !slices.Equal(project.MattermostWebhookIDs, other.MattermostWebhookIDs) {
-		return false
-	}
-	if !slices.Equal(project.RocketchatWebhookIDs, other.RocketchatWebhookIDs) {
-		return false
-	}
-	if !slices.Equal(project.MatrixRoomIDs, other.MatrixRoomIDs) {
 		return false
 	}
 	if !slices.Equal(project.WebhookIDs, other.WebhookIDs) {

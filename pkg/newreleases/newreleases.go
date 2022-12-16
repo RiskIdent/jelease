@@ -121,21 +121,13 @@ func ExclusionSliceFromCfg(exclusions []config.ExclusionCfg) []newreleases.Exclu
 
 func ProjectToCfg(project newreleases.Project) config.ProjectCfg {
 	return config.ProjectCfg{
-		Name:                   project.Name,
-		Provider:               project.Provider,
-		SlackIDs:               project.SlackIDs,
-		TelegramChatIDs:        project.TelegramChatIDs,
-		DiscordIDs:             project.DiscordIDs,
-		HangoutsChatWebhookIDs: project.HangoutsChatWebhookIDs,
-		MSTeamsWebhookIDs:      project.MSTeamsWebhookIDs,
-		MattermostWebhookIDs:   project.MattermostWebhookIDs,
-		RocketchatWebhookIDs:   project.RocketchatWebhookIDs,
-		MatrixRoomIDs:          project.MatrixRoomIDs,
-		WebhookIDs:             project.WebhookIDs,
-		Exclusions:             ExclusionSliceToCfg(project.Exclusions),
-		ExcludePrereleases:     project.ExcludePrereleases,
-		ExcludeUpdated:         project.ExcludeUpdated,
-		Note:                   project.Note,
+		Name:               project.Name,
+		Provider:           project.Provider,
+		WebhookIDs:         project.WebhookIDs,
+		Exclusions:         ExclusionSliceToCfg(project.Exclusions),
+		ExcludePrereleases: project.ExcludePrereleases,
+		ExcludeUpdated:     project.ExcludeUpdated,
+		Note:               project.Note,
 	}
 }
 
@@ -146,22 +138,14 @@ func ProjectFromCfg(nrConfig config.NewReleases, projectCfg config.ProjectCfg) n
 	}
 	// use global setting if not specified
 	return newreleases.Project{
-		Name:                   projectCfg.Name,
-		Provider:               projectCfg.Provider,
-		EmailNotification:      emailNotification,
-		SlackIDs:               projectCfg.SlackIDs,
-		TelegramChatIDs:        projectCfg.TelegramChatIDs,
-		DiscordIDs:             projectCfg.DiscordIDs,
-		HangoutsChatWebhookIDs: projectCfg.HangoutsChatWebhookIDs,
-		MSTeamsWebhookIDs:      projectCfg.MSTeamsWebhookIDs,
-		MattermostWebhookIDs:   projectCfg.MattermostWebhookIDs,
-		RocketchatWebhookIDs:   projectCfg.RocketchatWebhookIDs,
-		MatrixRoomIDs:          projectCfg.MatrixRoomIDs,
-		WebhookIDs:             projectCfg.WebhookIDs,
-		Exclusions:             ExclusionSliceFromCfg(projectCfg.Exclusions),
-		ExcludePrereleases:     projectCfg.ExcludePrereleases,
-		ExcludeUpdated:         projectCfg.ExcludeUpdated,
-		Note:                   projectCfg.Note,
+		Name:               projectCfg.Name,
+		Provider:           projectCfg.Provider,
+		EmailNotification:  emailNotification,
+		WebhookIDs:         projectCfg.WebhookIDs,
+		Exclusions:         ExclusionSliceFromCfg(projectCfg.Exclusions),
+		ExcludePrereleases: projectCfg.ExcludePrereleases,
+		ExcludeUpdated:     projectCfg.ExcludeUpdated,
+		Note:               projectCfg.Note,
 	}
 }
 
@@ -262,21 +246,13 @@ func (nr NewReleases) ApplyLocalConfig(options ApplyLocalConfigOptions) error {
 	for _, projectCfg := range diff.MissingOnRemote {
 
 		projectOptions := newreleases.ProjectOptions{
-			EmailNotification:      (*newreleases.EmailNotification)(&projectCfg.EmailNotification),
-			SlackIDs:               projectCfg.SlackIDs,
-			TelegramChatIDs:        projectCfg.TelegramChatIDs,
-			DiscordIDs:             projectCfg.DiscordIDs,
-			HangoutsChatWebhookIDs: projectCfg.HangoutsChatWebhookIDs,
-			MSTeamsWebhookIDs:      projectCfg.MSTeamsWebhookIDs,
-			MattermostWebhookIDs:   projectCfg.MattermostWebhookIDs,
-			MatrixRoomIDs:          projectCfg.MatrixRoomIDs,
-			RocketchatWebhookIDs:   projectCfg.RocketchatWebhookIDs,
-			WebhookIDs:             projectCfg.WebhookIDs,
-			Exclusions:             ExclusionSliceFromCfg(projectCfg.Exclusions),
-			ExcludePrereleases:     &projectCfg.ExcludePrereleases,
-			ExcludeUpdated:         &projectCfg.ExcludeUpdated,
-			Note:                   &projectCfg.Note,
-			TagIDs:                 []string{},
+			EmailNotification:  (*newreleases.EmailNotification)(&projectCfg.EmailNotification),
+			WebhookIDs:         projectCfg.WebhookIDs,
+			Exclusions:         ExclusionSliceFromCfg(projectCfg.Exclusions),
+			ExcludePrereleases: &projectCfg.ExcludePrereleases,
+			ExcludeUpdated:     &projectCfg.ExcludeUpdated,
+			Note:               &projectCfg.Note,
+			TagIDs:             []string{},
 		}
 		_, err := nr.client.Projects.Add(context.Background(), projectCfg.Provider, projectCfg.Name, &projectOptions)
 		if err != nil {
