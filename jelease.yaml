@@ -137,12 +137,12 @@ jira:
         {code}
 
       noConfig: >-
-        {color:#C1C7D0}(i) No config found for package *{{ .Package }}*.
-        You can add some to automatically create PRs with the update.{color}
+        {color:#505F79}(i) _No config found for package *{{ .Package }}*.
+        You can add some to automatically create PRs with the update._{color}
 
       noPatches: >-
-        {color:#C1C7D0}(i) Config found for package *{{ .Package }}*,
-        but no patches were applied.{color}
+        {color:#505F79}(i) _Config found for package *{{ .Package }}*,
+        but no patches were applied._{color}
 
 
 # HTTP server settings. The HTTP server is used to accept webhooks from
