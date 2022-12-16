@@ -43,7 +43,7 @@ func New(cfg *config.Config, jira jira.Client) *HTTPServer {
 
 	r.Use(
 		gin.LoggerWithConfig(gin.LoggerConfig{
-			SkipPaths: []string{"/health"},
+			SkipPaths: []string{"/"},
 		}),
 		gin.Recovery(),
 	)
