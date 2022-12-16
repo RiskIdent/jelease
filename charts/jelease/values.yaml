@@ -1,0 +1,70 @@
+---
+# yaml-language-server: $schema=./values.schema.json
+replicaCount: 1
+
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+jelease:
+  image:
+    repository: ghcr.io/RiskIdent/jelease
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: ""
+    pullPolicy: IfNotPresent
+  port: 8080
+
+  config:
+    # pass secret data from separate encrypted values.yaml
+    github:
+      auth:
+        type: pat
+        token: changeme
+
+    jira:
+      auth:
+        type: pat # pat | token
+        token: changeme
+
+  securityContext: {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+  resources: {}
+
+relay:
+  image:
+    repository: webhookrelay/webhookrelayd
+    tag: "1.28"
+    pullPolicy: IfNotPresent
+
+  config:
+    # pass secret data from separate encrypted values.yaml
+    #KEY: changeme
+    #SECRET: changeme
+
+    WEBSOCKET_TRANSPORT: "true"
+    BUCKET: forwarding-newreleases-io
+
+  securityContext: {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+  resources: {}
+
+podAnnotations:
+  kubectl.kubernetes.io/default-container: jelease
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
