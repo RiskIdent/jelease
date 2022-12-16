@@ -15,6 +15,7 @@ import (
 type NewReleases struct {
 	client        *newreleases.Client
 	localProjects []config.ProjectCfg
+	defaults      config.NewReleasesDefaults
 }
 
 func FromCfg(cfg config.NewReleases) NewReleases {
@@ -22,6 +23,7 @@ func FromCfg(cfg config.NewReleases) NewReleases {
 	return NewReleases{
 		client,
 		cfg.Projects,
+		cfg.Defaults,
 	}
 }
 
@@ -43,14 +45,24 @@ func (nr NewReleases) getProjects() ([]newreleases.Project, error) {
 	return projects, nil
 }
 
+func mergeDefaults(projects []config.ProjectCfg, nrDefaults config.NewReleasesDefaults) []config.ProjectCfg {
+	for i, project := range projects {
+		if project.EmailNotification == "" {
+			project.EmailNotification = nrDefaults.EmailNotification
+			projects[i] = project
+		}
+	}
+	return projects
+}
+
 func (nr NewReleases) Diff() (*ProjectDiff, error) {
 	remoteProjects, err := nr.getProjects()
 	if err != nil {
 		return nil, err
 	}
 	remoteProjectCfgs := ProjectSliceToCfg(remoteProjects)
-	localProjects := mapFromSlice(nr.localProjects)
-	diff := NewProjectDiff()
+	localProjects := mapFromSlice(mergeDefaults(nr.localProjects, nr.defaults))
+	diff := InitProjectDiff()
 
 	for _, remoteProject := range remoteProjectCfgs {
 		localProject, found := localProjects[remoteProject.Name]
@@ -122,6 +134,7 @@ func ExclusionSliceFromCfg(exclusions []config.ExclusionCfg) []newreleases.Exclu
 func ProjectToCfg(project newreleases.Project) config.ProjectCfg {
 	return config.ProjectCfg{
 		Name:               project.Name,
+		EmailNotification:  string(project.EmailNotification),
 		Provider:           project.Provider,
 		WebhookIDs:         project.WebhookIDs,
 		Exclusions:         ExclusionSliceToCfg(project.Exclusions),
@@ -149,7 +162,7 @@ type ProjectDiff struct {
 }
 
 // Creates a ProjectDiff and initialized the contained maps
-func NewProjectDiff() ProjectDiff {
+func InitProjectDiff() ProjectDiff {
 	return ProjectDiff{
 		Identical:       make(map[string]config.ProjectCfg),
 		MissingOnLocal:  make(map[string]config.ProjectCfg),
@@ -210,21 +223,15 @@ type ApplyLocalConfigOptions struct {
 	Destructive bool // indicates whether remote projects not present in local configuration should be removed
 }
 
-func (nr NewReleases) ApplyLocalConfig(nrCfg config.NewReleases, options ApplyLocalConfigOptions) error {
+func (nr NewReleases) ApplyLocalConfig(options ApplyLocalConfigOptions) error {
 	diff, err := nr.Diff()
 	if err != nil {
 		return err
 	}
 
 	for _, projectCfg := range diff.MissingOnRemote {
-		// default to global setting, check if override present
-		emailCfg := nrCfg.EmailNotification
-		if projectCfg.EmailNotification != "" {
-			emailCfg = projectCfg.EmailNotification
-		}
-
 		projectOptions := newreleases.ProjectOptions{
-			EmailNotification:  (*newreleases.EmailNotification)(&emailCfg),
+			EmailNotification:  (*newreleases.EmailNotification)(&projectCfg.EmailNotification),
 			WebhookIDs:         projectCfg.WebhookIDs,
 			Exclusions:         ExclusionSliceFromCfg(projectCfg.Exclusions),
 			ExcludePrereleases: &projectCfg.ExcludePrereleases,

@@ -3,13 +3,18 @@ package config
 import "golang.org/x/exp/slices"
 
 type NewReleases struct {
-	Auth              NewReleasesAuth `yaml:"auth"`
-	Projects          []ProjectCfg    `yaml:"projects"`
-	EmailNotification string          `yaml:"emailNotifications"`
+	Auth     NewReleasesAuth
+	Projects []ProjectCfg
+	Defaults NewReleasesDefaults
+	Webhook  string
 }
 
 type NewReleasesAuth struct {
 	Key string
+}
+
+type NewReleasesDefaults struct {
+	EmailNotification string `yaml:"emailNotifications"`
 }
 
 // type EmailNotificationCfg string
@@ -22,8 +27,8 @@ type ProjectCfg struct {
 	EmailNotification  string         `json:",omitempty" yaml:",omitempty"`
 	WebhookIDs         []string       `json:",omitempty" yaml:",omitempty"`
 	Exclusions         []ExclusionCfg `json:"excludeVersionRegexp,omitempty" yaml:"excludeVersionRegexp,omitempty" mapstructure:"excludeVersionRegexp"`
-	ExcludePrereleases bool           `json:",omitempty" yaml:",omitempty"`
-	ExcludeUpdated     bool           `json:",omitempty" yaml:",omitempty"`
+	ExcludePrereleases bool           `json:"excludePrereleases,omitempty" yaml:"excludePrereleases,omitempty" mapstructure:"excludePrereleases"`
+	ExcludeUpdated     bool           `json:"excludeUpdated,omitempty" yaml:"excludeUpdated,omitempty" mapstructure:"excludeUpdated"`
 	Note               string         `json:",omitempty" yaml:",omitempty"`
 	// TagIDs                 []string             `json:"tags,omitempty"`
 }

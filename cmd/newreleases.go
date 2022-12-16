@@ -96,7 +96,7 @@ var newReleasesApplyCmd = &cobra.Command{
 		nr := newreleases.FromCfg(cfg.NewReleases)
 		applyOptions := newreleases.ApplyLocalConfigOptions{}
 
-		err := nr.ApplyLocalConfig(cfg.NewReleases, applyOptions)
+		err := nr.ApplyLocalConfig(applyOptions)
 		if err != nil {
 			fmt.Printf("Error when applying %s", err)
 		}
