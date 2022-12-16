@@ -19,7 +19,6 @@ type EmailNotificationCfg string
 type ProjectCfg struct {
 	Name                   string
 	Provider               string
-	URL                    string         `json:"url" yaml:"url" mapstructure:"url"`
 	EmailNotification      string         `json:",omitempty" yaml:",omitempty"`
 	SlackIDs               []string       `json:",omitempty" yaml:",omitempty"`
 	TelegramChatIDs        []string       `json:",omitempty" yaml:",omitempty"`
@@ -64,9 +63,6 @@ func (project ProjectCfg) Equals(other ProjectCfg) bool {
 		return false
 	}
 	if project.Provider != other.Provider {
-		return false
-	}
-	if project.URL != other.URL {
 		return false
 	}
 	if project.EmailNotification != other.EmailNotification {

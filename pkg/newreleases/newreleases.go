@@ -123,7 +123,6 @@ func ProjectToCfg(project newreleases.Project) config.ProjectCfg {
 	return config.ProjectCfg{
 		Name:                   project.Name,
 		Provider:               project.Provider,
-		URL:                    project.URL,
 		SlackIDs:               project.SlackIDs,
 		TelegramChatIDs:        project.TelegramChatIDs,
 		DiscordIDs:             project.DiscordIDs,
@@ -149,7 +148,6 @@ func ProjectFromCfg(nrConfig config.NewReleases, projectCfg config.ProjectCfg) n
 	return newreleases.Project{
 		Name:                   projectCfg.Name,
 		Provider:               projectCfg.Provider,
-		URL:                    projectCfg.URL,
 		EmailNotification:      emailNotification,
 		SlackIDs:               projectCfg.SlackIDs,
 		TelegramChatIDs:        projectCfg.TelegramChatIDs,
