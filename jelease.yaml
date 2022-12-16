@@ -149,6 +149,16 @@ jira:
         {color:#505F79}(i) _Config found for package *{{ .Package }}*,
         but no patches were applied._{color}
 
+newReleases:
+  auth:
+    apiKey: "123"
+  defaults:
+    emailNotification: "none"
+  projects:
+  - name: RiskIdent/jelease
+    provider: github
+    emailNotification: none
+    excludePrereleases: true
 
 # HTTP server settings. The HTTP server is used to accept webhooks from
 # newreleases.io and GitHub.

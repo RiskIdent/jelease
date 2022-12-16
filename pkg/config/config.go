@@ -25,12 +25,13 @@ import (
 )
 
 type Config struct {
-	DryRun   bool `yaml:"dryRun"`
-	Packages []Package
-	GitHub   GitHub
-	Jira     Jira
-	HTTP     HTTP
-	Log      Log
+	DryRun      bool `yaml:"dryRun"`
+	Packages    []Package
+	GitHub      GitHub
+	Jira        Jira
+	NewReleases NewReleases
+	HTTP        HTTP
+	Log         Log
 }
 
 func (c Config) TryFindPackage(pkgName string) (Package, bool) {

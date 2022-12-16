@@ -22,6 +22,7 @@ require (
 	golang.org/x/oauth2 v0.0.0-20221014153046-6fdb5e3db783
 	gopkg.in/typ.v4 v4.2.0
 	gopkg.in/yaml.v3 v3.0.1
+	newreleases.io/newreleases v1.10.0
 )
 
 require (

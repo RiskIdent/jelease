@@ -20,6 +20,9 @@
         "jira": {
           "$ref": "#/$defs/jira"
         },
+        "newReleases": {
+          "$ref": "#/$defs/newReleases"
+        },
         "http": {
           "$ref": "#/$defs/http"
         },
@@ -266,6 +269,81 @@
         "trace"
       ],
       "title": "Logging level"
+    },
+    "newReleases": {
+      "properties": {
+        "auth": {
+          "$ref": "#/$defs/newReleasesAuth"
+        },
+        "projects": {
+          "items": {
+            "$ref": "#/$defs/newReleasesProject"
+          },
+          "type": "array"
+        },
+        "defaults": {
+          "$ref": "#/$defs/newReleasesDefaults"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "newReleasesAuth": {
+      "properties": {
+        "apiKey": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "newReleasesDefaults": {
+      "properties": {
+        "emailNotification": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "newReleasesExclusion": {
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "inverse": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "newReleasesProject": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "emailNotification": {
+          "type": "string"
+        },
+        "excludeVersionRegexp": {
+          "items": {
+            "$ref": "#/$defs/newReleasesExclusion"
+          },
+          "type": "array"
+        },
+        "excludePrereleases": {
+          "type": "boolean"
+        },
+        "excludeUpdated": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
     },
     "package": {
       "properties": {
