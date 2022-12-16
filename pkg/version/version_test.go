@@ -101,7 +101,7 @@ func TestParse_errors(t *testing.T) {
 	}
 }
 
-func TestAdd(t *testing.T) {
+func TestBump(t *testing.T) {
 	tests := []struct {
 		name string
 		a    string
@@ -109,16 +109,34 @@ func TestAdd(t *testing.T) {
 		want string
 	}{
 		{
-			name: "add many",
-			a:    "1",
-			b:    "1.2.3.4",
-			want: "2.2.3.4",
+			name: "bump",
+			a:    "1.2.3",
+			b:    "0.0.1",
+			want: "1.2.4",
 		},
 		{
-			name: "add to many",
+			name: "adds segments",
+			a:    "1",
+			b:    "0.0.0.0",
+			want: "1.0.0.0",
+		},
+		{
+			name: "keeps segments",
 			a:    "1.2.3.4",
-			b:    "1",
-			want: "2.2.3.4",
+			b:    "0",
+			want: "1.2.3.4",
+		},
+		{
+			name: "resets following segments",
+			a:    "1.2.3.4",
+			b:    "0.1.0.0",
+			want: "1.3.0.0",
+		},
+		{
+			name: "resets and bumps following segments",
+			a:    "1.2.3.4",
+			b:    "0.1.1.1",
+			want: "1.3.1.1",
 		},
 		{
 			name: "add prefix",
@@ -168,7 +186,7 @@ func TestAdd(t *testing.T) {
 			if err != nil {
 				t.Errorf("parse %q: %s", tc.b, err)
 			}
-			result := aVer.Add(bVer)
+			result := aVer.Bump(bVer)
 			got := result.String()
 			if got != tc.want {
 				t.Errorf("want %q, got %q", tc.want, got)

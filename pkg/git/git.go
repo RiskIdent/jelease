@@ -17,7 +17,11 @@
 
 package git
 
-import "io"
+import (
+	"io"
+	"os"
+	"path/filepath"
+)
 
 type Git interface {
 	Clone(targetDir, remote string) (Repo, error)
@@ -41,6 +45,11 @@ type Credentials struct {
 	Password string
 }
 
+type Committer struct {
+	Name  string // maps to Git config user.name
+	Email string // maps to Git config user.email
+}
+
 type Commit struct {
 	Hash           string
 	AbbrHash       string
@@ -51,4 +60,16 @@ type Commit struct {
 
 func (c Commit) String() string {
 	return c.Hash
+}
+
+func CloneTemp(g Git, tmpDirPattern, remote string) (Repo, error) {
+	parentDir, filePattern := filepath.Split(tmpDirPattern)
+	if err := os.MkdirAll(parentDir, 0700); err != nil {
+		return nil, err
+	}
+	tmpDir, err := os.MkdirTemp(parentDir, filePattern)
+	if err != nil {
+		return nil, err
+	}
+	return g.Clone(tmpDir, remote)
 }

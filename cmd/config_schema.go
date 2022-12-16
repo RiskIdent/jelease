@@ -20,19 +20,18 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"reflect"
-	"strings"
-	"unicode"
+	"os"
 
-	"github.com/invopop/jsonschema"
+	"github.com/RiskIdent/jelease/pkg/config"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
 var configSchemaFlags = struct {
-	version  string
+	output   string
 	indented bool
 }{
-	version:  jsonschema.Version,
+	output:   "-",
 	indented: true,
 }
 
@@ -41,48 +40,27 @@ var configSchemaCmd = &cobra.Command{
 	Use:   "schema",
 	Short: "Prints the JSON schema for the config file",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		jsonschema.Version = configSchemaFlags.version
-		r := new(jsonschema.Reflector)
-		r.KeyNamer = toCamelCase
-		r.Namer = func(t reflect.Type) string {
-			return toCamelCase(t.Name())
-		}
-		r.RequiredFromJSONSchemaTags = true
-		s := r.Reflect(&cfg)
-		s.ID = "https://github.com/RiskIdent/jelease/raw/main/jelease.schema.json"
+		s := config.Schema()
 		data, err := marshalJSON(s, configSchemaFlags.indented)
 		if err != nil {
 			return err
 		}
-		fmt.Println(string(data))
+		if configSchemaFlags.output == "-" {
+			fmt.Println(string(data))
+			return nil
+		}
+		if err := os.WriteFile(configSchemaFlags.output, data, 0644); err != nil {
+			return err
+		}
+		log.Info().
+			Str("file", configSchemaFlags.output).
+			Msg("Written config JSON Schema to file.")
 		return nil
 	},
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Intentionally overrides the config loading from root.go
 		return nil
 	},
-}
-
-var camelCaseReplacer = strings.NewReplacer(
-	"ID", "Id",
-	"URL", "Url",
-	"HTTP", "Http",
-	"JSON", "Json",
-	"JQ", "Jq",
-	"YAML", "Yaml",
-	"YQ", "Yq",
-	"GitHub", "Github",
-	"PR", "Pr",
-)
-
-func toCamelCase(s string) string {
-	if len(s) == 0 {
-		return s
-	}
-	s = camelCaseReplacer.Replace(s)
-	b := []byte(s)
-	b[0] = byte(unicode.ToLower(rune(b[0])))
-	return string(b)
 }
 
 func marshalJSON(v any, indented bool) ([]byte, error) {
@@ -95,6 +73,6 @@ func marshalJSON(v any, indented bool) ([]byte, error) {
 func init() {
 	configCmd.AddCommand(configSchemaCmd)
 
-	configSchemaCmd.Flags().StringVar(&configSchemaFlags.version, "version", configSchemaFlags.version, "JSON schema version")
 	configSchemaCmd.Flags().BoolVarP(&configSchemaFlags.indented, "indent", "i", configSchemaFlags.indented, "Print indented output")
+	configSchemaCmd.Flags().StringVarP(&configSchemaFlags.output, "output", "o", configSchemaFlags.output, `Write output to file, or "-" to write to console`)
 }

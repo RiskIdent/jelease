@@ -18,17 +18,29 @@
 package config
 
 import (
+	"reflect"
+
+	"github.com/RiskIdent/jelease/pkg/util"
 	"github.com/invopop/jsonschema"
 )
 
 type Config struct {
-	DryRun      bool
+	DryRun      bool `yaml:"dryRun"`
 	Packages    []Package
 	GitHub      GitHub
 	Jira        Jira
 	NewReleases NewReleases
 	HTTP        HTTP
 	Log         Log
+}
+
+func (c Config) TryFindPackage(pkgName string) (Package, bool) {
+	for _, pkg := range c.Packages {
+		if pkg.Name == pkgName {
+			return pkg, true
+		}
+	}
+	return Package{}, false
 }
 
 type Package struct {
@@ -58,7 +70,7 @@ type PatchYQ struct {
 
 type GitHub struct {
 	URL     *string `jsonschema:"oneof_type=string;null" jsonschema_extras:"format=uri"`
-	TempDir *string `jsonschema:"oneof_type=string;null" jsonschema_extras:"format=uri"`
+	TempDir *string `yaml:"tempDir" jsonschema:"oneof_type=string;null" jsonschema_extras:"format=uri"`
 	Auth    GitHubAuth
 	PR      GitHubPR
 }
@@ -72,11 +84,18 @@ type GitHubPR struct {
 	Title       *Template
 	Description *Template
 	Branch      *Template
+	Commit      *Template
+	Committer   GitHubCommitter
+}
+
+type GitHubCommitter struct {
+	Name  *string `jsonschema:"oneof_type=string;null"`
+	Email *string `jsonschema:"oneof_type=string;null" jsonschema_extras:"format=idn-email"`
 }
 
 type Jira struct {
 	URL            string `jsonschema_extras:"format=uri"`
-	SkipCertVerify bool
+	SkipCertVerify bool   `yaml:"skipCertVerify"`
 	Auth           JiraAuth
 	Issue          JiraIssue
 }
@@ -94,7 +113,17 @@ type JiraIssue struct {
 	Description            string
 	Type                   string
 	Project                string
-	ProjectNameCustomField uint
+	ProjectNameCustomField uint `yaml:"projectNameCustomField"`
+
+	Comments JiraIssueComments
+}
+
+type JiraIssueComments struct {
+	UpdatedIssue *Template `yaml:"updatedIssue"`
+	NoConfig     *Template `yaml:"noConfig"`
+	NoPatches    *Template `yaml:"noPatches"`
+	PRCreated    *Template `yaml:"prCreated"`
+	PRFailed     *Template `yaml:"prFailed"`
 }
 
 type HTTP struct {
@@ -108,4 +137,16 @@ type Log struct {
 
 type jsonSchemaInterface interface {
 	JSONSchema() *jsonschema.Schema
+}
+
+func Schema() *jsonschema.Schema {
+	r := new(jsonschema.Reflector)
+	r.KeyNamer = util.ToCamelCase
+	r.Namer = func(t reflect.Type) string {
+		return util.ToCamelCase(t.Name())
+	}
+	r.RequiredFromJSONSchemaTags = true
+	s := r.Reflect(&Config{})
+	s.ID = "https://github.com/RiskIdent/jelease/raw/main/jelease.schema.json"
+	return s
 }

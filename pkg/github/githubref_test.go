@@ -15,117 +15,45 @@
 // You should have received a copy of the GNU General Public License along
 // with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package cmd
+package github
 
 import (
-	"regexp"
 	"testing"
-	"text/template"
-
-	"github.com/RiskIdent/jelease/pkg/config"
 )
 
-func TestConcat(t *testing.T) {
-	tests := []struct {
-		a, b []int
-		want []int
-	}{
-		{
-			a:    nil,
-			b:    nil,
-			want: nil,
-		},
-		{
-			a:    []int{1},
-			b:    nil,
-			want: []int{1},
-		},
-		{
-			a:    nil,
-			b:    []int{1},
-			want: []int{1},
-		},
-		{
-			a:    []int{1, 2},
-			b:    []int{3, 4},
-			want: []int{1, 2, 3, 4},
-		},
-	}
-
-	for _, tc := range tests {
-		got := concat(tc.a, tc.b)
-		if !slicesEqual(tc.want, got) {
-			t.Errorf("%v + %v: want %v, got %v", tc.a, tc.b, tc.want, got)
-		}
-	}
-}
-
-func TestPatchSingleLineRegex(t *testing.T) {
-	line := []byte("<<my-pkg v0.1.0>>")
-	patch := config.PatchRegex{
-		Match:   newRegex(t, `(my-pkg) v0.1.0`),
-		Replace: newTemplate(t, `{{ index .Groups 1 }} {{ .Version }}`),
-	}
-
-	version := "v1.2.3"
-
-	newLine, err := patchSingleLineRegex(patch, version, line)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	got := string(newLine)
-	want := "<<my-pkg v1.2.3>>"
-
-	if got != want {
-		t.Errorf("want %q, got %q", want, got)
-	}
-}
-
-func newRegex(t *testing.T, text string) *config.RegexPattern {
-	r, err := regexp.Compile(`(my-pkg) v0.1.0`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return (*config.RegexPattern)(r)
-}
-
-func newTemplate(t *testing.T, text string) *config.Template {
-	tmpl, err := template.New("").Parse(text)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return (*config.Template)(tmpl)
-}
-
-func TestGetGitHubRepoRef(t *testing.T) {
+func TestGetRepoRef(t *testing.T) {
 	tests := []struct {
 		name      string
 		remote    string
+		wantURL   string
 		wantOwner string
 		wantRepo  string
 	}{
 		{
 			name:      "regular",
 			remote:    "https://github.com/RiskIdent/jelease",
+			wantURL:   "https://github.com/RiskIdent/jelease",
 			wantOwner: "RiskIdent",
 			wantRepo:  "jelease",
 		},
 		{
 			name:      "with .git",
 			remote:    "https://github.com/RiskIdent/jelease.git",
+			wantURL:   "https://github.com/RiskIdent/jelease",
 			wantOwner: "RiskIdent",
 			wantRepo:  "jelease",
 		},
 		{
 			name:      "enterprise",
-			remote:    "https://some-github-enterprise.example.com/RiskIdent/jelease.git?ignore=this#please",
+			remote:    "https://some-github-enterprise.example.com/RiskIdent/jelease",
+			wantURL:   "https://some-github-enterprise.example.com/RiskIdent/jelease",
 			wantOwner: "RiskIdent",
 			wantRepo:  "jelease",
 		},
 		{
 			name:      "ignores extra stuff",
 			remote:    "https://some-github-enterprise.example.com/RiskIdent/jelease.git/woa?ignore=this#please",
+			wantURL:   "https://some-github-enterprise.example.com/RiskIdent/jelease",
 			wantOwner: "RiskIdent",
 			wantRepo:  "jelease",
 		},
@@ -133,7 +61,7 @@ func TestGetGitHubRepoRef(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := getGitHubRepoRef(tc.remote)
+			got, err := ParseRepoRef(tc.remote)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -145,16 +73,4 @@ func TestGetGitHubRepoRef(t *testing.T) {
 			}
 		})
 	}
-}
-
-func slicesEqual[S ~[]E, E comparable](a, b S) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i, value := range a {
-		if value != b[i] {
-			return false
-		}
-	}
-	return true
 }

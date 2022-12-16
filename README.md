@@ -4,9 +4,11 @@ SPDX-FileCopyrightText: 2022 Risk.Ident GmbH <contact@riskident.com>
 SPDX-License-Identifier: CC-BY-4.0
 -->
 
-<img align="right" src="./docs/new-release-128.png" alt="new-release icon"/>
+<p align="center">
+  <img src="./docs/jelease-gopher-card-512.jpg" alt="jelease gopher logo"/>
+</p>
 
-# jelease - A newreleases.io ➡️ Jira connector
+<h1 align="center">jelease - A newreleases.io ➡️ Jira connector</h1>
 
 [![REUSE status](https://api.reuse.software/badge/github.com/RiskIdent/jelease)](https://api.reuse.software/info/github.com/RiskIdent/jelease)
 
@@ -15,40 +17,118 @@ is detected using webhooks.
 
 ## Configuration
 
-The application requires the following environment variables to be set:
+Jelease is configured via YAML files.
+See [`jelease.yaml`](./jelease.yaml) for the default values.
 
-<!--lint disable maximum-line-length-->
+### Configuration files
 
-- Connection and authentication
+Jelease looks for config files in multiple locations, where the latter overrides
+config fields from the former.
 
-  - `JELEASE_AUTH_TYPE`: One of \[pat, token]. Determines whether to authenticate using personal access token (on premise) or jira api token (jira cloud)
-  - `JELEASE_JIRA_TOKEN`: Jira API token, can also be a password in self-hosted instances
-  - `JELEASE_JIRA_URL`: The URL of your Jira instance
-  - `JELEASE_JIRA_USER`: Jira username to authenticate API requests
-  - `JELEASE_PORT`: The port the application is expecting traffic on
-  - `JELEASE_INSECURE_SKIP_CERT_VERIFY`: Skips verification of Jira server certs when performing http requests.
+On Linux:
 
-- Jira ticket creation:
+1. Default values *(see [`jelease.yaml`](./jelease.yaml))*
+2. `/etc/jelease/jelease.yaml`
+3. `~/.config/jelease.yaml`
+4. `~/.jelease.yaml`
+5. `jelease.yaml` *(in current directory)*
 
-  - `JELEASE_ADD_LABELS`: Comma-separated list of labels to add to the created jira ticket
-  - `JELEASE_DEFAULT_STATUS`: The status the created tickets are supposed to have
-  - `JELEASE_DRY_RUN`: Don't create tickets, log when a ticket would be created
-  - `JELEASE_ISSUE_DESCRIPTION`: The description for created issues
-  - `JELEASE_ISSUE_TYPE`: The issue type for created issues. E.g `Task`, `Story` (default), or `Bug`
-  - `JELEASE_PROJECT`: Jira Project key the tickets will be created in
-  - `JELEASE_PROJECT_NAME_CUSTOM_FIELD`: Custom field ID (uint) to store project ID in. If left at 0 (default) then Jelease will use labels instead.
-  - `JELEASE_LOG_FORMAT`: Logging format. One of: `pretty` (default), `json`
-  - `JELEASE_LOG_LEVEL`: Logging minimum level/severity. One of: `trace`, `debug` (default), `info`, `warn`, `error`, `fatal`, `panic`
+On Windows:
 
-<!--lint enable maximum-line-length-->
+1. Default values *(see [`jelease.yaml`](./jelease.yaml))*
+2. `%APPDATA%/jelease.yaml`
+3. `%USERPROFILE%/.jelease.yaml`
+4. `jelease.yaml` *(in current directory)*
 
-They can also be specified using a `.env` file in the application directory.
+On Mac:
+
+1. Default values *(see [`jelease.yaml`](./jelease.yaml))*
+2. `/etc/jelease/jelease.yaml`
+3. `~/Library/Application Support/jelease.yaml`
+4. `~/.jelease.yaml`
+5. `jelease.yaml` *(in current directory)*
+
+### JSON Schema
+
+There's also a [JSON Schema](https://json-schema.org/) for the config file,
+which gives you warnings and completion support inside your IDE.
+
+Make use of it via e.g:
+
+- [YAML extension](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml)
+  for [VS Code](https://code.visualstudio.com/).
+
+- [coc-yaml plugin](https://github.com/neoclide/coc-yaml)
+  for [coc.nvim](https://github.com/neoclide/coc.nvim),
+  an extension framework for both Vim and NeoVim.
+
+To make use of it, add the following comment to the beginning of your
+config file:
+
+```yaml
+# yaml-language-server: $schema=https://github.com/RiskIdent/jelease/raw/main/jelease.schema.json
+```
 
 ## Local usage
 
-1. Populate a `.env` file with configuration values
-2. `go run main.go` / `./jelease`
-3. Direct newreleases.io webhooks to the `host:port/webhook` route.
+1. Create a GitHub PAT (e.g on <https://github.com/settings/tokens>)
+
+2. Create a local config file, e.g at `~/.config/jelease.yaml`
+
+3. Add your local config to test with, including your newly generated PAT. E.g:
+
+   ```yaml
+   # yaml-language-server: $schema=https://github.com/RiskIdent/jelease/raw/main/jelease.schema.json
+
+   packages:
+     - name: neuvector
+       repos:
+         - url: https://github.example.com/some-org/some-repo
+           patches:
+             - file: helm/charts/ri-neuvector/Chart.yaml
+               regex:
+                 match: '^appVersion: .*'
+                 replace: 'appVersion: {{ .Version }}'
+             - file: helm/charts/ri-neuvector/Chart.yaml
+               regex:
+                 match: '^version: (.*)'
+                 replace: 'version: {{ index .Groups 1 | versionBump "0.0.1" }}'
+
+   github:
+     url: https://github.example.com
+
+     auth:
+       type: pat
+       token: ghp_loremipsum
+   ```
+
+4. Test that your local config is read correctly:
+
+   ```bash
+   go run . config
+   ```
+
+5. Run Jelease locally, e.g:
+
+   ```bash
+   # To test applying changes
+   go run . apply neuvector v1.2.3 --dryrun
+
+   # To test creating PRs
+   go run . apply neuvector v1.2.3
+
+   # To test the webhook receiver server, without creating issues or PRs
+   go run . serve --dryrun
+
+   # To test the webhook receiver server, with creating issues and PRs
+   go run . serve --dryrun
+   ```
+
+6. To test out the webhooks, you can make use of our example webhook like so:
+
+   ```bash
+   curl localhost:8080/webhook -d @examples/newreleasesio-webhook.json
+   ```
 
 ## Building the application and docker image
 
@@ -77,7 +157,10 @@ REGISTRY=docker.io/my-username
 
 ## Logo
 
-[New-release icons created by berkahicon - Flaticon](https://www.flaticon.com/free-icons/new-release)
+The gopher logo is designed by Kristin Weyand, an employee at [Risk.Ident](https://riskident.com).
+
+The gopher logo of Jelease was inspired by the original Go gopher,
+designed by [Renee French](https://reneefrench.blogspot.com/).
 
 ## License
 
@@ -87,6 +170,7 @@ Different licenses are used for different files. In general:
 
 - Go code is licensed under GNU General Public License v3.0 or later ([LICENSES/GPL-3.0-or-later.txt](LICENSES/GPL-3.0-or-later.txt)).
 - Documentation licensed under Creative Commons Attribution 4.0 International ([LICENSES/CC-BY-4.0.txt](LICENSES/CC-BY-4.0.txt)).
+- The logo is licensed under Creative Commons Attribution 4.0 International ([LICENSES/CC-BY-4.0.txt](LICENSES/CC-BY-4.0.txt)).
 - Miscellaneous files, e.g `.gitignore`, are licensed under CC0 1.0 Universal ([LICENSES/CC0-1.0.txt](LICENSES/CC0-1.0.txt)).
 
 Please see each file's header or accompanied `.license` file for specifics.

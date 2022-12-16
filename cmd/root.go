@@ -22,10 +22,12 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime/debug"
 	"strings"
 	"text/template"
 
 	"github.com/RiskIdent/jelease/pkg/config"
+	"github.com/RiskIdent/jelease/pkg/util"
 	"github.com/RiskIdent/jelease/pkg/version"
 	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog"
@@ -36,6 +38,9 @@ import (
 
 var (
 	cfg config.Config
+
+	appVersion string // may be set via `go build` flags
+	goVersion  string
 )
 
 var rootCmd = &cobra.Command{
@@ -43,6 +48,10 @@ var rootCmd = &cobra.Command{
 	SilenceErrors: true,
 	SilenceUsage:  true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		log.Debug().
+			Str("go", goVersion).
+			Str("version", appVersion).
+			Msg("Jelease")
 		return configSetup()
 	},
 }
@@ -59,7 +68,7 @@ func Execute(defaultConfig config.Config) {
 	rootCmd.PersistentFlags().String("jira.issue.type", cfg.Jira.Issue.Type, "Jira issue type on created issues")
 	rootCmd.PersistentFlags().String("jira.issue.project", cfg.Jira.Issue.Project, `Jira project name to search for issues in (example: "OP")`)
 	rootCmd.PersistentFlags().Uint16("http.port", cfg.HTTP.Port, "Which HTTP port to run the server on.")
-	rootCmd.PersistentFlags().String("github.tempdir", deref(cfg.GitHub.TempDir, os.TempDir()), "Which folder to clone repositories into")
+	rootCmd.PersistentFlags().String("github.tempdir", util.Deref(cfg.GitHub.TempDir, os.TempDir()), "Which folder to clone repositories into")
 	rootCmd.PersistentFlags().Bool("dryrun", cfg.DryRun, "Do not alter any state, e.g skip creating Jira tickets or GitHub PRs")
 	rootCmd.PersistentFlags().Var(&cfg.Log.Level, "log.level", "Sets the logging level")
 	rootCmd.PersistentFlags().Var(&cfg.Log.Format, "log.format", "Sets the logging format")
@@ -75,6 +84,18 @@ func Execute(defaultConfig config.Config) {
 }
 
 func init() {
+	if buildInfo, ok := debug.ReadBuildInfo(); ok {
+		if appVersion == "" {
+			appVersion = buildInfo.Main.Version
+		}
+		goVersion = strings.TrimPrefix(buildInfo.GoVersion, "go")
+	} else {
+	}
+	if appVersion == "" {
+		appVersion = "unknown"
+	}
+	rootCmd.Version = appVersion
+
 	// config.FuncsMap must be set before the first time the config is parsed,
 	// which happens first in the main() function in main.go (in repo root)
 
@@ -96,7 +117,7 @@ func init() {
 			if err != nil {
 				panic(fmt.Sprintf("parse version %q: %s", to, err))
 			}
-			return toVer.Add(addVer).String()
+			return toVer.Bump(addVer).String()
 		},
 		"sanitizePath": func(path string) string {
 			path = strings.ToLower(path)
@@ -163,7 +184,7 @@ func configSetup() error {
 
 func loggerSetup() error {
 	pretty := log.Output(zerolog.ConsoleWriter{
-		Out:        os.Stdout,
+		Out:        os.Stderr,
 		TimeFormat: "Jan-02 15:04",
 	})
 	switch cfg.Log.Format {

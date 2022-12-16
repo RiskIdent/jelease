@@ -73,11 +73,21 @@ func (v Version) String() string {
 	return string(buf)
 }
 
-func (v Version) Add(other Version) Version {
+func (v Version) Bump(other Version) Version {
 	max := typ.Max(len(v.Segments), len(other.Segments))
 	segments := make([]uint, max)
+	var resetFollowing bool
 	for i := 0; i < max; i++ {
-		segments[i] = indexOrZero(v.Segments, i) + indexOrZero(other.Segments, i)
+		add := indexOrZero(other.Segments, i)
+		switch {
+		case resetFollowing:
+			segments[i] = add
+		case add > 0:
+			resetFollowing = true
+			fallthrough
+		default:
+			segments[i] = indexOrZero(v.Segments, i) + add
+		}
 	}
 	return Version{
 		Prefix:   other.Prefix,

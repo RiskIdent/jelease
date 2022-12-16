@@ -6,7 +6,7 @@
 all: jelease.schema.json
 
 jelease.schema.json: pkg/config/*.go cmd/config_schema.go
-	go run . config schema > jelease.schema.json
+	go run . config schema --output jelease.schema.json
 
 .PHONY: test
 test:

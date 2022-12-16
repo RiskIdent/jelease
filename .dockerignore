@@ -1,0 +1,38 @@
+# SPDX-FileCopyrightText: 2022 Risk.Ident GmbH <contact@riskident.com>
+#
+# SPDX-License-Identifier: CC0-1.0
+
+tmp
+.env*
+build
+
+# Files not needed during builds
+.dockerignore
+.gitignore
+Earthfile
+**/*.md
+**/*.license
+LICENSES
+.remarkrc
+
+# from https://github.com/github/gitignore/blob/main/Go.gitignore
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Go workspace file
+go.work
+
+# NPM
+node_modules
+package-lock.json
+package.json
