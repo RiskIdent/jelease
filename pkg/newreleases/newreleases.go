@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/RiskIdent/jelease/pkg/config"
+	"github.com/RiskIdent/jelease/pkg/util"
 	"gopkg.in/yaml.v3"
 	"newreleases.io/newreleases"
 )
@@ -31,12 +32,12 @@ import (
 // Abstraction over the newreleases go v1 api
 type NewReleases struct {
 	client        *newreleases.Client
-	localProjects []config.ProjectCfg
+	localProjects []config.NewReleasesProject
 	defaults      config.NewReleasesDefaults
 }
 
 func FromCfg(cfg config.NewReleases) NewReleases {
-	client := newreleases.NewClient(cfg.Auth.Key, nil)
+	client := newreleases.NewClient(cfg.Auth.APIKey, nil)
 	return NewReleases{
 		client,
 		cfg.Projects,
@@ -62,7 +63,7 @@ func (nr NewReleases) getProjects() ([]newreleases.Project, error) {
 	return projects, nil
 }
 
-func mergeDefaults(projects []config.ProjectCfg, nrDefaults config.NewReleasesDefaults) []config.ProjectCfg {
+func mergeDefaults(projects []config.NewReleasesProject, nrDefaults config.NewReleasesDefaults) []config.NewReleasesProject {
 	for i, project := range projects {
 		if project.EmailNotification == "" {
 			project.EmailNotification = nrDefaults.EmailNotification
@@ -100,16 +101,16 @@ func (nr NewReleases) Diff() (*ProjectDiff, error) {
 	return &diff, nil
 }
 
-func mapFromSlice(slice []config.ProjectCfg) map[string]config.ProjectCfg {
-	projectMap := make(map[string]config.ProjectCfg, len(slice))
+func mapFromSlice(slice []config.NewReleasesProject) map[string]config.NewReleasesProject {
+	projectMap := make(map[string]config.NewReleasesProject, len(slice))
 	for _, project := range slice {
 		projectMap[project.Name] = project
 	}
 	return projectMap
 }
 
-func SliceFromMap(projectMap map[string]config.ProjectCfg) []config.ProjectCfg {
-	projectSlice := make([]config.ProjectCfg, len(projectMap))
+func SliceFromMap(projectMap map[string]config.NewReleasesProject) []config.NewReleasesProject {
+	projectSlice := make([]config.NewReleasesProject, len(projectMap))
 	i := 0
 	for _, project := range projectMap {
 		projectSlice[i] = project
@@ -118,29 +119,29 @@ func SliceFromMap(projectMap map[string]config.ProjectCfg) []config.ProjectCfg {
 	return projectSlice
 }
 
-func ExclusionToCfg(exclusion newreleases.Exclusion) config.ExclusionCfg {
-	return config.ExclusionCfg{
+func ExclusionToCfg(exclusion newreleases.Exclusion) config.NewReleasesExclusion {
+	return config.NewReleasesExclusion{
 		Value:   exclusion.Value,
 		Inverse: exclusion.Inverse,
 	}
 }
 
-func ExclusionFromCfg(exclusionCfg config.ExclusionCfg) newreleases.Exclusion {
+func ExclusionFromCfg(exclusionCfg config.NewReleasesExclusion) newreleases.Exclusion {
 	return newreleases.Exclusion{
 		Value:   exclusionCfg.Value,
 		Inverse: exclusionCfg.Inverse,
 	}
 }
 
-func ExclusionSliceToCfg(exclusions []newreleases.Exclusion) []config.ExclusionCfg {
-	exclusionConfigs := make([]config.ExclusionCfg, len(exclusions))
+func ExclusionSliceToCfg(exclusions []newreleases.Exclusion) []config.NewReleasesExclusion {
+	exclusionConfigs := make([]config.NewReleasesExclusion, len(exclusions))
 	for i, exclusion := range exclusions {
 		exclusionConfigs[i] = ExclusionToCfg(exclusion)
 	}
 	return exclusionConfigs
 }
 
-func ExclusionSliceFromCfg(exclusions []config.ExclusionCfg) []newreleases.Exclusion {
+func ExclusionSliceFromCfg(exclusions []config.NewReleasesExclusion) []newreleases.Exclusion {
 	exclusionConfigs := make([]newreleases.Exclusion, len(exclusions))
 	for i, exclusion := range exclusions {
 		exclusionConfigs[i] = ExclusionFromCfg(exclusion)
@@ -148,21 +149,19 @@ func ExclusionSliceFromCfg(exclusions []config.ExclusionCfg) []newreleases.Exclu
 	return exclusionConfigs
 }
 
-func ProjectToCfg(project newreleases.Project) config.ProjectCfg {
-	return config.ProjectCfg{
+func ProjectToCfg(project newreleases.Project) config.NewReleasesProject {
+	return config.NewReleasesProject{
 		Name:               project.Name,
 		EmailNotification:  string(project.EmailNotification),
 		Provider:           project.Provider,
-		WebhookIDs:         project.WebhookIDs,
 		Exclusions:         ExclusionSliceToCfg(project.Exclusions),
 		ExcludePrereleases: project.ExcludePrereleases,
 		ExcludeUpdated:     project.ExcludeUpdated,
-		Note:               project.Note,
 	}
 }
 
-func ProjectSliceToCfg(projects []newreleases.Project) []config.ProjectCfg {
-	projectCfgs := make([]config.ProjectCfg, len(projects))
+func ProjectSliceToCfg(projects []newreleases.Project) []config.NewReleasesProject {
+	projectCfgs := make([]config.NewReleasesProject, len(projects))
 	for i, project := range projects {
 		projectCfgs[i] = ProjectToCfg(project)
 	}
@@ -172,18 +171,18 @@ func ProjectSliceToCfg(projects []newreleases.Project) []config.ProjectCfg {
 // A diff over local and remote newreleases.io [ProjectCfg] configuration
 // Contains hashmaps that have to be initialized. Create a new object with [NewProjectDiff]
 type ProjectDiff struct {
-	Identical       map[string]config.ProjectCfg
-	MissingOnLocal  map[string]config.ProjectCfg
-	MissingOnRemote map[string]config.ProjectCfg
+	Identical       map[string]config.NewReleasesProject
+	MissingOnLocal  map[string]config.NewReleasesProject
+	MissingOnRemote map[string]config.NewReleasesProject
 	Diverged        map[string]ProjectTuple
 }
 
 // Creates a ProjectDiff and initialized the contained maps
 func InitProjectDiff() ProjectDiff {
 	return ProjectDiff{
-		Identical:       make(map[string]config.ProjectCfg),
-		MissingOnLocal:  make(map[string]config.ProjectCfg),
-		MissingOnRemote: make(map[string]config.ProjectCfg),
+		Identical:       make(map[string]config.NewReleasesProject),
+		MissingOnLocal:  make(map[string]config.NewReleasesProject),
+		MissingOnRemote: make(map[string]config.NewReleasesProject),
 		Diverged:        make(map[string]ProjectTuple),
 	}
 }
@@ -233,7 +232,7 @@ func (diff ProjectDiff) DescribeDiverged() (string, error) {
 }
 
 type ProjectTuple struct {
-	local, remote config.ProjectCfg
+	local, remote config.NewReleasesProject
 }
 
 type ApplyLocalConfigOptions struct {
@@ -249,11 +248,11 @@ func (nr NewReleases) ApplyLocalConfig(options ApplyLocalConfigOptions) error {
 	for _, projectCfg := range diff.MissingOnRemote {
 		projectOptions := newreleases.ProjectOptions{
 			EmailNotification:  (*newreleases.EmailNotification)(&projectCfg.EmailNotification),
-			WebhookIDs:         projectCfg.WebhookIDs,
+			WebhookIDs:         []string{},
 			Exclusions:         ExclusionSliceFromCfg(projectCfg.Exclusions),
 			ExcludePrereleases: &projectCfg.ExcludePrereleases,
 			ExcludeUpdated:     &projectCfg.ExcludeUpdated,
-			Note:               &projectCfg.Note,
+			Note:               util.Ref(""),
 			TagIDs:             []string{},
 		}
 		_, err := nr.client.Projects.Add(context.Background(), projectCfg.Provider, projectCfg.Name, &projectOptions)

@@ -33,18 +33,6 @@
       "additionalProperties": false,
       "type": "object"
     },
-    "exclusionCfg": {
-      "properties": {
-        "value": {
-          "type": "string"
-        },
-        "inverse": {
-          "type": "boolean"
-        }
-      },
-      "additionalProperties": false,
-      "type": "object"
-    },
     "github": {
       "properties": {
         "url": {
@@ -289,15 +277,12 @@
         },
         "projects": {
           "items": {
-            "$ref": "#/$defs/projectCfg"
+            "$ref": "#/$defs/newReleasesProject"
           },
           "type": "array"
         },
         "defaults": {
           "$ref": "#/$defs/newReleasesDefaults"
-        },
-        "webhook": {
-          "type": "string"
         }
       },
       "additionalProperties": false,
@@ -305,7 +290,7 @@
     },
     "newReleasesAuth": {
       "properties": {
-        "key": {
+        "apiKey": {
           "type": "string"
         }
       },
@@ -316,6 +301,45 @@
       "properties": {
         "emailNotification": {
           "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "newReleasesExclusion": {
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "inverse": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "newReleasesProject": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "emailNotification": {
+          "type": "string"
+        },
+        "excludeVersionRegexp": {
+          "items": {
+            "$ref": "#/$defs/newReleasesExclusion"
+          },
+          "type": "array"
+        },
+        "excludePrereleases": {
+          "type": "boolean"
+        },
+        "excludeUpdated": {
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -408,42 +432,6 @@
       "required": [
         "expression"
       ]
-    },
-    "projectCfg": {
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "provider": {
-          "type": "string"
-        },
-        "emailNotification": {
-          "type": "string"
-        },
-        "webhookIds": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "excludeVersionRegexp": {
-          "items": {
-            "$ref": "#/$defs/exclusionCfg"
-          },
-          "type": "array"
-        },
-        "excludePrereleases": {
-          "type": "boolean"
-        },
-        "excludeUpdated": {
-          "type": "boolean"
-        },
-        "note": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": false,
-      "type": "object"
     },
     "regexPattern": {
       "type": "string",
