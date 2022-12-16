@@ -56,6 +56,30 @@ var newReleasesDiffDivergedCmd = &cobra.Command{
 	Use:   "diverged",
 	Short: "Show details about the diverged project configurations",
 	Run: func(cmd *cobra.Command, args []string) {
+		var (
+			colorLocal    = color.New(color.FgGreen)
+			colorRemote   = color.New(color.FgHiBlue)
+			colorStandard = color.New(color.FgWhite)
+		)
+		colorize := func(diff string) string {
+			lines := strings.Split(diff, "\n")
+			var currentColor *color.Color
+			for i, line := range lines {
+
+				if strings.HasPrefix(line, "local") {
+					currentColor = colorLocal
+				} else if strings.HasPrefix(line, "remote") {
+					currentColor = colorRemote
+				} else if strings.HasPrefix(line, "project") {
+					currentColor = colorStandard
+				}
+				if currentColor != nil {
+					lines[i] = currentColor.Sprint(line)
+				}
+			}
+			return strings.Join(lines, "\n")
+		}
+
 		client := newreleases.FromCfg(cfg.NewReleases)
 		diff, err := client.Diff()
 		if err != nil {
@@ -66,7 +90,7 @@ var newReleasesDiffDivergedCmd = &cobra.Command{
 		if err != nil {
 			fmt.Printf("Error while describing diverged issues: %s", err)
 		}
-		fmt.Println(description)
+		fmt.Println(colorize(description))
 	},
 }
 
@@ -100,7 +124,6 @@ var newReleasesApplyCmd = &cobra.Command{
 		if err != nil {
 			fmt.Printf("Error when applying %s", err)
 		}
-
 	},
 }
 

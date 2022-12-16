@@ -14,17 +14,14 @@ type NewReleasesAuth struct {
 }
 
 type NewReleasesDefaults struct {
-	EmailNotification string `yaml:"emailNotifications"`
+	EmailNotification string `json:"emailNotification" yaml:"emailNotification" mapstructure:"emailNotification"`
 }
 
-// type EmailNotificationCfg string
-
-// Omits some field of [newreleases.io/newreleases/Project] that we don't want to store
-// namely, this omits the ID field and the tagIDs field
+// Similar to [newreleases.io/newreleases/Project] but omits some fields that we don't want to store or compare
 type ProjectCfg struct {
 	Name               string
 	Provider           string
-	EmailNotification  string         `json:",omitempty" yaml:",omitempty"`
+	EmailNotification  string         `json:"emailNotification,omitempty" yaml:"emailNotification,omitempty" mapstructure:"emailNotification"`
 	WebhookIDs         []string       `json:",omitempty" yaml:",omitempty"`
 	Exclusions         []ExclusionCfg `json:"excludeVersionRegexp,omitempty" yaml:"excludeVersionRegexp,omitempty" mapstructure:"excludeVersionRegexp"`
 	ExcludePrereleases bool           `json:"excludePrereleases,omitempty" yaml:"excludePrereleases,omitempty" mapstructure:"excludePrereleases"`
