@@ -59,10 +59,14 @@ var newReleasesDiffDivergedCmd = &cobra.Command{
 		client := newreleases.FromCfg(cfg.NewReleases)
 		diff, err := client.Diff()
 		if err != nil {
-			fmt.Printf("Error while diffing: %q", err)
+			fmt.Printf("Error while diffing: %q\n", err)
 
 		}
-		fmt.Println(diff.DescribeDiverged())
+		description, err := diff.DescribeDiverged()
+		if err != nil {
+			fmt.Printf("Error while describing diverged issues: %s", err)
+		}
+		fmt.Println(description)
 	},
 }
 
