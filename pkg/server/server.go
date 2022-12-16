@@ -85,7 +85,7 @@ func (s HTTPServer) handlePostWebhook(c *gin.Context) {
 		return
 	}
 
-	tryApplyChanges(s.jira, release, issueRef.IssueRef, s.cfg)
+	go tryApplyChanges(s.jira, release, issueRef.IssueRef, s.cfg)
 
 	// NOTE: always return OK, otherwise newreleases.io will retry
 	c.Status(http.StatusOK)
