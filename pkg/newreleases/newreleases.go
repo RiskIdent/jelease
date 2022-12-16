@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/RiskIdent/jelease/pkg/config"
+	"gopkg.in/yaml.v3"
 	"newreleases.io/newreleases"
 )
 
@@ -218,21 +219,33 @@ func (diff ProjectDiff) Summary() string {
 	}
 	sb.WriteString("\n")
 	sb.WriteString("These configurations have diverged: (requires manual fix)\n")
-	for missingName, _ := range diff.Diverged {
+	for missingName := range diff.Diverged {
 		sb.WriteString(fmt.Sprintf("! %s\n", missingName))
 	}
 
 	return sb.String()
 }
 
-func (diff ProjectDiff) DescribeDiverged() string {
+func (diff ProjectDiff) DescribeDiverged() (string, error) {
 	var sb strings.Builder
 	for projectName, divergedTuple := range diff.Diverged {
+
 		sb.WriteString(fmt.Sprintf("project %s\n", projectName))
-		sb.WriteString(fmt.Sprintf("local:\n%+v\nremote:\n%+v\n---\n", divergedTuple.local, divergedTuple.remote))
+		localYaml, err := yaml.Marshal(divergedTuple.local)
+		if err != nil {
+			return "", err
+		}
+		remoteYaml, err := yaml.Marshal(divergedTuple.remote)
+		if err != nil {
+			return "", err
+		}
+		sb.WriteString("local:\n")
+		sb.WriteString(string(localYaml))
+		sb.WriteString("remote:\n")
+		sb.WriteString(string(remoteYaml))
 	}
 
-	return sb.String()
+	return sb.String(), nil
 }
 
 type ProjectTuple struct {
