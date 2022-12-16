@@ -18,11 +18,13 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -34,6 +36,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -134,13 +137,60 @@ func init() {
 		"dirname": func(path string) string {
 			return filepath.Dir(path)
 		},
-		"print": func(args ...any) string {
-			return fmt.Sprint(args...)
+		"regexReplaceAll": func(text, regex, replace string) string {
+			re := regexp.MustCompile(regex)
+			return re.ReplaceAllString(text, replace)
 		},
-		"printf": func(format string, args ...any) string {
-			// "a" | printf "%s-%s" "b"
-			// => "b-a"
-			return fmt.Sprintf(format, args...)
+		"regexMatch": func(text, regex string) bool {
+			re := regexp.MustCompile(regex)
+			return re.MatchString(text)
+		},
+		"int": func(value string) int {
+			number, _ := strconv.ParseInt(value, 10, 32)
+			return int(number)
+		},
+		"float": func(value string) float32 {
+			number, _ := strconv.ParseFloat(value, 10)
+			return float32(number)
+		},
+		"toYaml": func(value string) map[string]string {
+			var yamlValue map[string]string
+			err := yaml.Unmarshal([]byte(value), &yamlValue)
+			if err != nil {
+				panic(fmt.Sprintf("toYaml %q: %s", value, err))
+			}
+			return yamlValue
+		},
+		"fromYaml": func(value map[string]string) string {
+			jsonValue, err := yaml.Marshal(value)
+			if err != nil {
+				panic(fmt.Sprintf("toYaml %q: %s", value, err))
+			}
+			return string(jsonValue)
+		},
+		"toJson": func(value any) string {
+			// encode as json
+			jsonValue, err := json.Marshal(value)
+			if err != nil {
+				panic(fmt.Sprintf("toYaml %q: %s", value, err))
+			}
+			return string(jsonValue)
+		},
+		"toPrettyJson": func(value any) string {
+			// Encode as indented JSON
+			jsonValue, err := json.MarshalIndent(value, "", "	")
+			if err != nil {
+				panic(fmt.Sprintf("toYaml %q: %s", value, err))
+			}
+			return string(jsonValue)
+		},
+		"fromJson": func(value string) map[string]string {
+			var mapObject map[string]string
+			err := json.Unmarshal([]byte(value), &mapObject)
+			if err != nil {
+				panic(fmt.Sprintf("toYaml %q: %s", value, err))
+			}
+			return mapObject
 		},
 	}
 }
