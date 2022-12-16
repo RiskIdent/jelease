@@ -1,5 +1,11 @@
----
+# SPDX-FileCopyrightText: 2022 Risk.Ident GmbH <contact@riskident.com>
+#
+# SPDX-License-Identifier: CC0-1.0
+
+## To make this portable, change the ./jelease.schema.json to:
+##   https://github.com/RiskIdent/jelease/raw/main/charts/jelease/values.schema.json
 # yaml-language-server: $schema=./values.schema.json
+
 replicaCount: 1
 
 imagePullSecrets: []

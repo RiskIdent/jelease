@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2022 Risk.Ident GmbH <contact@riskident.com>
+
+SPDX-License-Identifier: CC-BY-4.0
+-->
+
 # Jelease helm chart
 
 Deploys [github.com/RiskIdent/jelease](https://github.com/RiskIdent/jelease)
