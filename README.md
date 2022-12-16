@@ -117,8 +117,17 @@ config file:
    # To test creating PRs
    go run . apply neuvector v1.2.3
 
-   # To test the webhook receiver server
-   go run . serve
+   # To test the webhook receiver server, without creating issues or PRs
+   go run . serve --dryrun
+
+   # To test the webhook receiver server, with creating issues and PRs
+   go run . serve --dryrun
+   ```
+
+6. To test out the webhooks, you can make use of our example webhook like so:
+
+   ```bash
+   curl localhost:8080/webhook -d @examples/newreleasesio-webhook.json
    ```
 
 ## Building the application and docker image

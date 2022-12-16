@@ -175,7 +175,7 @@ func configSetup() error {
 
 func loggerSetup() error {
 	pretty := log.Output(zerolog.ConsoleWriter{
-		Out:        os.Stdout,
+		Out:        os.Stderr,
 		TimeFormat: "Jan-02 15:04",
 	})
 	switch cfg.Log.Format {

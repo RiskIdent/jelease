@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/RiskIdent/jelease/pkg/config"
+	"github.com/RiskIdent/jelease/pkg/util"
 	"github.com/andygrunwald/go-jira"
 	"github.com/rs/zerolog/log"
 	"github.com/trivago/tgo/tcontainer"
@@ -37,8 +38,14 @@ type Client interface {
 	ProjectMustExist(projectKey string) error
 	StatusMustExist(statusName string) error
 	FindIssuesForPackage(packageName string) ([]Issue, error)
-	UpdateIssueSummary(issueID, issueKey, newSummary string) error
-	CreateIssue(issue Issue) (Issue, error)
+	UpdateIssueSummary(issueRef IssueRef, newSummary string) error
+	CreateIssue(issue Issue) (IssueRef, error)
+	CreateIssueComment(issueRef IssueRef, newComment string) error
+}
+
+type IssueRef struct {
+	ID  string
+	Key string
 }
 
 type Issue struct {
@@ -54,10 +61,18 @@ type Issue struct {
 	PackageNameFieldID uint
 }
 
+func (i Issue) IssueRef() IssueRef {
+	return IssueRef{
+		ID:  i.ID,
+		Key: i.Key,
+	}
+}
+
 func newIssue(issue jira.Issue, pkgCustomFieldID uint) Issue {
+	fields := util.Deref(issue.Fields, jira.IssueFields{})
 	var pkgName string
-	if pkgCustomFieldID == 0 {
-		if str, ok := issue.Fields.Unknowns[customFieldName(pkgCustomFieldID)].(string); ok {
+	if pkgCustomFieldID != 0 {
+		if str, ok := fields.Unknowns[customFieldName(pkgCustomFieldID)].(string); ok {
 			pkgName = str
 		}
 	} else {
@@ -67,9 +82,9 @@ func newIssue(issue jira.Issue, pkgCustomFieldID uint) Issue {
 	return Issue{
 		ID:          issue.ID,
 		Key:         issue.Key,
-		Summary:     issue.Fields.Summary,
-		Description: issue.Fields.Description,
-		Labels:      issue.Fields.Labels,
+		Summary:     fields.Summary,
+		Description: fields.Description,
+		Labels:      fields.Labels,
 
 		PackageName:        pkgName,
 		PackageNameFieldID: pkgCustomFieldID,
@@ -205,8 +220,18 @@ func (c *client) FindIssuesForPackage(packageName string) ([]Issue, error) {
 		return nil, err
 	}
 	issues := make([]Issue, 0, len(rawIssues))
-	for _, iss := range rawIssues {
-		issues = append(issues, newIssue(iss, c.cfg.Issue.ProjectNameCustomField))
+	for _, rawIssue := range rawIssues {
+		iss := newIssue(rawIssue, c.cfg.Issue.ProjectNameCustomField)
+		if iss.PackageName != packageName {
+			log.Debug().
+				Str("package", packageName).
+				Str("issuePackage", iss.PackageName).
+				Msg("Ignoring ticket because it had the wrong package name.")
+			// Our search query matches substrings, so we need to filter out
+			// any invalid matches
+			continue
+		}
+		issues = append(issues, iss)
 	}
 	return issues, nil
 }
@@ -238,7 +263,7 @@ func logJiraErrResponse(resp *jira.Response, err error) {
 	log.Error().Err(err).Msg("Failed to create Jira issue.")
 }
 
-func (c *client) UpdateIssueSummary(issueID, issueKey, newSummary string) error {
+func (c *client) UpdateIssueSummary(issueRef IssueRef, newSummary string) error {
 	// This seems hacky, but is taken from the official examples
 	// https://github.com/andygrunwald/go-jira/blob/47d27a76e84da43f6e27e1cd0f930e6763dc79d7/examples/addlabel/main.go
 	// There is also a jiraClient.Issue.Update() method, but it panics and does not provide a usage example
@@ -256,27 +281,44 @@ func (c *client) UpdateIssueSummary(issueID, issueKey, newSummary string) error 
 		},
 	}
 	log.Trace().Interface("updates", updates).Msg("Updating issue.")
-	resp, err := c.raw.Issue.UpdateIssue(issueID, updates)
+	resp, err := c.raw.Issue.UpdateIssue(issueRef.ID, updates)
 	if err != nil {
 		err := fmt.Errorf("update Jira issue: %w", err)
 		logJiraErrResponse(resp, err)
 		return err
 	}
 	log.Info().
-		Str("issue", issueKey).
+		Str("issue", issueRef.Key).
 		Str("summary", newSummary).
 		Msg("Updated issue summary")
 	return nil
 }
 
-func (c *client) CreateIssue(issue Issue) (Issue, error) {
+func (c *client) CreateIssue(issue Issue) (IssueRef, error) {
 	req := issue.rawIssue()
 	created, resp, err := c.raw.Issue.Create(&req)
 	if err != nil {
 		err := fmt.Errorf("creating Jira issue: %w", err)
 		logJiraErrResponse(resp, err)
-		return Issue{}, err
+		return IssueRef{}, err
 	}
 	log.Info().Str("issue", created.Key).Msg("Created issue.")
-	return newIssue(*created, c.cfg.Issue.ProjectNameCustomField), nil
+	// NOTE: Jira's "create issue" endpoint only contains the ID and Key fields
+	return IssueRef{
+		ID:  created.ID,
+		Key: created.Key,
+	}, nil
+}
+
+func (c *client) CreateIssueComment(issueRef IssueRef, newComment string) error {
+	_, resp, err := c.raw.Issue.AddComment(issueRef.ID, &jira.Comment{
+		Body: newComment,
+	})
+	if err != nil {
+		err := fmt.Errorf("creating Jira comment: %w", err)
+		logJiraErrResponse(resp, err)
+		return err
+	}
+	log.Info().Str("issue", issueRef.Key).Msg("Created comment on issue.")
+	return nil
 }

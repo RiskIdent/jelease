@@ -18,6 +18,7 @@
 package patch
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -30,12 +31,22 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+var (
+	ErrNoPatches = errors.New("no patches configured for repository")
+)
+
 func CloneAllAndPublishPatches(cfg *config.Config, pkgRepos []config.PackageRepo, tmplCtx TemplateContext) ([]github.PullRequest, error) {
 	if len(pkgRepos) == 0 {
 		log.Warn().Str("package", tmplCtx.Package).Msg("No repos configured for package.")
 		return nil, nil
 	}
-	g := git.Cmd{Credentials: git.Credentials{}}
+	g := git.Cmd{
+		Credentials: git.Credentials{Username: "git", Password: cfg.GitHub.Auth.Token},
+		Committer: git.Committer{
+			Name:  util.Deref(cfg.GitHub.PR.Committer.Name, ""),
+			Email: util.Deref(cfg.GitHub.PR.Committer.Email, ""),
+		},
+	}
 	gh, err := github.New(&cfg.GitHub)
 	if err != nil {
 		return nil, err
@@ -45,6 +56,9 @@ func CloneAllAndPublishPatches(cfg *config.Config, pkgRepos []config.PackageRepo
 	for _, pkgRepo := range pkgRepos {
 		log.Info().Str("repo", pkgRepo.URL).Msg("Patching repo")
 		pr, err := CloneRepoAndPublishPatches(cfg, g, gh, pkgRepo, tmplCtx)
+		if errors.Is(err, ErrNoPatches) {
+			continue
+		}
 		if err != nil {
 			return prs, err
 		}
@@ -95,7 +109,7 @@ func cloneRepoTemp(g git.Git, tempDir, remote string, tmplCtx TemplateContext) (
 	if err != nil {
 		return nil, err
 	}
-	log.Info().
+	log.Debug().
 		Str("branch", repo.CurrentBranch()).
 		Str("dir", repo.Directory()).
 		Msg("Cloned repo.")
@@ -129,7 +143,7 @@ func (p *PackagePatcher) ApplyManyAndCommit(patches []config.PackageRepoPatch) e
 			Str("package", p.tmplCtx.Package).
 			Str("repo", p.remote).
 			Msg("No patches configured for repository.")
-		return nil
+		return ErrNoPatches
 	}
 
 	if err := p.ApplyManyInNewBranch(patches); err != nil {
@@ -203,7 +217,6 @@ func (p *PackagePatcher) PublishChanges() (github.PullRequest, error) {
 		return github.PullRequest{}, fmt.Errorf("create GitHub PR: %w", err)
 	}
 	log.Info().
-		Int("pr", pr.Number).
 		Str("url", pr.URL).
 		Msg("GitHub PR created.")
 	return pr, nil

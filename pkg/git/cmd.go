@@ -26,12 +26,15 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/RiskIdent/jelease/pkg/util"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
 // Cmd implements [Git] using the command-line version of Git.
 type Cmd struct {
 	Credentials Credentials
+	Committer   Committer
 }
 
 var _ Git = Cmd{}
@@ -62,12 +65,13 @@ func (g Cmd) Clone(targetDir, remote string) (Repo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("clone repo: %w", err)
 	}
-	branchOutput, err := runGitCmdInDir(targetDir, "branch", "--show-current")
+	branchOutput, err := runAsCommitterInDir(g.Committer, targetDir, "branch", "--show-current")
 	if err != nil {
 		return nil, fmt.Errorf("check current branch: %w", err)
 	}
 	branchName := strings.TrimSpace(string(branchOutput))
 	return &CmdRepo{
+		Committer:     g.Committer,
 		directory:     targetDir,
 		currentBranch: branchName,
 		mainBranch:    branchName,
@@ -75,6 +79,7 @@ func (g Cmd) Clone(targetDir, remote string) (Repo, error) {
 }
 
 type CmdRepo struct {
+	Committer     Committer
 	directory     string
 	currentBranch string
 	mainBranch    string
@@ -82,8 +87,8 @@ type CmdRepo struct {
 
 var _ Repo = &CmdRepo{}
 
-func (r *CmdRepo) runGitCmdInRepo(args ...string) ([]byte, error) {
-	return runGitCmdInDir(r.directory, args...)
+func (r *CmdRepo) run(args ...string) ([]byte, error) {
+	return runAsCommitterInDir(r.Committer, r.directory, args...)
 }
 
 func (r *CmdRepo) Directory() string {
@@ -99,7 +104,7 @@ func (r *CmdRepo) MainBranch() string {
 }
 
 func (r *CmdRepo) CheckoutNewBranch(branchName string) error {
-	_, err := r.runGitCmdInRepo("checkout", "-b", branchName)
+	_, err := r.run("checkout", "-b", branchName)
 	if err != nil {
 		return fmt.Errorf("checkout branch: %s: %w", branchName, err)
 	}
@@ -108,7 +113,7 @@ func (r *CmdRepo) CheckoutNewBranch(branchName string) error {
 }
 
 func (r *CmdRepo) DiffChanges() (string, error) {
-	output, err := r.runGitCmdInRepo("diff")
+	output, err := r.run("diff")
 	if err != nil {
 		return "", fmt.Errorf("diff changes: %w", err)
 	}
@@ -116,7 +121,7 @@ func (r *CmdRepo) DiffChanges() (string, error) {
 }
 
 func (r *CmdRepo) StageChanges() error {
-	_, err := r.runGitCmdInRepo("add", "--all")
+	_, err := r.run("add", "--all")
 	if err != nil {
 		return fmt.Errorf("stage all changes: %w", err)
 	}
@@ -124,11 +129,11 @@ func (r *CmdRepo) StageChanges() error {
 }
 
 func (r *CmdRepo) CreateCommit(message string) (Commit, error) {
-	_, err := r.runGitCmdInRepo("commit", "-m", message, "--no-gpg-sign")
+	_, err := r.run("commit", "-m", message, "--no-gpg-sign")
 	if err != nil {
 		return Commit{}, fmt.Errorf("commit changes: %w", err)
 	}
-	output, err := r.runGitCmdInRepo("show", "--no-notes", "--no-patch", "--format=%H%n%h%n%P%n%p%n%s")
+	output, err := r.run("show", "--no-notes", "--no-patch", "--format=%H%n%h%n%P%n%p%n%s")
 	if err != nil {
 		return Commit{}, fmt.Errorf("get commit details: %w", err)
 	}
@@ -146,7 +151,7 @@ func (r *CmdRepo) CreateCommit(message string) (Commit, error) {
 }
 
 func (r *CmdRepo) PushChanges() error {
-	_, err := r.runGitCmdInRepo("push", "--set-upstream", "origin", r.currentBranch)
+	_, err := r.run("push", "--set-upstream", "origin", r.currentBranch)
 	if err != nil {
 		return fmt.Errorf("push changes: %w", err)
 	}
@@ -157,12 +162,21 @@ func (r *CmdRepo) Close() error {
 	return os.RemoveAll(r.directory)
 }
 
-func runGitCmdInDir(targetDir string, args ...string) ([]byte, error) {
-	dirChangeArgs := []string{"-C", targetDir}
-	return runGitCmd(append(dirChangeArgs, args...)...)
+func runAsCommitterInDir(committer Committer, targetDir string, args ...string) ([]byte, error) {
+	extraArgs := []string{"-C", targetDir}
+	if committer.Name != "" {
+		extraArgs = append(extraArgs, "-c", "user.name="+committer.Name)
+	}
+	if committer.Email != "" {
+		extraArgs = append(extraArgs, "-c", "user.email="+committer.Email)
+	}
+	return runGitCmd(util.Concat(extraArgs, args)...)
 }
 
 func runGitCmd(args ...string) ([]byte, error) {
+	if log.Logger.GetLevel() <= zerolog.DebugLevel {
+		log.Trace().Strs("args", censorArgs(args)).Msg("Executing Git command.")
+	}
 	cmd := exec.Command("git", args...)
 	output, err := cmd.Output()
 	if err != nil {
@@ -173,4 +187,28 @@ func runGitCmd(args ...string) ([]byte, error) {
 		return nil, err
 	}
 	return output, nil
+}
+
+func censorArgs(args []string) []string {
+	censored := make([]string, len(args))
+	copy(censored, args)
+	for i, arg := range censored {
+		switch {
+		case strings.HasPrefix(arg, "user.name="):
+			censored[i] = "user.name=..."
+		case strings.HasPrefix(arg, "user.email="):
+			censored[i] = "user.email=..."
+		case strings.HasPrefix(arg, "https://"),
+			strings.HasPrefix(arg, "http://"):
+			u, err := url.Parse(arg)
+			if err != nil {
+				continue
+			}
+			if u.User != nil {
+				u.User = url.UserPassword("...", "...")
+			}
+			censored[i] = u.String()
+		}
+	}
+	return censored
 }
