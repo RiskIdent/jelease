@@ -27,7 +27,7 @@ docker:
     && apt-get install -y --no-install-recommends ca-certificates git \
     && rm -rf /var/lib/apt/lists/*
   COPY +build/jelease /usr/local/bin
-  CMD ["jelease"]
+  CMD ["jelease", "serve"]
   IF [ "$VERSION" != "latest" ]
     SAVE IMAGE --push $REGISTRY/jelease:latest
   END
