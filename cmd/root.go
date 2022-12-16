@@ -36,7 +36,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -146,22 +146,28 @@ func init() {
 			return re.MatchString(text)
 		},
 		"int": func(value string) int {
-			number, _ := strconv.ParseInt(value, 10, 32)
+			number, err := strconv.ParseInt(value, 10, 32)
+			if err != nil {
+				panic(fmt.Sprintf("int %q: %s", value, err))
+			}
 			return int(number)
 		},
 		"float": func(value string) float32 {
-			number, _ := strconv.ParseFloat(value, 10)
+			number, err := strconv.ParseFloat(value, 10)
+			if err != nil {
+				panic(fmt.Sprintf("float %q: %s", value, err))
+			}
 			return float32(number)
 		},
-		"toYaml": func(value string) map[string]string {
+		"fromYaml": func(value string) map[string]string {
 			var yamlValue map[string]string
 			err := yaml.Unmarshal([]byte(value), &yamlValue)
 			if err != nil {
-				panic(fmt.Sprintf("toYaml %q: %s", value, err))
+				panic(fmt.Sprintf("fromYaml %q: %s", value, err))
 			}
 			return yamlValue
 		},
-		"fromYaml": func(value map[string]string) string {
+		"toYaml": func(value map[string]string) string {
 			jsonValue, err := yaml.Marshal(value)
 			if err != nil {
 				panic(fmt.Sprintf("toYaml %q: %s", value, err))
@@ -172,15 +178,15 @@ func init() {
 			// encode as json
 			jsonValue, err := json.Marshal(value)
 			if err != nil {
-				panic(fmt.Sprintf("toYaml %q: %s", value, err))
+				panic(fmt.Sprintf("toJson %q: %s", value, err))
 			}
 			return string(jsonValue)
 		},
 		"toPrettyJson": func(value any) string {
 			// Encode as indented JSON
-			jsonValue, err := json.MarshalIndent(value, "", "	")
+			jsonValue, err := json.MarshalIndent(value, "", "  ")
 			if err != nil {
-				panic(fmt.Sprintf("toYaml %q: %s", value, err))
+				panic(fmt.Sprintf("toPrettyJson %q: %s", value, err))
 			}
 			return string(jsonValue)
 		},
@@ -188,7 +194,7 @@ func init() {
 			var mapObject map[string]string
 			err := json.Unmarshal([]byte(value), &mapObject)
 			if err != nil {
-				panic(fmt.Sprintf("toYaml %q: %s", value, err))
+				panic(fmt.Sprintf("fromJson %q: %s", value, err))
 			}
 			return mapObject
 		},
