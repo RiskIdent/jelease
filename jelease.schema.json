@@ -20,11 +20,26 @@
         "jira": {
           "$ref": "#/$defs/jira"
         },
+        "newReleases": {
+          "$ref": "#/$defs/newReleases"
+        },
         "http": {
           "$ref": "#/$defs/http"
         },
         "log": {
           "$ref": "#/$defs/log"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "exclusionCfg": {
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "inverse": {
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
@@ -267,6 +282,45 @@
       ],
       "title": "Logging level"
     },
+    "newReleases": {
+      "properties": {
+        "auth": {
+          "$ref": "#/$defs/newReleasesAuth"
+        },
+        "projects": {
+          "items": {
+            "$ref": "#/$defs/projectCfg"
+          },
+          "type": "array"
+        },
+        "defaults": {
+          "$ref": "#/$defs/newReleasesDefaults"
+        },
+        "webhook": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "newReleasesAuth": {
+      "properties": {
+        "key": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "newReleasesDefaults": {
+      "properties": {
+        "emailNotification": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
     "package": {
       "properties": {
         "name": {
@@ -354,6 +408,42 @@
       "required": [
         "expression"
       ]
+    },
+    "projectCfg": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "emailNotification": {
+          "type": "string"
+        },
+        "webhookIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "excludeVersionRegexp": {
+          "items": {
+            "$ref": "#/$defs/exclusionCfg"
+          },
+          "type": "array"
+        },
+        "excludePrereleases": {
+          "type": "boolean"
+        },
+        "excludeUpdated": {
+          "type": "boolean"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
     },
     "regexPattern": {
       "type": "string",
