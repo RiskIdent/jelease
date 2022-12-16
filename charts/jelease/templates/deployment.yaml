@@ -1,0 +1,96 @@
+# SPDX-FileCopyrightText: 2022 Risk.Ident GmbH <contact@riskident.com>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# This program is free software: you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "jelease.fullname" . }}
+  labels:
+    {{- include "jelease.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "jelease.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- toYaml .Values.podAnnotations | nindent 8 }}
+      labels:
+        {{- include "jelease.selectorLabels" . | nindent 8 }}
+    spec:
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: jelease
+        securityContext:
+          {{- toYaml .Values.jelease.securityContext | nindent 10 }}
+        image: {{ printf "%s:%s" .Values.jelease.image.repository (.Values.jelease.image.tag | default .Chart.AppVersion) | quote }}
+        imagePullPolicy: {{ .Values.jelease.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.jelease.port }}
+          protocol: TCP
+        startupProbe:
+          httpGet:
+            path: /
+            port: http
+          failureThreshold: 3
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+        volumeMounts:
+          - name: jelease-config
+            mountPath: /etc/jelease
+            readOnly: true
+        resources:
+          {{- toYaml .Values.jelease.resources | nindent 10 }}
+
+      - name: relay
+        image: "{{ .Values.relay.image.repository }}:{{ .Values.relay.image.tag }}"
+        securityContext:
+          {{- toYaml .Values.relay.securityContext | nindent 10 }}
+        envFrom:
+        - secretRef:
+            name: {{ include "jelease.fullname" . }}-relay-config
+        resources:
+          {{- toYaml .Values.relay.resources | nindent 10 }}
+
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: jelease-config
+          secret:
+            secretName: {{ include "jelease.fullname" . }}-jelease-config

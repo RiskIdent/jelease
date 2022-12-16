@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "properties": {
+    "replicaCount": {
+      "type": "integer"
+    },
+    "imagePullSecrets": {
+      "$ref": "https://github.com/yannh/kubernetes-json-schema/raw/master/v1.21.8/podspec-v1.json#/properties/imagePullSecrets"
+    },
+    "jelease": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "$ref": "#/definitions/image",
+          "description": "Docker image for the jelease container."
+        },
+        "config": {
+          "description": "Configs for the jelease container.",
+          "$ref": "https://github.com/RiskIdent/jelease/raw/main/jelease.schema.json"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65536
+        },
+        "securityContext": {
+          "$ref": "https://github.com/yannh/kubernetes-json-schema/raw/master/v1.21.8/container.json#/properties/securityContext"
+        },
+        "resources": {
+          "$ref": "https://github.com/yannh/kubernetes-json-schema/raw/master/v1.21.8/container.json#/properties/resources",
+          "description": "Compute Resources required by this container. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/"
+        }
+      }
+    },
+    "relay": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "$ref": "#/definitions/image",
+          "description": "Docker image for the webhookrelay container."
+        },
+        "config": {
+          "description": "Configs for the webhookrelay container. Keys-value pairs are mapped to environment variables.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "securityContext": {
+          "$ref": "https://github.com/yannh/kubernetes-json-schema/raw/master/v1.21.8/container.json#/properties/securityContext"
+        },
+        "resources": {
+          "$ref": "https://github.com/yannh/kubernetes-json-schema/raw/master/v1.21.8/container.json#/properties/resources",
+          "description": "Compute Resources required by this container. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/"
+        }
+      }
+    },
+    "podAnnotations": {
+      "$ref": "https://github.com/yannh/kubernetes-json-schema/raw/master/v1.21.8/objectmeta-meta-v1.json#/properties/annotations"
+    },
+    "podSecurityContext": {
+      "$ref": "https://github.com/yannh/kubernetes-json-schema/raw/master/v1.21.8/podspec-v1.json#/properties/securityContext"
+    },
+    "nodeSelector": {
+      "$ref": "https://github.com/yannh/kubernetes-json-schema/raw/master/v1.21.8/podspec-v1.json#/properties/nodeSelector"
+    },
+    "tolerations": {
+      "$ref": "https://github.com/yannh/kubernetes-json-schema/raw/master/v1.21.8/podspec-v1.json#/properties/tolerations"
+    },
+    "affinity": {
+      "$ref": "https://github.com/yannh/kubernetes-json-schema/raw/master/v1.21.8/podspec-v1.json#/properties/affinity"
+    }
+  },
+  "definitions": {
+    "image": {
+      "type": "object",
+      "properties": {
+        "repository": {
+          "type": "string",
+          "description": "Docker image repository, without the trailing tag. I.e the part before the colon.",
+          "examples": [
+            "ghcr.io/RiskIdent/jelease"
+          ]
+        },
+        "tag": {
+          "description": "Docker image tag. I.e the part after the colon.",
+          "type": [
+            "null",
+            "string"
+          ],
+          "examples": [
+            null,
+            "v0.1.0"
+          ]
+        },
+        "pullPolicy": {
+          "description": "Image pull policy. One of Always, Never, IfNotPresent. Defaults to Always if :latest tag is specified, or IfNotPresent otherwise. More info: https://kubernetes.io/docs/concepts/containers/images#updating-images",
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "Always",
+            "Never",
+            "IfNotPresent"
+          ]
+        }
+      }
+    }
+  }
+}
