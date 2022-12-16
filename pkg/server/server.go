@@ -22,9 +22,10 @@ import (
 	"net/http"
 
 	"github.com/RiskIdent/jelease/pkg/config"
+	"github.com/RiskIdent/jelease/pkg/github"
 	"github.com/RiskIdent/jelease/pkg/jira"
+	"github.com/RiskIdent/jelease/pkg/patch"
 	"github.com/gin-gonic/gin"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -35,14 +36,16 @@ type HTTPServer struct {
 }
 
 func New(cfg *config.Config, jira jira.Client) *HTTPServer {
+	gin.DefaultErrorWriter = log.Logger
+	gin.DefaultWriter = log.Logger
+
 	r := gin.New()
 
 	r.Use(
 		gin.LoggerWithConfig(gin.LoggerConfig{
-			SkipPaths: []string{"/health"},
-			Output:    log.Logger.Level(zerolog.DebugLevel),
+			SkipPaths: []string{"/"},
 		}),
-		gin.RecoveryWithWriter(log.Logger.Level(zerolog.ErrorLevel)),
+		gin.Recovery(),
 	)
 
 	s := &HTTPServer{
@@ -76,33 +79,110 @@ func (s HTTPServer) handlePostWebhook(c *gin.Context) {
 		return
 	}
 
-	existingIssues, err := s.jira.FindIssuesForPackage(release.Project)
+	issueRef, err := ensureJiraIssue(s.jira, release, s.cfg)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	go tryApplyChanges(s.jira, release, issueRef.IssueRef, s.cfg)
+
+	// NOTE: always return OK, otherwise newreleases.io will retry
+	c.Status(http.StatusOK)
+}
+
+func tryApplyChanges(j jira.Client, release Release, issueRef jira.IssueRef, cfg *config.Config) {
+	tmplCtx := patch.TemplateContext{
+		Package:   release.Project,
+		Version:   release.Version,
+		JiraIssue: issueRef.Key,
+	}
+
+	pkg, ok := cfg.TryFindPackage(release.Project)
+	if !ok {
+		log.Info().Str("project", release.Project).Msg("No package patching config was found. Skipping patching.")
+		createTemplatedComment(j, issueRef, cfg.Jira.Issue.Comments.NoConfig, tmplCtx)
+		return
+	}
+	prs, err := patch.CloneAllAndPublishPatches(cfg, pkg.Repos, tmplCtx)
+	if err != nil {
+		log.Error().Err(err).Str("project", release.Project).Msg("Failed creating patches.")
+		createTemplatedComment(j, issueRef, cfg.Jira.Issue.Comments.PRFailed, TemplateContextError{
+			TemplateContext: tmplCtx,
+			Error:           err.Error(),
+		})
+		return
+	}
+	if len(prs) == 0 {
+		log.Warn().Str("project", release.Project).Msg("Found package config, but no repositories were patched.")
+		createTemplatedComment(j, issueRef, cfg.Jira.Issue.Comments.NoPatches, tmplCtx)
+		return
+	}
+	log.Info().
+		Str("project", release.Project).
+		Int("count", len(prs)).
+		Msg("Successfully created PRs for update.")
+
+	createTemplatedComment(j, issueRef, cfg.Jira.Issue.Comments.PRCreated, TemplateContextPullRequests{
+		TemplateContext: tmplCtx,
+		PullRequests:    prs,
+	})
+}
+
+func createTemplatedComment(j jira.Client, issueRef jira.IssueRef, tmpl *config.Template, tmplCtx any) {
+	comment, err := tmpl.Render(tmplCtx)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed templating Jira issue comment.")
+		return
+	}
+
+	if err := j.CreateIssueComment(issueRef, comment); err != nil {
+		log.Error().Err(err).Msg("Failed creating Jira issue comment.")
+	}
+}
+
+type TemplateContextError struct {
+	patch.TemplateContext
+	Error string
+}
+
+type TemplateContextPullRequests struct {
+	patch.TemplateContext
+	PullRequests []github.PullRequest
+}
+
+type newJiraIssue struct {
+	jira.IssueRef
+	Created bool
+}
+
+func ensureJiraIssue(j jira.Client, r Release, cfg *config.Config) (newJiraIssue, error) {
+	existingIssues, err := j.FindIssuesForPackage(r.Project)
+	if err != nil {
+		return newJiraIssue{}, err
+	}
+
 	if len(existingIssues) == 0 {
 		// no previous issues, create new jira issue
-		i := release.JiraIssue(&s.cfg.Jira.Issue)
+		i := r.JiraIssue(&cfg.Jira.Issue)
 
-		log.Trace().Interface("issue", i).Msg("Creating issue.")
-		if s.cfg.DryRun {
-			log.Debug().
+		if cfg.DryRun {
+			log.Info().
 				Str("issue", i.Key).
 				Msg("Skipping creation of issue because Config.DryRun is enabled.")
-			c.Status(http.StatusNoContent)
-			return
+			return newJiraIssue{
+				IssueRef: i.IssueRef(),
+				Created:  false,
+			}, nil
 		}
-
-		if _, err := s.jira.CreateIssue(i); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": err.Error(),
-			})
-			return
+		issueRef, err := j.CreateIssue(i)
+		if err != nil {
+			return newJiraIssue{}, err
 		}
-		c.Status(http.StatusCreated)
-		return
+		return newJiraIssue{
+			IssueRef: issueRef,
+			Created:  true,
+		}, nil
 	}
 
 	// in case of duplicate issues, update the oldest (probably original) one, ignore rest as duplicates
@@ -119,18 +199,26 @@ func (s HTTPServer) handlePostWebhook(c *gin.Context) {
 			Msg("Ignoring the duplicate issues in favor of recent issue.")
 	}
 
-	if s.cfg.DryRun {
-		log.Debug().
+	if cfg.DryRun {
+		log.Info().
 			Str("issue", mostRecentIssue.Key).
 			Msg("Skipping update of issue because Config.DryRun is enabled.")
-		c.Status(http.StatusNoContent)
-		return
+		return newJiraIssue{
+			IssueRef: mostRecentIssue.IssueRef(),
+			Created:  false,
+		}, nil
 	}
-	if err := s.jira.UpdateIssueSummary(mostRecentIssue.ID, mostRecentIssue.Key, release.IssueSummary()); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
-		return
+	issueRef := mostRecentIssue.IssueRef()
+	if err := j.UpdateIssueSummary(issueRef, r.IssueSummary()); err != nil {
+		return newJiraIssue{}, err
 	}
-	c.Status(http.StatusNoContent)
+	createTemplatedComment(j, issueRef, cfg.Jira.Issue.Comments.UpdatedIssue, patch.TemplateContext{
+		Package:   r.Project,
+		Version:   r.Version,
+		JiraIssue: issueRef.Key,
+	})
+	return newJiraIssue{
+		IssueRef: mostRecentIssue.IssueRef(),
+		Created:  false,
+	}, nil
 }

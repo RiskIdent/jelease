@@ -14,7 +14,7 @@ deps:
 
 build:
   FROM +deps
-  COPY *.go .
+  COPY . .
   RUN go test -v ./... \
     && go build -o build/jelease main.go
   SAVE ARTIFACT build/jelease /jelease AS LOCAL build/jelease
@@ -24,10 +24,10 @@ docker:
   ARG REGISTRY=ghcr.io/riskident
   FROM ubuntu:22.04
   RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates \
+    && apt-get install -y --no-install-recommends ca-certificates git \
     && rm -rf /var/lib/apt/lists/*
-  COPY +build/jelease .
-  CMD ["/jelease"]
+  COPY +build/jelease /usr/local/bin
+  CMD ["jelease", "serve"]
   IF [ "$VERSION" != "latest" ]
     SAVE IMAGE --push $REGISTRY/jelease:latest
   END

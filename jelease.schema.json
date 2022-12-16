@@ -83,6 +83,33 @@
       ],
       "title": "GitHub auth type"
     },
+    "githubCommitter": {
+      "properties": {
+        "name": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "email": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "format": "idn-email"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
     "githubPr": {
       "properties": {
         "title": {
@@ -96,6 +123,9 @@
         },
         "commit": {
           "$ref": "#/$defs/template"
+        },
+        "committer": {
+          "$ref": "#/$defs/githubCommitter"
         }
       },
       "additionalProperties": false,
@@ -174,6 +204,30 @@
         },
         "projectNameCustomField": {
           "type": "integer"
+        },
+        "comments": {
+          "$ref": "#/$defs/jiraIssueComments"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "jiraIssueComments": {
+      "properties": {
+        "updatedIssue": {
+          "$ref": "#/$defs/template"
+        },
+        "noConfig": {
+          "$ref": "#/$defs/template"
+        },
+        "noPatches": {
+          "$ref": "#/$defs/template"
+        },
+        "prCreated": {
+          "$ref": "#/$defs/template"
+        },
+        "prFailed": {
+          "$ref": "#/$defs/template"
         }
       },
       "additionalProperties": false,

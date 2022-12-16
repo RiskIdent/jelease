@@ -45,6 +45,11 @@ type Credentials struct {
 	Password string
 }
 
+type Committer struct {
+	Name  string // maps to Git config user.name
+	Email string // maps to Git config user.email
+}
+
 type Commit struct {
 	Hash           string
 	AbbrHash       string
