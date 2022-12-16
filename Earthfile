@@ -13,10 +13,13 @@ deps:
   SAVE ARTIFACT go.sum AS LOCAL go.sum
 
 build:
+  ARG VERSION=devel
   FROM +deps
   COPY . .
   RUN go test -v ./... \
-    && go build -o build/jelease main.go
+    && go build \
+      -ldflags "-X github.com/RiskIdent/jelease/cmd.appVersion=$VERSION" \
+      -o build/jelease main.go
   SAVE ARTIFACT build/jelease /jelease AS LOCAL build/jelease
 
 docker:

@@ -38,6 +38,9 @@ import (
 
 var (
 	cfg config.Config
+
+	appVersion string // may be set via `go build` flags
+	goVersion  string
 )
 
 var rootCmd = &cobra.Command{
@@ -45,12 +48,10 @@ var rootCmd = &cobra.Command{
 	SilenceErrors: true,
 	SilenceUsage:  true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		if buildInfo, ok := debug.ReadBuildInfo(); ok {
-			log.Debug().
-				Str("go", strings.TrimPrefix(buildInfo.GoVersion, "go")).
-				Str("version", buildInfo.Main.Version).
-				Msg("Jelease")
-		}
+		log.Debug().
+			Str("go", goVersion).
+			Str("version", appVersion).
+			Msg("Jelease")
 		return configSetup()
 	},
 }
@@ -84,8 +85,16 @@ func Execute(defaultConfig config.Config) {
 
 func init() {
 	if buildInfo, ok := debug.ReadBuildInfo(); ok {
-		rootCmd.Version = buildInfo.Main.Version
+		if appVersion == "" {
+			appVersion = buildInfo.Main.Version
+		}
+		goVersion = strings.TrimPrefix(buildInfo.GoVersion, "go")
+	} else {
 	}
+	if appVersion == "" {
+		appVersion = "unknown"
+	}
+	rootCmd.Version = appVersion
 
 	// config.FuncsMap must be set before the first time the config is parsed,
 	// which happens first in the main() function in main.go (in repo root)
