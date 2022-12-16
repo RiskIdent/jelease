@@ -85,24 +85,29 @@ func (s HTTPServer) handlePostWebhook(c *gin.Context) {
 		return
 	}
 
+	tryApplyChanges(s.jira, release, issueRef.IssueRef, s.cfg)
+
+	// NOTE: always return OK, otherwise newreleases.io will retry
+	c.Status(http.StatusOK)
+}
+
+func tryApplyChanges(j jira.Client, release Release, issueRef jira.IssueRef, cfg *config.Config) {
 	tmplCtx := patch.TemplateContext{
 		Package:   release.Project,
 		Version:   release.Version,
 		JiraIssue: issueRef.Key,
 	}
 
-	pkg, ok := s.cfg.TryFindPackage(release.Project)
+	pkg, ok := cfg.TryFindPackage(release.Project)
 	if !ok {
 		log.Info().Str("project", release.Project).Msg("No package patching config was found. Skipping patching.")
-		c.Status(http.StatusOK)
-		createTemplatedComment(s.jira, issueRef.IssueRef, s.cfg.Jira.Issue.Comments.NoConfig, tmplCtx)
+		createTemplatedComment(j, issueRef, cfg.Jira.Issue.Comments.NoConfig, tmplCtx)
 		return
 	}
-	prs, err := patch.CloneAllAndPublishPatches(s.cfg, pkg.Repos, tmplCtx)
+	prs, err := patch.CloneAllAndPublishPatches(cfg, pkg.Repos, tmplCtx)
 	if err != nil {
 		log.Error().Err(err).Str("project", release.Project).Msg("Failed creating patches.")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		createTemplatedComment(s.jira, issueRef.IssueRef, s.cfg.Jira.Issue.Comments.PRFailed, TemplateContextError{
+		createTemplatedComment(j, issueRef, cfg.Jira.Issue.Comments.PRFailed, TemplateContextError{
 			TemplateContext: tmplCtx,
 			Error:           err.Error(),
 		})
@@ -110,17 +115,15 @@ func (s HTTPServer) handlePostWebhook(c *gin.Context) {
 	}
 	if len(prs) == 0 {
 		log.Warn().Str("project", release.Project).Msg("Found package config, but no repositories were patched.")
-		c.Status(http.StatusOK)
-		createTemplatedComment(s.jira, issueRef.IssueRef, s.cfg.Jira.Issue.Comments.NoPatches, tmplCtx)
+		createTemplatedComment(j, issueRef, cfg.Jira.Issue.Comments.NoPatches, tmplCtx)
 		return
 	}
 	log.Info().
 		Str("project", release.Project).
 		Int("count", len(prs)).
 		Msg("Successfully created PRs for update.")
-	c.Status(http.StatusOK)
 
-	createTemplatedComment(s.jira, issueRef.IssueRef, s.cfg.Jira.Issue.Comments.PRCreated, TemplateContextPullRequests{
+	createTemplatedComment(j, issueRef, cfg.Jira.Issue.Comments.PRCreated, TemplateContextPullRequests{
 		TemplateContext: tmplCtx,
 		PullRequests:    prs,
 	})
