@@ -96,17 +96,13 @@ var newReleasesApplyCmd = &cobra.Command{
 		nr := newreleases.FromCfg(cfg.NewReleases)
 		applyOptions := newreleases.ApplyLocalConfigOptions{}
 
-		err := nr.ApplyLocalConfig(applyOptions)
+		err := nr.ApplyLocalConfig(cfg.NewReleases, applyOptions)
 		if err != nil {
 			fmt.Printf("Error when applying %s", err)
 		}
 
 	},
 }
-
-// TODO:
-// implement equal for newreleases.project instead, make it ignore ID stuff
-// when converting from ProjectCfg, take some globally configured fields
 
 func init() {
 	newReleasesDiffCmd.AddCommand(newReleasesDiffDivergedCmd)

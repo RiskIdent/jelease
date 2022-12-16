@@ -3,16 +3,16 @@ package config
 import "golang.org/x/exp/slices"
 
 type NewReleases struct {
-	Auth              NewReleasesAuth      `yaml:"auth"`
-	Projects          []ProjectCfg         `yaml:"projects"`
-	EmailNotification EmailNotificationCfg `yaml:"emailNotifications"`
+	Auth              NewReleasesAuth `yaml:"auth"`
+	Projects          []ProjectCfg    `yaml:"projects"`
+	EmailNotification string          `yaml:"emailNotifications"`
 }
 
 type NewReleasesAuth struct {
 	Key string
 }
 
-type EmailNotificationCfg string
+// type EmailNotificationCfg string
 
 // Omits some field of [newreleases.io/newreleases/Project] that we don't want to store
 // namely, this omits the ID field and the tagIDs field
