@@ -18,6 +18,7 @@
 package patch
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -28,6 +29,10 @@ import (
 	"github.com/RiskIdent/jelease/pkg/util"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+)
+
+var (
+	ErrNoPatches = errors.New("no patches configured for repository")
 )
 
 func CloneAllAndPublishPatches(cfg *config.Config, pkgRepos []config.PackageRepo, tmplCtx TemplateContext) ([]github.PullRequest, error) {
@@ -51,6 +56,9 @@ func CloneAllAndPublishPatches(cfg *config.Config, pkgRepos []config.PackageRepo
 	for _, pkgRepo := range pkgRepos {
 		log.Info().Str("repo", pkgRepo.URL).Msg("Patching repo")
 		pr, err := CloneRepoAndPublishPatches(cfg, g, gh, pkgRepo, tmplCtx)
+		if errors.Is(err, ErrNoPatches) {
+			continue
+		}
 		if err != nil {
 			return prs, err
 		}
@@ -135,7 +143,7 @@ func (p *PackagePatcher) ApplyManyAndCommit(patches []config.PackageRepoPatch) e
 			Str("package", p.tmplCtx.Package).
 			Str("repo", p.remote).
 			Msg("No patches configured for repository.")
-		return nil
+		return ErrNoPatches
 	}
 
 	if err := p.ApplyManyInNewBranch(patches); err != nil {
