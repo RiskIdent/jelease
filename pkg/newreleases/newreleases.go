@@ -152,7 +152,7 @@ func ExclusionSliceFromCfg(exclusions []config.NewReleasesExclusion) []newreleas
 func ProjectToCfg(project newreleases.Project) config.NewReleasesProject {
 	return config.NewReleasesProject{
 		Name:               project.Name,
-		EmailNotification:  string(project.EmailNotification),
+		EmailNotification:  emailNotificationToString(project.EmailNotification),
 		Provider:           project.Provider,
 		Exclusions:         ExclusionSliceToCfg(project.Exclusions),
 		ExcludePrereleases: project.ExcludePrereleases,
@@ -246,8 +246,12 @@ func (nr NewReleases) ApplyLocalConfig(options ApplyLocalConfigOptions) error {
 	}
 
 	for _, projectCfg := range diff.MissingOnRemote {
+		emailNotification, err := emailNotificationFromString(projectCfg.EmailNotification)
+		if err != nil {
+			return err
+		}
 		projectOptions := newreleases.ProjectOptions{
-			EmailNotification:  (*newreleases.EmailNotification)(&projectCfg.EmailNotification),
+			EmailNotification:  &emailNotification,
 			WebhookIDs:         []string{},
 			Exclusions:         ExclusionSliceFromCfg(projectCfg.Exclusions),
 			ExcludePrereleases: &projectCfg.ExcludePrereleases,
@@ -255,10 +259,52 @@ func (nr NewReleases) ApplyLocalConfig(options ApplyLocalConfigOptions) error {
 			Note:               util.Ref(""),
 			TagIDs:             []string{},
 		}
-		_, err := nr.client.Projects.Add(context.Background(), projectCfg.Provider, projectCfg.Name, &projectOptions)
+		_, err = nr.client.Projects.Add(context.Background(), projectCfg.Provider, projectCfg.Name, &projectOptions)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func emailNotificationFromString(notification string) (newreleases.EmailNotification, error) {
+	var emailNotification newreleases.EmailNotification
+	switch notification {
+	case "none":
+		emailNotification = newreleases.EmailNotificationNone
+	case "instant":
+		emailNotification = newreleases.EmailNotificationInstant
+	case "hourly":
+		emailNotification = newreleases.EmailNotificationHourly
+	case "daily":
+		emailNotification = newreleases.EmailNotificationDaily
+	case "weekly":
+		emailNotification = newreleases.EmailNotificationWeekly
+	case "default":
+		emailNotification = newreleases.EmailNotificationDefault
+	default:
+		return "", fmt.Errorf("failed to parse email configuration: %q is not valid value", notification)
+	}
+	return emailNotification, nil
+}
+
+func emailNotificationToString(notification newreleases.EmailNotification) string {
+	var s string
+	switch notification {
+	case newreleases.EmailNotificationNone:
+		s = "none"
+	case newreleases.EmailNotificationInstant:
+		s = "instant"
+	case newreleases.EmailNotificationHourly:
+		s = "hourly"
+	case newreleases.EmailNotificationDaily:
+		s = "daily"
+	case newreleases.EmailNotificationWeekly:
+		s = "weekly"
+	case newreleases.EmailNotificationDefault:
+		s = "default"
+	default:
+		s = "none"
+	}
+	return s
 }
