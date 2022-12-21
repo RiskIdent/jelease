@@ -51,11 +51,14 @@ var rootCmd = &cobra.Command{
 	SilenceErrors: true,
 	SilenceUsage:  true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		if err := configSetup(); err != nil {
+			return err
+		}
 		log.Debug().
 			Str("go", goVersion).
 			Str("version", appVersion).
 			Msg("Jelease")
-		return configSetup()
+		return nil
 	},
 }
 
