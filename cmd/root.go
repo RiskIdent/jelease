@@ -201,6 +201,30 @@ func init() {
 			}
 			return mapObject
 		},
+		"trimPrefix": func(prefix, s string) string {
+			return strings.TrimPrefix(s, prefix)
+		},
+		"trimSuffix": func(suffix, s string) string {
+			return strings.TrimSuffix(s, suffix)
+		},
+		"trimSpace": func(s string) string {
+			return strings.TrimSpace(s)
+		},
+		"trim": func(cutset, s string) string {
+			return strings.Trim(s, cutset)
+		},
+		"trimLeft": func(cutset, s string) string {
+			return strings.TrimLeft(s, cutset)
+		},
+		"trimRight": func(cutset, s string) string {
+			return strings.TrimRight(s, cutset)
+		},
+		"hasPrefix": func(prefix, s string) bool {
+			return strings.HasPrefix(s, prefix)
+		},
+		"hasSuffix": func(suffix, s string) bool {
+			return strings.HasSuffix(s, suffix)
+		},
 	}
 }
 
