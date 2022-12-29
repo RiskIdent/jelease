@@ -18,6 +18,7 @@
 package patch
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -47,9 +48,13 @@ func CloneAllAndPublishPatches(cfg *config.Config, pkgRepos []config.PackageRepo
 			Email: util.Deref(cfg.GitHub.PR.Committer.Email, ""),
 		},
 	}
+	// TODO: Create GitHub client only once in pkg/server
 	gh, err := github.New(&cfg.GitHub)
 	if err != nil {
 		return nil, err
+	}
+	if err := gh.TestConnection(context.TODO()); err != nil {
+		return nil, fmt.Errorf("test GitHub connection: %w", err)
 	}
 
 	var prs []github.PullRequest
@@ -206,7 +211,7 @@ func (p *PackagePatcher) PublishChanges() (github.PullRequest, error) {
 		return github.PullRequest{}, fmt.Errorf("template PR description: %w", err)
 	}
 
-	pr, err := p.gh.CreatePullRequest(github.NewPullRequest{
+	pr, err := p.gh.CreatePullRequest(context.TODO(), github.NewPullRequest{
 		RepoRef:     p.ghRef,
 		Title:       title,
 		Description: description,

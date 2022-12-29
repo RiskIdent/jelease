@@ -60,6 +60,7 @@ var camelCaseReplacer = strings.NewReplacer(
 	"API", "Api",
 	"PEM", "Pem",
 	"DER", "Pem",
+	"RSA", "Rsa",
 )
 
 // ToCamelCase is a very stupid implementation for converting

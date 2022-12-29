@@ -19,99 +19,66 @@ package github
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/RiskIdent/jelease/pkg/util"
-	"github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/google/go-github/v48/github"
-	"golang.org/x/oauth2"
 )
 
 type Client interface {
-	CreatePullRequest(pr NewPullRequest) (PullRequest, error)
+	TestConnection(ctx context.Context) error
+	CreatePullRequest(ctx context.Context, pr NewPullRequest) (PullRequest, error)
+}
+
+type ClientFactory interface {
+	TestConnection(ctx context.Context) error
+	NewClientForRepo(ctx context.Context, repo RepoRef) (*github.Client, error)
 }
 
 func New(ghCfg *config.GitHub) (Client, error) {
-	raw, err := newClient(ghCfg)
+	factory, err := NewFactory(ghCfg)
 	if err != nil {
 		return nil, err
 	}
 	return &client{
-		raw: raw,
+		factory: factory,
 	}, nil
 }
 
 type client struct {
-	raw *github.Client
+	factory ClientFactory
 }
 
-func newClient(ghCfg *config.GitHub) (*github.Client, error) {
-	httpClient, err := newHTTPClient(ghCfg)
-	if err != nil {
-		return nil, err
-	}
-	return newClientEnterpriceOrPublic(ghCfg.URL, httpClient)
-}
-
-func newHTTPClient(ghCfg *config.GitHub) (*http.Client, error) {
+func NewFactory(ghCfg *config.GitHub) (ClientFactory, error) {
 	switch ghCfg.Auth.Type {
 	case config.GitHubAuthTypePAT:
-		return newOAuthHTTPClient(ghCfg.Auth.Token), nil
+		return NewPATClientFactory(ghCfg)
 	case config.GitHubAuthTypeApp:
-		return newAppsHTTPClient(ghCfg)
+		return NewAppClientFactory(ghCfg)
 	default:
 		return nil, fmt.Errorf("unsupported GitHub auth type: %q", ghCfg.Auth.Type)
 	}
 }
 
-func newOAuthHTTPClient(token string) *http.Client {
-	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
-	return oauth2.NewClient(context.TODO(), tokenSource)
-}
-
-func newAppsHTTPClient(ghCfg *config.GitHub) (*http.Client, error) {
-	appTransport, err := newAppsTransport(&ghCfg.Auth.App)
-	if err != nil {
-		return nil, err
-	}
-	if ghCfg.URL != nil {
-		appTransport.BaseURL = *ghCfg.URL
-	}
-	return &http.Client{Transport: appTransport}, nil
-}
-
-func newAppsTransport(appCfg *config.GitHubAuthApp) (*ghinstallation.AppsTransport, error) {
-	transport := http.DefaultTransport
-	switch {
-	case appCfg.PrivateKeyPEM != nil:
-		appsTransport, err := ghinstallation.NewAppsTransport(transport, appCfg.ID, appCfg.PrivateKeyPEM)
-		if err != nil {
-			return nil, fmt.Errorf("read config privateKeyPem: %w", err)
-		}
-		return appsTransport, nil
-	case appCfg.PrivateKeyPath != nil:
-		appsTransport, err := ghinstallation.NewAppsTransportKeyFromFile(transport, appCfg.ID, *appCfg.PrivateKeyPath)
-		if err != nil {
-			return nil, fmt.Errorf("read config privateKeyPath: %w", err)
-		}
-		return appsTransport, nil
-	default:
-		return nil, errors.New("must set GitHub auth config privateKeyPem or privateKeyPath")
-	}
-}
-
 func newClientEnterpriceOrPublic(ghURL *string, httpClient *http.Client) (*github.Client, error) {
 	if ghURL != nil {
-		return github.NewEnterpriseClient(*ghURL, "", httpClient)
+		return github.NewEnterpriseClient(*ghURL, *ghURL, httpClient)
 	}
 	return github.NewClient(httpClient), nil
 }
 
-func (c *client) CreatePullRequest(pr NewPullRequest) (PullRequest, error) {
-	created, _, err := c.raw.PullRequests.Create(context.TODO(), pr.Owner, pr.Repo, &github.NewPullRequest{
+func (c *client) TestConnection(ctx context.Context) error {
+	return c.factory.TestConnection(ctx)
+}
+
+func (c *client) CreatePullRequest(ctx context.Context, pr NewPullRequest) (PullRequest, error) {
+	gh, err := c.factory.NewClientForRepo(ctx, pr.RepoRef)
+	if err != nil {
+		return PullRequest{}, err
+	}
+	created, _, err := gh.PullRequests.Create(ctx, pr.Owner, pr.Repo, &github.NewPullRequest{
 		Title:               &pr.Title,
 		Body:                &pr.Description,
 		Head:                &pr.Head,
@@ -123,13 +90,13 @@ func (c *client) CreatePullRequest(pr NewPullRequest) (PullRequest, error) {
 	}
 	return PullRequest{
 		RepoRef:     pr.RepoRef,
-		ID:          util.Deref(created.ID, -1),
-		Number:      util.Deref(created.Number, -1),
-		URL:         util.Deref(created.HTMLURL, ""),
-		Title:       util.Deref(created.Title, ""),
-		Description: util.Deref(created.Body, ""),
-		Head:        util.Deref(created.Head.Label, ""),
-		Base:        util.Deref(created.Base.Label, ""),
+		ID:          created.GetID(),
+		Number:      created.GetNumber(),
+		URL:         created.GetHTMLURL(),
+		Title:       created.GetTitle(),
+		Description: created.GetBody(),
+		Head:        created.Head.GetLabel(),
+		Base:        created.Base.GetLabel(),
 	}, nil
 }
 

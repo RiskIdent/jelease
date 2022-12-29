@@ -112,15 +112,7 @@
           ]
         },
         "privateKeyPem": {
-          "oneOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "contentEncoding": "base64"
+          "$ref": "#/$defs/rsaPrivateKeyPem"
         }
       },
       "additionalProperties": false,
@@ -485,6 +477,21 @@
       "type": "string",
       "format": "regex",
       "title": "Regular Expression pattern (regex)"
+    },
+    "rsaPrivateKeyPem": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "contentMediaType": "application/x-pem-file",
+      "title": "PEM-formatted RSA private key",
+      "examples": [
+        "-----BEGIN RSA PRIVATE KEY-----\nbG9yZW0gaXBzdW0sIHNlY3JldCBrZXkgYmFzZTY0IGdvZXMgaGVyZS4u\n-----END RSA PRIVATE KEY-----\n"
+      ]
     },
     "template": {
       "type": "string",

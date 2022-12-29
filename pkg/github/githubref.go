@@ -23,10 +23,30 @@ import (
 	"strings"
 )
 
+type RepoRefSlim struct {
+	Owner string
+	Repo  string
+}
+
+func (r RepoRefSlim) String() string {
+	return fmt.Sprintf("%s/%s", r.Owner, r.Repo)
+}
+
 type RepoRef struct {
 	URL   string
 	Owner string
 	Repo  string
+}
+
+func (r RepoRef) String() string {
+	return r.URL
+}
+
+func (r RepoRef) Slim() RepoRefSlim {
+	return RepoRefSlim{
+		Owner: r.Owner,
+		Repo:  r.Repo,
+	}
 }
 
 func ParseRepoRef(remote string) (RepoRef, error) {
