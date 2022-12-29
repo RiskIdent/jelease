@@ -22,22 +22,25 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/RiskIdent/jelease/pkg/config"
+	"github.com/RiskIdent/jelease/pkg/git"
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/google/go-github/v48/github"
 	"github.com/rs/zerolog/log"
 )
 
 type appsClient struct {
-	appsTransport   *ghinstallation.AppsTransport
-	noInstallClient *github.Client
-	clientsPerRepo  map[RepoRefSlim]installationClient
-	baseURL         *string
+	appsTransport       *ghinstallation.AppsTransport
+	noInstallClient     *github.Client
+	installationPerRepo map[RepoRefSlim]installation
+	baseURL             *string
 }
 
-type installationClient struct {
-	*github.Client
+type installation struct {
+	client         *github.Client
+	transport      *ghinstallation.Transport
 	installationID int64
 }
 
@@ -50,11 +53,12 @@ func NewAppClientFactory(ghCfg *config.GitHub) (ClientFactory, error) {
 	if err != nil {
 		return nil, err
 	}
+	appsTransport.BaseURL = strings.TrimRight(nonInstallClient.BaseURL.String(), "/")
 	return &appsClient{
-		appsTransport:   appsTransport,
-		noInstallClient: nonInstallClient,
-		clientsPerRepo:  make(map[RepoRefSlim]installationClient),
-		baseURL:         ghCfg.URL,
+		appsTransport:       appsTransport,
+		noInstallClient:     nonInstallClient,
+		installationPerRepo: make(map[RepoRefSlim]installation),
+		baseURL:             ghCfg.URL,
 	}, nil
 }
 
@@ -71,30 +75,50 @@ func (c *appsClient) TestConnection(ctx context.Context) error {
 	return nil
 }
 
+func (c *appsClient) GitCredentialsForRepo(ctx context.Context, repo RepoRef) (git.Credentials, error) {
+	inst, err := c.findInstallationForRepo(ctx, repo)
+	if err != nil {
+		return git.Credentials{}, err
+	}
+	token, err := inst.transport.Token(ctx)
+	if err != nil {
+		return git.Credentials{}, err
+	}
+	return git.Credentials{
+		Username: "x-access-token",
+		Password: token,
+	}, nil
+}
+
 func (c *appsClient) NewClientForRepo(ctx context.Context, repo RepoRef) (*github.Client, error) {
-	if client, ok := c.clientsPerRepo[repo.Slim()]; ok {
-		log.Debug().
-			Int64("installation", client.installationID).
-			Stringer("repo", repo).
-			Msg("Using cached client for repo.")
-		return client.Client, nil
+	inst, err := c.findInstallationForRepo(ctx, repo)
+	if err != nil {
+		return nil, err
+	}
+	return inst.client, nil
+}
+
+func (c *appsClient) findInstallationForRepo(ctx context.Context, repo RepoRef) (installation, error) {
+	if inst, ok := c.installationPerRepo[repo.Slim()]; ok {
+		return inst, nil
 	}
 	id, err := c.findInstallationIDForRepo(ctx, repo)
 	if err != nil {
-		return nil, err
+		return installation{}, err
 	}
 	transport := ghinstallation.NewFromAppsTransport(c.appsTransport, id)
 	client, err := newClientEnterpriceOrPublic(c.baseURL, &http.Client{Transport: transport})
 	if err != nil {
-		return nil, err
+		return installation{}, err
 	}
-	instClient := installationClient{
-		Client:         client,
+	inst := installation{
+		client:         client,
+		transport:      transport,
 		installationID: id,
 	}
 	reposResp, _, err := client.Apps.ListRepos(ctx, &github.ListOptions{})
 	if err != nil {
-		return nil, err
+		return installation{}, fmt.Errorf("list which repos to cache client for: %w", err)
 	}
 	for _, repoData := range reposResp.Repositories {
 		refSlim := RepoRefSlim{
@@ -104,15 +128,18 @@ func (c *appsClient) NewClientForRepo(ctx context.Context, repo RepoRef) (*githu
 		log.Debug().
 			Int64("installation", id).
 			Stringer("repo", refSlim).
-			Msg("Caching client for repo.")
-		c.clientsPerRepo[refSlim] = instClient
+			Msg("Caching GitHub client for repo.")
+		c.installationPerRepo[refSlim] = inst
 	}
-	return client, nil
+	return inst, nil
 }
 
 func (c *appsClient) findInstallationIDForRepo(ctx context.Context, repo RepoRef) (int64, error) {
-	inst, _, err := c.noInstallClient.Apps.FindRepositoryInstallation(ctx, repo.Owner, repo.Repo)
+	inst, resp, err := c.noInstallClient.Apps.FindRepositoryInstallation(ctx, repo.Owner, repo.Repo)
 	if err != nil {
+		if resp != nil && resp.StatusCode == 404 {
+			return 0, fmt.Errorf("GitHub App is not installed for repo: %s", repo)
+		}
 		return 0, fmt.Errorf("find GitHub App installation for repo: %w", err)
 	}
 	return inst.GetID(), nil
@@ -120,27 +147,22 @@ func (c *appsClient) findInstallationIDForRepo(ctx context.Context, repo RepoRef
 
 func newAppsTransport(ghCfg *config.GitHub) (*ghinstallation.AppsTransport, error) {
 	transport := http.DefaultTransport
-	var appsTransport *ghinstallation.AppsTransport
 	switch {
 	case ghCfg.Auth.App.PrivateKeyPEM != nil:
-		appsTransport = ghinstallation.NewAppsTransportFromPrivateKey(
+		return ghinstallation.NewAppsTransportFromPrivateKey(
 			transport,
 			ghCfg.Auth.App.ID,
-			ghCfg.Auth.App.PrivateKeyPEM.PrivateKey())
+			ghCfg.Auth.App.PrivateKeyPEM.PrivateKey()), nil
 	case ghCfg.Auth.App.PrivateKeyPath != nil:
-		at, err := ghinstallation.NewAppsTransportKeyFromFile(
+		appsTransport, err := ghinstallation.NewAppsTransportKeyFromFile(
 			transport,
 			ghCfg.Auth.App.ID,
 			*ghCfg.Auth.App.PrivateKeyPath)
 		if err != nil {
 			return nil, fmt.Errorf("read config privateKeyPath: %w", err)
 		}
-		appsTransport = at
+		return appsTransport, nil
 	default:
 		return nil, errors.New("must set GitHub auth config privateKeyPem or privateKeyPath")
 	}
-	if ghCfg.URL != nil {
-		appsTransport.BaseURL = *ghCfg.URL
-	}
-	return appsTransport, nil
 }

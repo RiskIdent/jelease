@@ -23,13 +23,15 @@ import (
 	"net/http"
 
 	"github.com/RiskIdent/jelease/pkg/config"
+	"github.com/RiskIdent/jelease/pkg/git"
 	"github.com/google/go-github/v48/github"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/oauth2"
 )
 
 type patClient struct {
-	gh *github.Client
+	cred git.Credentials
+	gh   *github.Client
 }
 
 func NewPATClientFactory(ghCfg *config.GitHub) (ClientFactory, error) {
@@ -39,6 +41,10 @@ func NewPATClientFactory(ghCfg *config.GitHub) (ClientFactory, error) {
 		return nil, err
 	}
 	return &patClient{
+		cred: git.Credentials{
+			Username: "git",
+			Password: ghCfg.Auth.Token,
+		},
 		gh: gh,
 	}, nil
 }
@@ -47,13 +53,18 @@ func (c *patClient) TestConnection(ctx context.Context) error {
 	// get empty means get the currently authenticated user
 	user, _, err := c.gh.Users.Get(ctx, "")
 	if err != nil {
-		return fmt.Errorf("get current GitHub user: %w", user)
+		return fmt.Errorf("get current GitHub user: %w", err)
 	}
 	log.Debug().
 		Str("login", user.GetLogin()).
 		Str("name", user.GetName()).
 		Msg("Authenticated as GitHub user.")
 	return nil
+}
+
+func (c *patClient) GitCredentialsForRepo(context.Context, RepoRef) (git.Credentials, error) {
+	// use the same credentials for all repos
+	return c.cred, nil
 }
 
 func (c *patClient) NewClientForRepo(context.Context, RepoRef) (*github.Client, error) {

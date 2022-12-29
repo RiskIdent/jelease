@@ -41,13 +41,6 @@ func CloneAllAndPublishPatches(cfg *config.Config, pkgRepos []config.PackageRepo
 		log.Warn().Str("package", tmplCtx.Package).Msg("No repos configured for package.")
 		return nil, nil
 	}
-	g := git.Cmd{
-		Credentials: git.Credentials{Username: "git", Password: cfg.GitHub.Auth.Token},
-		Committer: git.Committer{
-			Name:  util.Deref(cfg.GitHub.PR.Committer.Name, ""),
-			Email: util.Deref(cfg.GitHub.PR.Committer.Email, ""),
-		},
-	}
 	// TODO: Create GitHub client only once in pkg/server
 	gh, err := github.New(&cfg.GitHub)
 	if err != nil {
@@ -60,7 +53,7 @@ func CloneAllAndPublishPatches(cfg *config.Config, pkgRepos []config.PackageRepo
 	var prs []github.PullRequest
 	for _, pkgRepo := range pkgRepos {
 		log.Info().Str("repo", pkgRepo.URL).Msg("Patching repo")
-		pr, err := CloneRepoAndPublishPatches(cfg, g, gh, pkgRepo, tmplCtx)
+		pr, err := CloneRepoAndPublishPatches(cfg, gh, pkgRepo, tmplCtx)
 		if errors.Is(err, ErrNoPatches) {
 			continue
 		}
@@ -74,8 +67,8 @@ func CloneAllAndPublishPatches(cfg *config.Config, pkgRepos []config.PackageRepo
 	return prs, nil
 }
 
-func CloneRepoAndPublishPatches(cfg *config.Config, g git.Git, gh github.Client, pkgRepo config.PackageRepo, tmplCtx TemplateContext) (github.PullRequest, error) {
-	patcher, err := CloneRepoForPatching(cfg, g, gh, pkgRepo.URL, tmplCtx)
+func CloneRepoAndPublishPatches(cfg *config.Config, gh github.Client, pkgRepo config.PackageRepo, tmplCtx TemplateContext) (github.PullRequest, error) {
+	patcher, err := CloneRepoForPatching(cfg, gh, pkgRepo.URL, tmplCtx)
 	if err != nil {
 		return github.PullRequest{}, err
 	}
@@ -88,11 +81,22 @@ func CloneRepoAndPublishPatches(cfg *config.Config, g git.Git, gh github.Client,
 	return patcher.PublishChangesUnlessDryRun()
 }
 
-func CloneRepoForPatching(cfg *config.Config, g git.Git, gh github.Client, remote string, tmplCtx TemplateContext) (*PackagePatcher, error) {
+func CloneRepoForPatching(cfg *config.Config, gh github.Client, remote string, tmplCtx TemplateContext) (*PackagePatcher, error) {
 	// Check this early so we don't fail right on the finish line
 	ghRef, err := github.ParseRepoRef(remote)
 	if err != nil {
 		return nil, err
+	}
+	gitCred, err := gh.GitCredentialsForRepo(context.TODO(), ghRef)
+	if err != nil {
+		return nil, err
+	}
+	g := git.Cmd{
+		Credentials: gitCred,
+		Committer: git.Committer{
+			Name:  util.Deref(cfg.GitHub.PR.Committer.Name, ""),
+			Email: util.Deref(cfg.GitHub.PR.Committer.Email, ""),
+		},
 	}
 	repo, err := cloneRepoTemp(g, util.Deref(cfg.GitHub.TempDir, os.TempDir()), remote, tmplCtx)
 	if err != nil {

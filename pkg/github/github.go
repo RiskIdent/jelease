@@ -23,18 +23,25 @@ import (
 	"net/http"
 
 	"github.com/RiskIdent/jelease/pkg/config"
+	"github.com/RiskIdent/jelease/pkg/git"
 	"github.com/RiskIdent/jelease/pkg/util"
 	"github.com/google/go-github/v48/github"
 )
 
 type Client interface {
-	TestConnection(ctx context.Context) error
 	CreatePullRequest(ctx context.Context, pr NewPullRequest) (PullRequest, error)
+
+	// TODO: abstract so no duplicate functions
+
+	TestConnection(ctx context.Context) error
+	GitCredentialsForRepo(ctx context.Context, repo RepoRef) (git.Credentials, error)
 }
 
 type ClientFactory interface {
-	TestConnection(ctx context.Context) error
 	NewClientForRepo(ctx context.Context, repo RepoRef) (*github.Client, error)
+
+	TestConnection(ctx context.Context) error
+	GitCredentialsForRepo(ctx context.Context, repo RepoRef) (git.Credentials, error)
 }
 
 func New(ghCfg *config.GitHub) (Client, error) {
@@ -73,10 +80,14 @@ func (c *client) TestConnection(ctx context.Context) error {
 	return c.factory.TestConnection(ctx)
 }
 
+func (c *client) GitCredentialsForRepo(ctx context.Context, repo RepoRef) (git.Credentials, error) {
+	return c.factory.GitCredentialsForRepo(ctx, repo)
+}
+
 func (c *client) CreatePullRequest(ctx context.Context, pr NewPullRequest) (PullRequest, error) {
 	gh, err := c.factory.NewClientForRepo(ctx, pr.RepoRef)
 	if err != nil {
-		return PullRequest{}, err
+		return PullRequest{}, fmt.Errorf("new GitHub client for repo %q: %w", pr.RepoRef.Slim(), err)
 	}
 	created, _, err := gh.PullRequests.Create(ctx, pr.Owner, pr.Repo, &github.NewPullRequest{
 		Title:               &pr.Title,
