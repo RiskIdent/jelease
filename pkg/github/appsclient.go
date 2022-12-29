@@ -19,14 +19,20 @@ package github
 
 import (
 	"context"
+	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/x509"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strings"
 
 	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/RiskIdent/jelease/pkg/git"
 	"github.com/bradleyfalzon/ghinstallation/v2"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/go-github/v48/github"
 	"github.com/rs/zerolog/log"
 )
@@ -164,22 +170,56 @@ func (c *appsClient) findInstallationIDForRepo(ctx context.Context, repo RepoRef
 
 func newAppsTransport(ghCfg *config.GitHub) (*ghinstallation.AppsTransport, error) {
 	transport := http.DefaultTransport
+	var privateKey *rsa.PrivateKey
 	switch {
 	case ghCfg.Auth.App.PrivateKeyPEM != nil:
-		return ghinstallation.NewAppsTransportFromPrivateKey(
-			transport,
-			ghCfg.Auth.App.ID,
-			ghCfg.Auth.App.PrivateKeyPEM.PrivateKey()), nil
+		privateKey = ghCfg.Auth.App.PrivateKeyPEM.PrivateKey()
 	case ghCfg.Auth.App.PrivateKeyPath != nil:
-		appsTransport, err := ghinstallation.NewAppsTransportKeyFromFile(
-			transport,
-			ghCfg.Auth.App.ID,
-			*ghCfg.Auth.App.PrivateKeyPath)
+		// The ghinstallation package does have its own helper function for
+		// creating AppsTransport from file path, but we want the private key
+		// itself so we can log its fingerprint, which is important.
+		key, err := readRSAPrivateKeyFromFile(*ghCfg.Auth.App.PrivateKeyPath)
 		if err != nil {
 			return nil, fmt.Errorf("read config privateKeyPath: %w", err)
 		}
-		return appsTransport, nil
+		privateKey = key
 	default:
 		return nil, errors.New("must set GitHub auth config privateKeyPem or privateKeyPath")
 	}
+	log.Info().
+		Str("hash", rsaPubKeyHash(privateKey.PublicKey)).
+		Msg("Created GitHub App client using private key.")
+	return ghinstallation.NewAppsTransportFromPrivateKey(
+		transport,
+		ghCfg.Auth.App.ID,
+		privateKey), nil
+}
+
+func readRSAPrivateKeyFromFile(path string) (*rsa.PrivateKey, error) {
+	bytes, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("could not read private key file: %w", err)
+	}
+	key, err := jwt.ParseRSAPrivateKeyFromPEM(bytes)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse private key: %w", err)
+	}
+	return key, nil
+}
+
+// rsaPubKeyHash returns the hash of public key.
+//
+// The process mimics the hash shown on GitHub's web page for GitHub App settings,
+// so this particular process and encodings is to produce the same
+// SHA256 hash as them.
+func rsaPubKeyHash(pub rsa.PublicKey) string {
+	// Important to use MarshalPKIX instead of MarshalPKCS1, as the latter does
+	// not include the algorithm type header in the ASN.1 structure.
+	der, err := x509.MarshalPKIXPublicKey(&pub)
+	if err != nil {
+		return fmt.Sprintf("err:%s", err)
+	}
+	hash := sha256.Sum256(der)
+	b64 := base64.StdEncoding.EncodeToString(hash[:])
+	return fmt.Sprintf("SHA256:%s", b64)
 }
