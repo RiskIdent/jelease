@@ -30,40 +30,16 @@ import (
 
 type Client interface {
 	CreatePullRequest(ctx context.Context, pr NewPullRequest) (PullRequest, error)
-
-	// TODO: abstract so no duplicate functions
-
-	TestConnection(ctx context.Context) error
-	GitCredentialsForRepo(ctx context.Context, repo RepoRef) (git.Credentials, error)
-}
-
-type ClientFactory interface {
-	NewClientForRepo(ctx context.Context, repo RepoRef) (*github.Client, error)
-
 	TestConnection(ctx context.Context) error
 	GitCredentialsForRepo(ctx context.Context, repo RepoRef) (git.Credentials, error)
 }
 
 func New(ghCfg *config.GitHub) (Client, error) {
-	factory, err := NewFactory(ghCfg)
-	if err != nil {
-		return nil, err
-	}
-	return &client{
-		factory: factory,
-	}, nil
-}
-
-type client struct {
-	factory ClientFactory
-}
-
-func NewFactory(ghCfg *config.GitHub) (ClientFactory, error) {
 	switch ghCfg.Auth.Type {
 	case config.GitHubAuthTypePAT:
-		return NewPATClientFactory(ghCfg)
+		return NewPATClient(ghCfg)
 	case config.GitHubAuthTypeApp:
-		return NewAppClientFactory(ghCfg)
+		return NewAppClient(ghCfg)
 	default:
 		return nil, fmt.Errorf("unsupported GitHub auth type: %q", ghCfg.Auth.Type)
 	}
@@ -76,19 +52,7 @@ func newClientEnterpriceOrPublic(ghURL *string, httpClient *http.Client) (*githu
 	return github.NewClient(httpClient), nil
 }
 
-func (c *client) TestConnection(ctx context.Context) error {
-	return c.factory.TestConnection(ctx)
-}
-
-func (c *client) GitCredentialsForRepo(ctx context.Context, repo RepoRef) (git.Credentials, error) {
-	return c.factory.GitCredentialsForRepo(ctx, repo)
-}
-
-func (c *client) CreatePullRequest(ctx context.Context, pr NewPullRequest) (PullRequest, error) {
-	gh, err := c.factory.NewClientForRepo(ctx, pr.RepoRef)
-	if err != nil {
-		return PullRequest{}, fmt.Errorf("new GitHub client for repo %q: %w", pr.RepoRef.Slim(), err)
-	}
+func CreatePullRequest(ctx context.Context, gh *github.Client, pr NewPullRequest) (PullRequest, error) {
 	created, _, err := gh.PullRequests.Create(ctx, pr.Owner, pr.Repo, &github.NewPullRequest{
 		Title:               &pr.Title,
 		Body:                &pr.Description,

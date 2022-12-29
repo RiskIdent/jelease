@@ -34,7 +34,7 @@ type patClient struct {
 	gh   *github.Client
 }
 
-func NewPATClientFactory(ghCfg *config.GitHub) (ClientFactory, error) {
+func NewPATClient(ghCfg *config.GitHub) (Client, error) {
 	httpClient := newOAuthHTTPClient(ghCfg.Auth.Token)
 	gh, err := newClientEnterpriceOrPublic(ghCfg.URL, httpClient)
 	if err != nil {
@@ -67,9 +67,9 @@ func (c *patClient) GitCredentialsForRepo(context.Context, RepoRef) (git.Credent
 	return c.cred, nil
 }
 
-func (c *patClient) NewClientForRepo(context.Context, RepoRef) (*github.Client, error) {
+func (c *patClient) CreatePullRequest(ctx context.Context, pr NewPullRequest) (PullRequest, error) {
 	// use the same client for all repos
-	return c.gh, nil
+	return CreatePullRequest(ctx, c.gh, pr)
 }
 
 func newOAuthHTTPClient(token string) *http.Client {

@@ -44,7 +44,7 @@ type installation struct {
 	installationID int64
 }
 
-func NewAppClientFactory(ghCfg *config.GitHub) (ClientFactory, error) {
+func NewAppClient(ghCfg *config.GitHub) (Client, error) {
 	appsTransport, err := newAppsTransport(ghCfg)
 	if err != nil {
 		return nil, err
@@ -90,12 +90,12 @@ func (c *appsClient) GitCredentialsForRepo(ctx context.Context, repo RepoRef) (g
 	}, nil
 }
 
-func (c *appsClient) NewClientForRepo(ctx context.Context, repo RepoRef) (*github.Client, error) {
-	inst, err := c.findInstallationForRepo(ctx, repo)
+func (c *appsClient) CreatePullRequest(ctx context.Context, pr NewPullRequest) (PullRequest, error) {
+	inst, err := c.findInstallationForRepo(ctx, pr.RepoRef)
 	if err != nil {
-		return nil, err
+		return PullRequest{}, err
 	}
-	return inst.client, nil
+	return CreatePullRequest(ctx, inst.client, pr)
 }
 
 func (c *appsClient) findInstallationForRepo(ctx context.Context, repo RepoRef) (installation, error) {
