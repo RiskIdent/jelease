@@ -19,6 +19,9 @@ package github
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"net/http"
 
 	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/RiskIdent/jelease/pkg/util"
@@ -31,7 +34,7 @@ type Client interface {
 }
 
 func New(ghCfg *config.GitHub) (Client, error) {
-	raw, err := newGitHubClient(ghCfg)
+	raw, err := newClient(ghCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -44,13 +47,39 @@ type client struct {
 	raw *github.Client
 }
 
-func newGitHubClient(ghCfg *config.GitHub) (*github.Client, error) {
-	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: ghCfg.Auth.Token})
-	tc := oauth2.NewClient(context.TODO(), ts)
-	if ghCfg.URL != nil {
-		return github.NewEnterpriseClient(*ghCfg.URL, "", tc)
+func newClient(ghCfg *config.GitHub) (*github.Client, error) {
+	httpClient, err := newHTTPClient(&ghCfg.Auth)
+	if err != nil {
+		return nil, err
 	}
-	return github.NewClient(tc), nil
+	return newClientEnterpriceOrPublic(ghCfg.URL, httpClient)
+}
+
+func newHTTPClient(authCfg *config.GitHubAuth) (*http.Client, error) {
+	switch authCfg.Type {
+	case config.GitHubAuthTypePAT:
+		return newOAuthHTTPClient(authCfg.Token), nil
+	case config.GitHubAuthTypeApp:
+		return newAppHTTPClient()
+	default:
+		return nil, fmt.Errorf("unsupported GitHub auth type: %q", authCfg.Type)
+	}
+}
+
+func newOAuthHTTPClient(token string) *http.Client {
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
+	return oauth2.NewClient(context.TODO(), ts)
+}
+
+func newAppHTTPClient() (*http.Client, error) {
+	return nil, errors.New("not implemented")
+}
+
+func newClientEnterpriceOrPublic(ghURL *string, httpClient *http.Client) (*github.Client, error) {
+	if ghURL != nil {
+		return github.NewEnterpriseClient(*ghURL, "", httpClient)
+	}
+	return github.NewClient(httpClient), nil
 }
 
 func (c *client) CreatePullRequest(pr NewPullRequest) (PullRequest, error) {

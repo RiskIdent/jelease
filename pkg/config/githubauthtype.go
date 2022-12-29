@@ -29,6 +29,7 @@ type GitHubAuthType string
 
 const (
 	GitHubAuthTypePAT GitHubAuthType = "pat"
+	GitHubAuthTypeApp GitHubAuthType = "app"
 )
 
 func _() {
@@ -48,7 +49,7 @@ func (f *GitHubAuthType) Set(value string) error {
 	case GitHubAuthTypePAT:
 		*f = GitHubAuthTypePAT
 	default:
-		return fmt.Errorf("unknown auth type: %q, must be one of: pat, token", value)
+		return fmt.Errorf("unknown auth type: %q, must be one of: pat, app", value)
 	}
 	return nil
 }
@@ -67,6 +68,7 @@ func (GitHubAuthType) JSONSchema() *jsonschema.Schema {
 		Title: "GitHub auth type",
 		Enum: []any{
 			GitHubAuthTypePAT,
+			GitHubAuthTypeApp,
 		},
 	}
 }
