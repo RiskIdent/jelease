@@ -84,6 +84,10 @@ func (c *appsClient) GitCredentialsForRepo(ctx context.Context, repo RepoRef) (g
 	if err != nil {
 		return git.Credentials{}, err
 	}
+	// Using the "HTTP-based Git access by an installation" auth here
+	// https://docs.github.com/en/enterprise-cloud@latest/developers/apps/building-github-apps/authenticating-with-github-apps#http-based-git-access-by-an-installation
+	// Simpler than setting up a deploy token, and keeps us to only use HTTPS
+	// traffic, instead of also requiring SSH traffic. Fewer ports to open.
 	return git.Credentials{
 		Username: "x-access-token",
 		Password: token,
@@ -116,22 +120,35 @@ func (c *appsClient) findInstallationForRepo(ctx context.Context, repo RepoRef) 
 		transport:      transport,
 		installationID: id,
 	}
-	reposResp, _, err := client.Apps.ListRepos(ctx, &github.ListOptions{})
+	if err := c.cacheInstallationClient(ctx, inst); err != nil {
+		return installation{}, err
+	}
+	return inst, nil
+}
+
+func (c *appsClient) cacheInstallationClient(ctx context.Context, inst installation) error {
+	// Only lists repos for this installation.
+	// GitHub API endpoint requires installation-specific credentials for this.
+	reposResp, _, err := inst.client.Apps.ListRepos(ctx, &github.ListOptions{})
 	if err != nil {
-		return installation{}, fmt.Errorf("list which repos to cache client for: %w", err)
+		return fmt.Errorf("list which repos to cache client for: %w", err)
 	}
 	for _, repoData := range reposResp.Repositories {
 		refSlim := RepoRefSlim{
 			Owner: repoData.Owner.GetLogin(),
 			Repo:  repoData.GetName(),
 		}
+		if _, exists := c.installationPerRepo[refSlim]; exists {
+			// no need to override existing ones
+			continue
+		}
 		log.Debug().
-			Int64("installation", id).
+			Int64("installation", inst.installationID).
 			Stringer("repo", refSlim).
 			Msg("Caching GitHub client for repo.")
 		c.installationPerRepo[refSlim] = inst
 	}
-	return inst, nil
+	return nil
 }
 
 func (c *appsClient) findInstallationIDForRepo(ctx context.Context, repo RepoRef) (int64, error) {
