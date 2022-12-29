@@ -73,7 +73,14 @@
           "$ref": "#/$defs/githubAuthType"
         },
         "token": {
-          "type": "string"
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "app": {
           "$ref": "#/$defs/githubAuthApp"

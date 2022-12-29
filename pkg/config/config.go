@@ -77,7 +77,7 @@ type GitHub struct {
 
 type GitHubAuth struct {
 	Type  GitHubAuthType
-	Token string
+	Token *string `yaml:",omitempty" jsonschema:"oneof_type=string;null"`
 	App   GitHubAuthApp
 }
 

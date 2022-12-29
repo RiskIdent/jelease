@@ -19,11 +19,13 @@ package github
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/RiskIdent/jelease/pkg/git"
+	"github.com/RiskIdent/jelease/pkg/util"
 	"github.com/google/go-github/v48/github"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/oauth2"
@@ -35,7 +37,11 @@ type patClient struct {
 }
 
 func NewPATClient(ghCfg *config.GitHub) (Client, error) {
-	httpClient := newOAuthHTTPClient(ghCfg.Auth.Token)
+	token := util.Deref(ghCfg.Auth.Token, "")
+	if token == "" {
+		return nil, errors.New("missing GitHub PAT (Personal Access Token) config")
+	}
+	httpClient := newOAuthHTTPClient(token)
 	gh, err := newClientEnterpriceOrPublic(ghCfg.URL, httpClient)
 	if err != nil {
 		return nil, err
@@ -43,7 +49,7 @@ func NewPATClient(ghCfg *config.GitHub) (Client, error) {
 	return &patClient{
 		cred: git.Credentials{
 			Username: "git",
-			Password: ghCfg.Auth.Token,
+			Password: token,
 		},
 		gh: gh,
 	}, nil

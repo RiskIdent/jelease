@@ -48,8 +48,9 @@ github:
   auth:
     type: pat # pat | app
 
-    # The "token" config is only relevant if the auth type is set to "pat"
-    token: abc123xyz # Generate new token at: https://github.com/settings/tokens
+    # The "token" config is only relevant if the auth type is set to "pat".
+    # Generate new token at: https://github.com/settings/tokens
+    token: # ghp_abc123xyz
 
     # The "app" configs are only relevant if the auth type is set to "app"
     app:
