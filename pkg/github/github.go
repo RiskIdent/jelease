@@ -19,6 +19,7 @@ package github
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -48,21 +49,21 @@ type client struct {
 }
 
 func newClient(ghCfg *config.GitHub) (*github.Client, error) {
-	httpClient, err := newHTTPClient(&ghCfg.Auth)
+	httpClient, err := newHTTPClient(ghCfg)
 	if err != nil {
 		return nil, err
 	}
 	return newClientEnterpriceOrPublic(ghCfg.URL, httpClient)
 }
 
-func newHTTPClient(authCfg *config.GitHubAuth) (*http.Client, error) {
-	switch authCfg.Type {
+func newHTTPClient(ghCfg *config.GitHub) (*http.Client, error) {
+	switch ghCfg.Auth.Type {
 	case config.GitHubAuthTypePAT:
-		return newOAuthHTTPClient(authCfg.Token), nil
+		return newOAuthHTTPClient(ghCfg.Auth.Token), nil
 	case config.GitHubAuthTypeApp:
-		return newAppHTTPClient(&authCfg.App)
+		return newAppsHTTPClient(ghCfg)
 	default:
-		return nil, fmt.Errorf("unsupported GitHub auth type: %q", authCfg.Type)
+		return nil, fmt.Errorf("unsupported GitHub auth type: %q", ghCfg.Auth.Type)
 	}
 }
 
@@ -71,10 +72,35 @@ func newOAuthHTTPClient(token string) *http.Client {
 	return oauth2.NewClient(context.TODO(), tokenSource)
 }
 
-func newAppHTTPClient(appCfg *config.GitHubAuthApp) (*http.Client, error) {
+func newAppsHTTPClient(ghCfg *config.GitHub) (*http.Client, error) {
+	appTransport, err := newAppsTransport(&ghCfg.Auth.App)
+	if err != nil {
+		return nil, err
+	}
+	if ghCfg.URL != nil {
+		appTransport.BaseURL = *ghCfg.URL
+	}
+	return &http.Client{Transport: appTransport}, nil
+}
+
+func newAppsTransport(appCfg *config.GitHubAuthApp) (*ghinstallation.AppsTransport, error) {
 	transport := http.DefaultTransport
-	ghinstallation.NewAppsTransportFromPrivateKey(transport, appCfg.ID, nil)
-	return nil, nil
+	switch {
+	case appCfg.PrivateKeyPEM != nil:
+		appsTransport, err := ghinstallation.NewAppsTransport(transport, appCfg.ID, appCfg.PrivateKeyPEM)
+		if err != nil {
+			return nil, fmt.Errorf("read config privateKeyPem: %w", err)
+		}
+		return appsTransport, nil
+	case appCfg.PrivateKeyPath != nil:
+		appsTransport, err := ghinstallation.NewAppsTransportKeyFromFile(transport, appCfg.ID, *appCfg.PrivateKeyPath)
+		if err != nil {
+			return nil, fmt.Errorf("read config privateKeyPath: %w", err)
+		}
+		return appsTransport, nil
+	default:
+		return nil, errors.New("must set GitHub auth config privateKeyPem or privateKeyPath")
+	}
 }
 
 func newClientEnterpriceOrPublic(ghURL *string, httpClient *http.Client) (*github.Client, error) {
