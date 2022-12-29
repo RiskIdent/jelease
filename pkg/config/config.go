@@ -78,6 +78,13 @@ type GitHub struct {
 type GitHubAuth struct {
 	Type  GitHubAuthType
 	Token string
+	App   GitHubAuthApp
+}
+
+type GitHubAuthApp struct {
+	ID             int64
+	PrivateKeyPath *string `yaml:"privateKeyPath,omitempty" jsonschema:"oneof_type=string;null,oneof_required=privateKeyPath"`
+	PrivateKeyPEM  []byte  `yaml:"privateKeyPem,omitempty" jsonschema:"oneof_type=string;null,oneof_required=privateKeyPem"`
 }
 
 type GitHubPR struct {

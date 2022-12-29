@@ -58,6 +58,8 @@ var camelCaseReplacer = strings.NewReplacer(
 	"GitHub", "Github",
 	"PR", "Pr",
 	"API", "Api",
+	"PEM", "Pem",
+	"DER", "Pem",
 )
 
 // ToCamelCase is a very stupid implementation for converting

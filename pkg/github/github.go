@@ -19,12 +19,12 @@ package github
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/RiskIdent/jelease/pkg/util"
+	"github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/google/go-github/v48/github"
 	"golang.org/x/oauth2"
 )
@@ -60,19 +60,21 @@ func newHTTPClient(authCfg *config.GitHubAuth) (*http.Client, error) {
 	case config.GitHubAuthTypePAT:
 		return newOAuthHTTPClient(authCfg.Token), nil
 	case config.GitHubAuthTypeApp:
-		return newAppHTTPClient()
+		return newAppHTTPClient(&authCfg.App)
 	default:
 		return nil, fmt.Errorf("unsupported GitHub auth type: %q", authCfg.Type)
 	}
 }
 
 func newOAuthHTTPClient(token string) *http.Client {
-	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
-	return oauth2.NewClient(context.TODO(), ts)
+	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
+	return oauth2.NewClient(context.TODO(), tokenSource)
 }
 
-func newAppHTTPClient() (*http.Client, error) {
-	return nil, errors.New("not implemented")
+func newAppHTTPClient(appCfg *config.GitHubAuthApp) (*http.Client, error) {
+	transport := http.DefaultTransport
+	ghinstallation.NewAppsTransportFromPrivateKey(transport, appCfg.ID, nil)
+	return nil, nil
 }
 
 func newClientEnterpriceOrPublic(ghURL *string, httpClient *http.Client) (*github.Client, error) {

@@ -74,6 +74,53 @@
         },
         "token": {
           "type": "string"
+        },
+        "app": {
+          "$ref": "#/$defs/githubAuthApp"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "githubAuthApp": {
+      "oneOf": [
+        {
+          "required": [
+            "privateKeyPath"
+          ],
+          "title": "privateKeyPath"
+        },
+        {
+          "required": [
+            "privateKeyPem"
+          ],
+          "title": "privateKeyPem"
+        }
+      ],
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "privateKeyPath": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "privateKeyPem": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "contentEncoding": "base64"
         }
       },
       "additionalProperties": false,
@@ -82,7 +129,8 @@
     "githubAuthType": {
       "type": "string",
       "enum": [
-        "pat"
+        "pat",
+        "app"
       ],
       "title": "GitHub auth type"
     },
