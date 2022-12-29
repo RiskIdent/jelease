@@ -18,12 +18,14 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
 	"os"
 
 	"github.com/RiskIdent/jelease/pkg/jira"
+	"github.com/RiskIdent/jelease/pkg/patch"
 	"github.com/RiskIdent/jelease/pkg/server"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -62,6 +64,22 @@ func run() error {
 	}
 	log.Debug().Str("status", cfg.Jira.Issue.Status).Msg("Configured default status found ✓")
 
-	s := server.New(&cfg, jiraClient)
+	patcher, err := newTestedPatcher()
+	if err != nil {
+		return err
+	}
+
+	s := server.New(&cfg, jiraClient, patcher)
 	return s.Serve()
+}
+
+func newTestedPatcher() (patch.Patcher, error) {
+	patcher, err := patch.New(&cfg)
+	if err != nil {
+		return patch.Patcher{}, err
+	}
+	if err := patcher.TestGitHubConnection(context.TODO()); err != nil {
+		return patch.Patcher{}, err
+	}
+	return patcher, nil
 }

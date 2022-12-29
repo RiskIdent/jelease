@@ -19,113 +19,16 @@ package patch
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/RiskIdent/jelease/pkg/git"
 	"github.com/RiskIdent/jelease/pkg/github"
-	"github.com/RiskIdent/jelease/pkg/util"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
-var (
-	ErrNoPatches = errors.New("no patches configured for repository")
-)
-
-func CloneAllAndPublishPatches(cfg *config.Config, pkgRepos []config.PackageRepo, tmplCtx TemplateContext) ([]github.PullRequest, error) {
-	if len(pkgRepos) == 0 {
-		log.Warn().Str("package", tmplCtx.Package).Msg("No repos configured for package.")
-		return nil, nil
-	}
-	// TODO: Create GitHub client only once in pkg/server
-	gh, err := github.New(&cfg.GitHub)
-	if err != nil {
-		return nil, err
-	}
-	if err := gh.TestConnection(context.TODO()); err != nil {
-		return nil, fmt.Errorf("test GitHub connection: %w", err)
-	}
-
-	var prs []github.PullRequest
-	for _, pkgRepo := range pkgRepos {
-		log.Info().Str("repo", pkgRepo.URL).Msg("Patching repo")
-		pr, err := CloneRepoAndPublishPatches(cfg, gh, pkgRepo, tmplCtx)
-		if errors.Is(err, ErrNoPatches) {
-			continue
-		}
-		if err != nil {
-			return prs, err
-		}
-		prs = append(prs, pr)
-	}
-
-	log.Info().Str("package", tmplCtx.Package).Msg("Done applying patches")
-	return prs, nil
-}
-
-func CloneRepoAndPublishPatches(cfg *config.Config, gh github.Client, pkgRepo config.PackageRepo, tmplCtx TemplateContext) (github.PullRequest, error) {
-	patcher, err := CloneRepoForPatching(cfg, gh, pkgRepo.URL, tmplCtx)
-	if err != nil {
-		return github.PullRequest{}, err
-	}
-	defer patcher.Close()
-
-	if err := patcher.ApplyManyAndCommit(pkgRepo.Patches); err != nil {
-		return github.PullRequest{}, err
-	}
-
-	return patcher.PublishChangesUnlessDryRun()
-}
-
-func CloneRepoForPatching(cfg *config.Config, gh github.Client, remote string, tmplCtx TemplateContext) (*PackagePatcher, error) {
-	// Check this early so we don't fail right on the finish line
-	ghRef, err := github.ParseRepoRef(remote)
-	if err != nil {
-		return nil, err
-	}
-	gitCred, err := gh.GitCredentialsForRepo(context.TODO(), ghRef)
-	if err != nil {
-		return nil, err
-	}
-	g := git.Cmd{
-		Credentials: gitCred,
-		Committer: git.Committer{
-			Name:  util.Deref(cfg.GitHub.PR.Committer.Name, ""),
-			Email: util.Deref(cfg.GitHub.PR.Committer.Email, ""),
-		},
-	}
-	repo, err := cloneRepoTemp(g, util.Deref(cfg.GitHub.TempDir, os.TempDir()), remote, tmplCtx)
-	if err != nil {
-		return nil, err
-	}
-	return &PackagePatcher{
-		gh:      gh,
-		ghRef:   ghRef,
-		remote:  remote,
-		repo:    repo,
-		cfg:     cfg,
-		tmplCtx: tmplCtx,
-	}, nil
-}
-
-func cloneRepoTemp(g git.Git, tempDir, remote string, tmplCtx TemplateContext) (git.Repo, error) {
-	targetDir := filepath.Join(tempDir, "jelease-cloned-repos", "jelease-repo-*")
-	repo, err := git.CloneTemp(g, targetDir, remote)
-	if err != nil {
-		return nil, err
-	}
-	log.Debug().
-		Str("branch", repo.CurrentBranch()).
-		Str("dir", repo.Directory()).
-		Msg("Cloned repo.")
-	return repo, nil
-}
-
-type PackagePatcher struct {
+type Repo struct {
 	gh      github.Client
 	ghRef   github.RepoRef
 	remote  string
@@ -134,7 +37,7 @@ type PackagePatcher struct {
 	tmplCtx TemplateContext
 }
 
-func (p *PackagePatcher) Close() error {
+func (p *Repo) Close() error {
 	err := p.repo.Close()
 	if err != nil {
 		log.Warn().Err(err).Str("dir", p.repo.Directory()).
@@ -146,7 +49,7 @@ func (p *PackagePatcher) Close() error {
 	return err
 }
 
-func (p *PackagePatcher) ApplyManyAndCommit(patches []config.PackageRepoPatch) error {
+func (p *Repo) ApplyManyAndCommit(patches []config.PackageRepoPatch) error {
 	if len(patches) == 0 {
 		log.Warn().
 			Str("package", p.tmplCtx.Package).
@@ -179,7 +82,7 @@ func (p *PackagePatcher) ApplyManyAndCommit(patches []config.PackageRepoPatch) e
 	return nil
 }
 
-func (p *PackagePatcher) ApplyManyInNewBranch(patches []config.PackageRepoPatch) error {
+func (p *Repo) ApplyManyInNewBranch(patches []config.PackageRepoPatch) error {
 	branchName, err := p.cfg.GitHub.PR.Branch.Render(p.tmplCtx)
 	if err != nil {
 		return fmt.Errorf("template branch name: %w", err)
@@ -199,7 +102,20 @@ func (p *PackagePatcher) ApplyManyInNewBranch(patches []config.PackageRepoPatch)
 	return nil
 }
 
-func (p *PackagePatcher) PublishChanges() (github.PullRequest, error) {
+func (p *Repo) PublishChangesUnlessDryRun() (github.PullRequest, error) {
+	if p.cfg.DryRun {
+		log.Info().Msg("Dry run: skipping publishing changes.")
+		return github.PullRequest{}, nil
+	}
+	pr, err := p.PublishChanges()
+	if err != nil {
+		return github.PullRequest{}, err
+	}
+	log.Info().Msg("Pushed changes to remote repository.")
+	return pr, nil
+}
+
+func (p *Repo) PublishChanges() (github.PullRequest, error) {
 	if err := p.repo.PushChanges(); err != nil {
 		return github.PullRequest{}, err
 	}
@@ -231,7 +147,7 @@ func (p *PackagePatcher) PublishChanges() (github.PullRequest, error) {
 	return pr, nil
 }
 
-func (p *PackagePatcher) logDiff() {
+func (p *Repo) logDiff() {
 	if log.Logger.GetLevel() > zerolog.DebugLevel {
 		return
 	}
@@ -244,17 +160,4 @@ func (p *PackagePatcher) logDiff() {
 		diff = git.ColorizeDiff(diff)
 	}
 	log.Debug().Msgf("Diff:\n%s", diff)
-}
-
-func (p *PackagePatcher) PublishChangesUnlessDryRun() (github.PullRequest, error) {
-	if p.cfg.DryRun {
-		log.Info().Msg("Dry run: skipping publishing changes.")
-		return github.PullRequest{}, nil
-	}
-	pr, err := p.PublishChanges()
-	if err != nil {
-		return github.PullRequest{}, err
-	}
-	log.Info().Msg("Pushed changes to remote repository.")
-	return pr, nil
 }
