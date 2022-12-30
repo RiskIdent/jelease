@@ -47,27 +47,27 @@ func TestTemplate(t *testing.T) {
 		},
 		{
 			name: "int_fromInt",
-			tmpl: `{{int "36"}}`,
+			tmpl: `{{int 36}}`,
 			want: "36",
 		},
 		{
 			name: "int_fromFloat",
-			tmpl: `{{int "36"}}`,
+			tmpl: `{{int 36.05}}`,
 			want: "36",
 		},
 		{
-			name: "float_fromString",
-			tmpl: `{{float "36.05"}}`,
+			name: "float64_fromString",
+			tmpl: `{{float64 "36.05"}}`,
 			want: "36.05",
 		},
 		{
-			name: "float_fromInt",
-			tmpl: `{{float "36.05"}}`,
-			want: "36.05",
+			name: "float64_fromInt",
+			tmpl: `{{float64 36}}`,
+			want: "36",
 		},
 		{
-			name: "float_fromFloat",
-			tmpl: `{{float "36.05"}}`,
+			name: "float64_fromFloat",
+			tmpl: `{{float64 36.05}}`,
 			want: "36.05",
 		},
 		{
@@ -120,7 +120,7 @@ func TestTemplate(t *testing.T) {
 			}
 			var buf bytes.Buffer
 			if err := tmpl.Execute(&buf, tc.data); err != nil {
-				t.Errorf("template execute: %s", err)
+				t.Errorf("error: %s", err)
 				return
 			}
 			got := buf.String()

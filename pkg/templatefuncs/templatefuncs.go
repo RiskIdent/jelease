@@ -73,52 +73,110 @@ var FuncsMap = template.FuncMap{
 		re := regexp.MustCompile(regex)
 		return re.MatchString(text)
 	},
-	"int": func(value string) int {
-		number, err := strconv.ParseInt(value, 10, 32)
-		if err != nil {
-			panic(fmt.Sprintf("int %q: %s", value, err))
+	"int": func(value any) int {
+		switch value := value.(type) {
+		case string:
+			number, err := strconv.ParseInt(value, 0, 0)
+			if err != nil {
+				panic(err.Error())
+			}
+			return int(number)
+		case int:
+			return value
+		case int8:
+			return int(value)
+		case int16:
+			return int(value)
+		case int32:
+			return int(value)
+		case int64:
+			return int(value)
+		case uint:
+			return int(value)
+		case uint8:
+			return int(value)
+		case uint16:
+			return int(value)
+		case uint32:
+			return int(value)
+		case uint64:
+			return int(value)
+		case float32:
+			return int(value)
+		case float64:
+			return int(value)
+		default:
+			panic(fmt.Sprintf("unsupported type: %T", value))
 		}
-		return int(number)
 	},
-	"float": func(value string) float32 {
-		number, err := strconv.ParseFloat(value, 10)
-		if err != nil {
-			panic(fmt.Sprintf("float %q: %s", value, err))
+	"float64": func(value any) float64 {
+		switch value := value.(type) {
+		case string:
+			number, err := strconv.ParseFloat(value, 64)
+			if err != nil {
+				panic(err.Error())
+			}
+			return number
+		case int:
+			return float64(value)
+		case int8:
+			return float64(value)
+		case int16:
+			return float64(value)
+		case int32:
+			return float64(value)
+		case int64:
+			return float64(value)
+		case uint:
+			return float64(value)
+		case uint8:
+			return float64(value)
+		case uint16:
+			return float64(value)
+		case uint32:
+			return float64(value)
+		case uint64:
+			return float64(value)
+		case float32:
+			return float64(value)
+		case float64:
+			return value
+		default:
+			panic(fmt.Sprintf("unsupported type: %T", value))
 		}
-		return float32(number)
 	},
 	"fromYaml": func(value string) any {
 		var result any
 		if err := yaml.Unmarshal([]byte(value), &result); err != nil {
-			panic(fmt.Sprintf("fromYaml %q: %s", value, err))
+			panic(err.Error())
 		}
 		return result
 	},
 	"toYaml": func(value any) string {
 		jsonValue, err := yaml.Marshal(value)
 		if err != nil {
-			panic(fmt.Sprintf("toYaml %q: %s", value, err))
+			panic(err.Error())
 		}
 		return string(jsonValue)
 	},
 	"toJson": func(value any) string {
 		jsonValue, err := json.Marshal(value)
 		if err != nil {
-			panic(fmt.Sprintf("toJson %q: %s", value, err))
+			panic(err.Error())
 		}
 		return string(jsonValue)
 	},
 	"toPrettyJson": func(value any) string {
 		jsonValue, err := json.MarshalIndent(value, "", "  ")
 		if err != nil {
-			panic(fmt.Sprintf("toPrettyJson %q: %s", value, err))
+			panic(err.Error())
 		}
 		return string(jsonValue)
 	},
 	"fromJson": func(value string) any {
 		var result any
 		if err := json.Unmarshal([]byte(value), &result); err != nil {
-			panic(fmt.Sprintf("fromJson %q: %s", value, err))
+			panic(err.Error())
 		}
 		return result
 	},
