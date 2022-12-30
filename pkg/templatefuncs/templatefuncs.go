@@ -65,11 +65,11 @@ var FuncsMap = template.FuncMap{
 	"dirname": func(path string) string {
 		return filepath.Dir(path)
 	},
-	"regexReplaceAll": func(text, regex, replace string) string {
+	"regexReplaceAll": func(regex, replace, text string) string {
 		re := regexp.MustCompile(regex)
 		return re.ReplaceAllString(text, replace)
 	},
-	"regexMatch": func(text, regex string) bool {
+	"regexMatch": func(regex, text string) bool {
 		re := regexp.MustCompile(regex)
 		return re.MatchString(text)
 	},
@@ -87,15 +87,14 @@ var FuncsMap = template.FuncMap{
 		}
 		return float32(number)
 	},
-	"fromYaml": func(value string) map[string]string {
-		var yamlValue map[string]string
-		err := yaml.Unmarshal([]byte(value), &yamlValue)
-		if err != nil {
+	"fromYaml": func(value string) any {
+		var result any
+		if err := yaml.Unmarshal([]byte(value), &result); err != nil {
 			panic(fmt.Sprintf("fromYaml %q: %s", value, err))
 		}
-		return yamlValue
+		return result
 	},
-	"toYaml": func(value map[string]string) string {
+	"toYaml": func(value any) string {
 		jsonValue, err := yaml.Marshal(value)
 		if err != nil {
 			panic(fmt.Sprintf("toYaml %q: %s", value, err))
@@ -103,7 +102,6 @@ var FuncsMap = template.FuncMap{
 		return string(jsonValue)
 	},
 	"toJson": func(value any) string {
-		// encode as json
 		jsonValue, err := json.Marshal(value)
 		if err != nil {
 			panic(fmt.Sprintf("toJson %q: %s", value, err))
@@ -111,20 +109,18 @@ var FuncsMap = template.FuncMap{
 		return string(jsonValue)
 	},
 	"toPrettyJson": func(value any) string {
-		// Encode as indented JSON
 		jsonValue, err := json.MarshalIndent(value, "", "  ")
 		if err != nil {
 			panic(fmt.Sprintf("toPrettyJson %q: %s", value, err))
 		}
 		return string(jsonValue)
 	},
-	"fromJson": func(value string) map[string]string {
-		var mapObject map[string]string
-		err := json.Unmarshal([]byte(value), &mapObject)
-		if err != nil {
+	"fromJson": func(value string) any {
+		var result any
+		if err := json.Unmarshal([]byte(value), &result); err != nil {
 			panic(fmt.Sprintf("fromJson %q: %s", value, err))
 		}
-		return mapObject
+		return result
 	},
 	"trimPrefix": func(prefix, s string) string {
 		return strings.TrimPrefix(s, prefix)

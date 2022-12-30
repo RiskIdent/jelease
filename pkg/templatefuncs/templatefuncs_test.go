@@ -24,49 +24,109 @@ import (
 )
 
 func TestTemplate(t *testing.T) {
-	assertTemplate(t, `{{regexReplaceAll "Jelease regex replace all" "regex" "regexp"}}`, "Jelease regexp replace all")
-	assertTemplate(t, `{{regexMatch "Jelease regex replace all" "regex"}}`, "true")
-	assertTemplate(t, `{{int "36"}}`, "36")
-	assertTemplate(t, `{{float "36.05"}}`, "36.05")
-	assertTemplateData(t, `{{toPrettyJson . }}`, "{\n  \"Name\": \"Berlin\"\n}", map[string]string{"Name": "Berlin"})
-	assertTemplateData(t, `{{toJson .}}`, `{"Name":true}`, map[string]any{"Name": true})
-	assertTemplateData(t, `{{fromJson . }}`, `map[Name:Bangladesh]`, `{"Name": "Bangladesh"}`)
-	assertTemplateData(t, `{{fromYaml . }}`, `map[Name:Bangladesh]`, `{"Name": "Bangladesh"}`)
-	assertTemplateData(t, `{{toYaml . }}`, "Name: Bangladesh\n", map[string]string{"Name": "Bangladesh"})
-}
+	tests := []struct {
+		name string
+		tmpl string
+		want string
+		data any
+	}{
+		{
+			name: "regexReplaceAll",
+			tmpl: `{{"abbaba" | regexReplaceAll "b+" "."}}`,
+			want: "a.a.a",
+		},
+		{
+			name: "regexMatch",
+			tmpl: `{{"abba" | regexMatch "b*"}}`,
+			want: "true",
+		},
+		{
+			name: "int_fromString",
+			tmpl: `{{int "36"}}`,
+			want: "36",
+		},
+		{
+			name: "int_fromInt",
+			tmpl: `{{int "36"}}`,
+			want: "36",
+		},
+		{
+			name: "int_fromFloat",
+			tmpl: `{{int "36"}}`,
+			want: "36",
+		},
+		{
+			name: "float_fromString",
+			tmpl: `{{float "36.05"}}`,
+			want: "36.05",
+		},
+		{
+			name: "float_fromInt",
+			tmpl: `{{float "36.05"}}`,
+			want: "36.05",
+		},
+		{
+			name: "float_fromFloat",
+			tmpl: `{{float "36.05"}}`,
+			want: "36.05",
+		},
+		{
+			name: "toPrettyJson",
+			tmpl: `{{toPrettyJson .}}`,
+			want: `{
+  "Name": "Berlin"
+}`,
+			data: map[string]string{"Name": "Berlin"},
+		},
+		{
+			name: "toJson",
+			tmpl: `{{toJson .}}`,
+			want: `{"Name":true}`,
+			data: map[string]any{"Name": true},
+		},
+		{
+			name: "fromJson",
+			tmpl: `{{fromJson .}}`,
+			want: `map[Name:Bangladesh]`,
+			data: `{"Name": "Bangladesh"}`,
+		},
+		{
+			name: "fromYaml",
+			tmpl: `{{fromYaml .}}`,
+			want: `map[Name:Bangladesh]`,
+			data: `Name: Bangladesh`,
+		},
+		{
+			name: "toYaml",
+			tmpl: `{{toYaml .}}`,
+			want: `City:
+  Name: Bangladesh
+`,
+			data: map[string]any{
+				"City": map[string]any{
+					"Name": "Bangladesh",
+				},
+			},
+		},
+	}
 
-func assertTemplate(t *testing.T, templateString string, want string) {
-	tmpl, err := template.New("").Funcs(FuncsMap).Parse(templateString)
-	if err != nil {
-		t.Errorf("Template %q: error %q", templateString, err)
-		return
-	}
-	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, nil); err != nil {
-		t.Errorf("Template %q: buf error %q", templateString, err)
-		return
-	}
-	got := buf.String()
-
-	if got != want {
-		t.Errorf("Template %q: want %q got %q", templateString, want, got)
-	}
-}
-
-func assertTemplateData(t *testing.T, templateString string, want string, data any) {
-	tmpl, err := template.New("").Funcs(FuncsMap).Parse(templateString)
-	if err != nil {
-		t.Errorf("Template %q: error %q", templateString, err)
-		return
-	}
-	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, data); err != nil {
-		t.Errorf("Template %q: buf error %q", templateString, err)
-		return
-	}
-	got := buf.String()
-
-	if got != want {
-		t.Errorf("Template %q: want %q got %q", templateString, want, got)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Logf("Template: %s", tc.tmpl)
+			tmpl, err := template.New(tc.name).Funcs(FuncsMap).Parse(tc.tmpl)
+			if err != nil {
+				t.Errorf("error creating template: %s", err)
+				return
+			}
+			var buf bytes.Buffer
+			if err := tmpl.Execute(&buf, tc.data); err != nil {
+				t.Errorf("template execute: %s", err)
+				return
+			}
+			got := buf.String()
+			if got != tc.want {
+				t.Errorf("want %q got %q", tc.want, got)
+			}
+		})
 	}
 }
