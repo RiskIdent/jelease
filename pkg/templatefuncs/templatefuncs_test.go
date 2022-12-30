@@ -15,14 +15,12 @@
 // You should have received a copy of the GNU General Public License along
 // with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package cmd
+package templatefuncs
 
 import (
 	"bytes"
 	"testing"
 	"text/template"
-
-	"github.com/RiskIdent/jelease/pkg/config"
 )
 
 func TestTemplate(t *testing.T) {
@@ -38,7 +36,7 @@ func TestTemplate(t *testing.T) {
 }
 
 func assertTemplate(t *testing.T, templateString string, want string) {
-	tmpl, err := template.New("").Funcs(config.FuncsMap).Parse(templateString)
+	tmpl, err := template.New("").Funcs(FuncsMap).Parse(templateString)
 	if err != nil {
 		t.Errorf("Template %q: error %q", templateString, err)
 		return
@@ -56,7 +54,7 @@ func assertTemplate(t *testing.T, templateString string, want string) {
 }
 
 func assertTemplateData(t *testing.T, templateString string, want string, data any) {
-	tmpl, err := template.New("").Funcs(config.FuncsMap).Parse(templateString)
+	tmpl, err := template.New("").Funcs(FuncsMap).Parse(templateString)
 	if err != nil {
 		t.Errorf("Template %q: error %q", templateString, err)
 		return
