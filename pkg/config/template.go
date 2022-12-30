@@ -26,8 +26,6 @@ import (
 	"github.com/spf13/pflag"
 )
 
-var FuncsMap template.FuncMap
-
 type Template template.Template
 
 // Ensure the type implements the interfaces
