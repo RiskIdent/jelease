@@ -22,6 +22,7 @@ import (
 	"encoding"
 	"text/template"
 
+	"github.com/RiskIdent/jelease/pkg/templatefuncs"
 	"github.com/invopop/jsonschema"
 	"github.com/spf13/pflag"
 )
@@ -42,7 +43,7 @@ func (t *Template) String() string {
 }
 
 func (t *Template) Set(value string) error {
-	parsed, err := template.New("").Funcs(FuncsMap).Parse(value)
+	parsed, err := template.New("").Funcs(templatefuncs.FuncsMap).Parse(value)
 	if err != nil {
 		return err
 	}
