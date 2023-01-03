@@ -121,7 +121,7 @@ config file:
    go run . serve --dryrun
 
    # To test the webhook receiver server, with creating issues and PRs
-   go run . serve --dryrun
+   go run . serve
    ```
 
 6. To test out the webhooks, you can make use of our example webhook like so:
