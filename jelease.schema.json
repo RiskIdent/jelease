@@ -73,7 +73,53 @@
           "$ref": "#/$defs/githubAuthType"
         },
         "token": {
-          "type": "string"
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "app": {
+          "$ref": "#/$defs/githubAuthApp"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "githubAuthApp": {
+      "oneOf": [
+        {
+          "required": [
+            "privateKeyPath"
+          ],
+          "title": "privateKeyPath"
+        },
+        {
+          "required": [
+            "privateKeyPem"
+          ],
+          "title": "privateKeyPem"
+        }
+      ],
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "privateKeyPath": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "privateKeyPem": {
+          "$ref": "#/$defs/rsaPrivateKeyPem"
         }
       },
       "additionalProperties": false,
@@ -82,7 +128,8 @@
     "githubAuthType": {
       "type": "string",
       "enum": [
-        "pat"
+        "pat",
+        "app"
       ],
       "title": "GitHub auth type"
     },
@@ -437,6 +484,21 @@
       "type": "string",
       "format": "regex",
       "title": "Regular Expression pattern (regex)"
+    },
+    "rsaPrivateKeyPem": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "contentMediaType": "application/x-pem-file",
+      "title": "PEM-formatted RSA private key",
+      "examples": [
+        "-----BEGIN RSA PRIVATE KEY-----\nbG9yZW0gaXBzdW0sIHNlY3JldCBrZXkgYmFzZTY0IGdvZXMgaGVyZS4u\n-----END RSA PRIVATE KEY-----\n"
+      ]
     },
     "template": {
       "type": "string",

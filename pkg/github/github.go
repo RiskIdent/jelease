@@ -19,42 +19,41 @@ package github
 
 import (
 	"context"
+	"fmt"
+	"net/http"
 
 	"github.com/RiskIdent/jelease/pkg/config"
+	"github.com/RiskIdent/jelease/pkg/git"
 	"github.com/RiskIdent/jelease/pkg/util"
 	"github.com/google/go-github/v48/github"
-	"golang.org/x/oauth2"
 )
 
 type Client interface {
-	CreatePullRequest(pr NewPullRequest) (PullRequest, error)
+	CreatePullRequest(ctx context.Context, pr NewPullRequest) (PullRequest, error)
+	TestConnection(ctx context.Context) error
+	GitCredentialsForRepo(ctx context.Context, repo RepoRef) (git.Credentials, error)
 }
 
 func New(ghCfg *config.GitHub) (Client, error) {
-	raw, err := newGitHubClient(ghCfg)
-	if err != nil {
-		return nil, err
+	switch ghCfg.Auth.Type {
+	case config.GitHubAuthTypePAT:
+		return NewPATClient(ghCfg)
+	case config.GitHubAuthTypeApp:
+		return NewAppClient(ghCfg)
+	default:
+		return nil, fmt.Errorf("unsupported GitHub auth type: %q", ghCfg.Auth.Type)
 	}
-	return &client{
-		raw: raw,
-	}, nil
 }
 
-type client struct {
-	raw *github.Client
-}
-
-func newGitHubClient(ghCfg *config.GitHub) (*github.Client, error) {
-	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: ghCfg.Auth.Token})
-	tc := oauth2.NewClient(context.TODO(), ts)
-	if ghCfg.URL != nil {
-		return github.NewEnterpriseClient(*ghCfg.URL, "", tc)
+func newClientEnterpriceOrPublic(ghURL *string, httpClient *http.Client) (*github.Client, error) {
+	if ghURL != nil {
+		return github.NewEnterpriseClient(*ghURL, *ghURL, httpClient)
 	}
-	return github.NewClient(tc), nil
+	return github.NewClient(httpClient), nil
 }
 
-func (c *client) CreatePullRequest(pr NewPullRequest) (PullRequest, error) {
-	created, _, err := c.raw.PullRequests.Create(context.TODO(), pr.Owner, pr.Repo, &github.NewPullRequest{
+func CreatePullRequest(ctx context.Context, gh *github.Client, pr NewPullRequest) (PullRequest, error) {
+	created, _, err := gh.PullRequests.Create(ctx, pr.Owner, pr.Repo, &github.NewPullRequest{
 		Title:               &pr.Title,
 		Body:                &pr.Description,
 		Head:                &pr.Head,
@@ -66,13 +65,13 @@ func (c *client) CreatePullRequest(pr NewPullRequest) (PullRequest, error) {
 	}
 	return PullRequest{
 		RepoRef:     pr.RepoRef,
-		ID:          util.Deref(created.ID, -1),
-		Number:      util.Deref(created.Number, -1),
-		URL:         util.Deref(created.HTMLURL, ""),
-		Title:       util.Deref(created.Title, ""),
-		Description: util.Deref(created.Body, ""),
-		Head:        util.Deref(created.Head.Label, ""),
-		Base:        util.Deref(created.Base.Label, ""),
+		ID:          created.GetID(),
+		Number:      created.GetNumber(),
+		URL:         created.GetHTMLURL(),
+		Title:       created.GetTitle(),
+		Description: created.GetBody(),
+		Head:        created.Head.GetLabel(),
+		Base:        created.Base.GetLabel(),
 	}, nil
 }
 

@@ -30,12 +30,13 @@ import (
 )
 
 type HTTPServer struct {
-	engine *gin.Engine
-	cfg    *config.Config
-	jira   jira.Client
+	engine  *gin.Engine
+	cfg     *config.Config
+	jira    jira.Client
+	patcher patch.Patcher
 }
 
-func New(cfg *config.Config, jira jira.Client) *HTTPServer {
+func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher) *HTTPServer {
 	gin.DefaultErrorWriter = log.Logger
 	gin.DefaultWriter = log.Logger
 
@@ -49,9 +50,10 @@ func New(cfg *config.Config, jira jira.Client) *HTTPServer {
 	)
 
 	s := &HTTPServer{
-		engine: r,
-		cfg:    cfg,
-		jira:   jira,
+		engine:  r,
+		cfg:     cfg,
+		jira:    jira,
+		patcher: patcher,
 	}
 
 	r.GET("/", s.handleGetRoot)
@@ -85,13 +87,13 @@ func (s HTTPServer) handlePostWebhook(c *gin.Context) {
 		return
 	}
 
-	go tryApplyChanges(s.jira, release, issueRef.IssueRef, s.cfg)
+	go tryApplyChanges(s.jira, s.patcher, release, issueRef.IssueRef, s.cfg)
 
 	// NOTE: always return OK, otherwise newreleases.io will retry
 	c.Status(http.StatusOK)
 }
 
-func tryApplyChanges(j jira.Client, release Release, issueRef jira.IssueRef, cfg *config.Config) {
+func tryApplyChanges(j jira.Client, patcher patch.Patcher, release Release, issueRef jira.IssueRef, cfg *config.Config) {
 	tmplCtx := patch.TemplateContext{
 		Package:   release.Project,
 		Version:   release.Version,
@@ -104,7 +106,7 @@ func tryApplyChanges(j jira.Client, release Release, issueRef jira.IssueRef, cfg
 		createTemplatedComment(j, issueRef, cfg.Jira.Issue.Comments.NoConfig, tmplCtx)
 		return
 	}
-	prs, err := patch.CloneAllAndPublishPatches(cfg, pkg.Repos, tmplCtx)
+	prs, err := patcher.CloneAndPublishAll(pkg.Repos, tmplCtx)
 	if err != nil {
 		log.Error().Err(err).Str("project", release.Project).Msg("Failed creating patches.")
 		createTemplatedComment(j, issueRef, cfg.Jira.Issue.Comments.PRFailed, TemplateContextError{

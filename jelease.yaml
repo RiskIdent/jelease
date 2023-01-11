@@ -46,8 +46,30 @@ github:
 
   # Config for how to authenticate with GitHub
   auth:
-    type: pat # only "pat" supported
-    token: abc123xyz # Generate new token at: https://github.com/settings/tokens
+    type: pat # pat | app
+
+    # The "token" config is only relevant if the auth type is set to "pat".
+    # Generate new token at: https://github.com/settings/tokens
+    token: # ghp_abc123xyz
+
+    # The "app" configs are only relevant if the auth type is set to "app"
+    app:
+      # Set "id" to the GitHub App's "App ID"
+      id: 0
+
+      # You must set either "privateKeyPath" or "privateKeyPem".
+      #
+      # The former, "privateKeyPath", points to a file containing the key,
+      # as downloaded from you GitHub App settings page:
+      # https://docs.github.com/en/enterprise-server@3.7/developers/apps/building-github-apps/authenticating-with-github-apps#generating-a-private-key
+      #
+      # The latter, "privateKeyPem", is the content of that file embedded as a
+      # string inside the config file.
+      privateKeyPath: # /some/path/to/jelease.YYYY-MM-DD.private-key.pem
+      #privateKeyPem: |
+      #  -----BEGIN RSA PRIVATE KEY-----
+      #  bG9yZW0gaXBzdW0sIHNlY3JldCBrZXkgYmFzZTY0IGdvZXMgaGVyZS4u
+      #  -----END RSA PRIVATE KEY-----
 
   pr:
     title: |-
