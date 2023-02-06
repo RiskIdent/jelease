@@ -48,7 +48,11 @@ var applyCmd = &cobra.Command{
 			JiraIssue: applyFlags.jiraIssueKey,
 		}
 
-		_, err := patch.CloneAllAndPublishPatches(&cfg, pkg.Repos, tmplCtx)
+		patcher, err := newTestedPatcher()
+		if err != nil {
+			return err
+		}
+		_, err = patcher.CloneAndPublishAll(pkg.Repos, tmplCtx)
 		return err
 	},
 }
