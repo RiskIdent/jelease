@@ -10,6 +10,7 @@ require (
 	github.com/andygrunwald/go-jira v1.15.1
 	github.com/bradleyfalzon/ghinstallation/v2 v2.1.1-0.20221216144751-8f41e6541ca6
 	github.com/fatih/color v1.13.0
+	github.com/gin-contrib/multitemplate v0.0.0-20230212012517-45920c92c271
 	github.com/gin-gonic/gin v1.8.1
 	github.com/golang-jwt/jwt/v4 v4.4.3
 	github.com/google/go-github/v48 v48.2.0
@@ -23,6 +24,7 @@ require (
 	golang.org/x/exp v0.0.0-20221212164502-fae10dda9338
 	golang.org/x/oauth2 v0.0.0-20221014153046-6fdb5e3db783
 	gopkg.in/typ.v4 v4.2.0
+	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 	newreleases.io/newreleases v1.10.0
 )
@@ -62,5 +64,4 @@ require (
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

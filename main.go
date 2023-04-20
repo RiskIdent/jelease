@@ -18,22 +18,24 @@
 package main
 
 import (
+	"embed"
 	"fmt"
 
 	"github.com/RiskIdent/jelease/cmd"
 	"github.com/RiskIdent/jelease/pkg/config"
 	"gopkg.in/yaml.v3"
-
-	_ "embed"
 )
 
 //go:embed jelease.yaml
 var defaultConfigYAML []byte
+
+//go:embed templates
+var templatesFS embed.FS
 
 func main() {
 	var defaultConfig config.Config
 	if err := yaml.Unmarshal(defaultConfigYAML, &defaultConfig); err != nil {
 		panic(fmt.Errorf("Parse embedded config: %w", err))
 	}
-	cmd.Execute(defaultConfig)
+	cmd.Execute(defaultConfig, templatesFS)
 }

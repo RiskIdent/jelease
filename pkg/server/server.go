@@ -19,12 +19,15 @@ package server
 
 import (
 	"fmt"
+	"html/template"
+	"io/fs"
 	"net/http"
 
 	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/RiskIdent/jelease/pkg/github"
 	"github.com/RiskIdent/jelease/pkg/jira"
 	"github.com/RiskIdent/jelease/pkg/patch"
+	"github.com/gin-contrib/multitemplate"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 )
@@ -36,7 +39,7 @@ type HTTPServer struct {
 	patcher patch.Patcher
 }
 
-func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher) *HTTPServer {
+func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher, htmlTemplates fs.FS) *HTTPServer {
 	gin.DefaultErrorWriter = log.Logger
 	gin.DefaultWriter = log.Logger
 
@@ -59,7 +62,17 @@ func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher) *HTTPServe
 	r.GET("/", s.handleGetRoot)
 	r.POST("/webhook", s.handlePostWebhook)
 
+	ren := multitemplate.New()
+	r.HTMLRender = ren
+
+	addHTMLFromFS(ren, htmlTemplates, "index", "templates/layout.html", "templates/index.html")
+
 	return s
+}
+
+func addHTMLFromFS(ren multitemplate.Render, fs fs.FS, name string, files ...string) {
+	tmpl := template.Must(template.ParseFS(fs, files...))
+	ren.Add(name, tmpl)
 }
 
 func (s HTTPServer) Serve() error {
@@ -68,8 +81,10 @@ func (s HTTPServer) Serve() error {
 }
 
 // handleGetRoot handles to GET requests for a basic reachability check
-func (HTTPServer) handleGetRoot(c *gin.Context) {
-	c.Data(http.StatusOK, "text/plain", []byte("OK"))
+func (s HTTPServer) handleGetRoot(c *gin.Context) {
+	c.HTML(http.StatusOK, "index", map[string]any{
+		"Config": s.cfg,
+	})
 }
 
 // handlePostWebhook handles newreleases.io webhook post requests

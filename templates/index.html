@@ -1,0 +1,13 @@
+{{ define "content" }}
+<h1 class="text-center">Jelease</h1>
+<p>
+    Packages:
+    <ul>
+    {{ range $pkg := .Config.Packages }}
+        <li>
+            {{ $pkg.Name }}
+        </li>
+    {{ end }}
+    </ul>
+</p>
+{{ end }}

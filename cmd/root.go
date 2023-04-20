@@ -18,6 +18,7 @@
 package cmd
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime/debug"
@@ -33,7 +34,8 @@ import (
 )
 
 var (
-	cfg config.Config
+	cfg           config.Config
+	htmlTemplates fs.FS
 
 	appVersion string // may be set via `go build` flags
 	goVersion  string
@@ -55,7 +57,8 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-func Execute(defaultConfig config.Config) {
+func Execute(defaultConfig config.Config, templatesFS fs.FS) {
+	htmlTemplates = templatesFS
 	cfg = defaultConfig
 
 	// Add flag definitons here that need to be binded with configs
