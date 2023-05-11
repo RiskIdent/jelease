@@ -19,17 +19,32 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 {{ define "title" }}{{ .Package.Name }} - Jelease{{ end }}
 {{ define "content" }}
-<h2>{{ .Package.Name }}</h2>
-<h3>Affected repositories</h3>
-<ul>
-    {{ range $repo := .Package.Repos }}
-        <li>
-            <a href="{{ $repo.URL }}" target="_blank">{{ $repo.URL }}</a>
-        </li>
-    {{ end }}
+<ul class="breadcrumb border">
+  <li><a href="/packages">Packages</a></li>
+  <li>{{ .Package.Name }}</li>
 </ul>
-<h3>Config</h3>
-<pre><code class="language-yaml">
-{{- toYaml .Package -}}
-</code></pre>
+
+<section>
+    <h2>{{ .Package.Name }}</h2>
+
+    <a href="/packages/{{ .Package.NormalizedName }}/create-pr" class="paper-btn">Create PR</a>
+</section>
+
+<section>
+    <h3>Affected repositories</h3>
+    <ul>
+        {{ range $repo := .Package.Repos }}
+            <li>
+                <a href="{{ $repo.URL }}" target="_blank">{{ $repo.URL }}</a>
+            </li>
+        {{ end }}
+    </ul>
+</section>
+
+<section>
+    <h3>Config</h3>
+    <pre><code class="language-yaml">
+        {{- toYaml .Package -}}
+    </code></pre>
+</section>
 {{ end }}

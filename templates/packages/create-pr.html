@@ -1,0 +1,66 @@
+{{/*<!--
+SPDX-FileCopyrightText: 2022 Risk.Ident GmbH <contact@riskident.com>
+
+SPDX-License-Identifier: GPL-3.0-or-later
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+more details.
+
+You should have received a copy of the GNU General Public License along
+with this program.  If not, see <http://www.gnu.org/licenses/>.
+-->*/}}
+
+{{ define "title" }}Create PR - {{ .Package.Name }} - Jelease{{ end }}
+{{ define "content" }}
+<ul class="breadcrumb border">
+  <li><a href="/packages">Packages</a></li>
+  <li><a href="/packages/{{ .Package.NormalizedName }}">{{ .Package.Name }}</a></li>
+  <li>Create PR</li>
+</ul>
+
+<h2>Create PR for {{ .Package.Name }}</h2>
+
+<section>
+    <h3>Create GitHub PR</h3>
+    <form method="" action="">
+        <div class="row margin-bottom-none">
+            <div class="col sm-6 md-4 padding-small">
+                <div class="form-group margin-bottom-none">
+                    <label for="form-version">Version</label>
+                    <input type="text" placeholder="Example: v1.0.0" id="form-version" required />
+                </div>
+            </div>
+            <div class="col sm-6 md-6 padding-small">
+                <fieldset class="form-group margin-bottom-none">
+                    <p class="margin-top-none">Settings</p>
+                    <label class="paper-switch-2">
+                        <input id="form-dry-run" name="form-dry-run" type="checkbox" checked />
+                        <span class="paper-switch-slider"></span>
+                    </label>
+                    <label for="form-dry-run" class="paper-switch-2-label">
+                        Dry run (do not create PR)
+                    </label>
+                </fieldset>
+            </div>
+            <div class="col md-2 padding-small">
+                <div class="form-group margin-bottom-none">
+                    <p class="margin-top-none"></p>
+                    <button type="submit">Submit</button>
+                </div>
+            </div>
+        </div>
+    </form>
+</section>
+
+<section>
+    <h3>Console output</h3>
+    <pre><samp>// Will show text here after clicking "Submit"</samp></pre>
+</section>
+{{ end }}

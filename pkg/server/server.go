@@ -97,6 +97,23 @@ func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher, htmlTempla
 		})
 	})
 
+	addHTMLFromFS(ren, htmlTemplates, "package-create-pr", "layout.html", "packages/create-pr.html")
+	r.GET("/packages/:package/create-pr", func(c *gin.Context) {
+		pkgName := c.Param("package")
+		pkg, ok := s.cfg.TryFindNormalizedPackage(pkgName)
+		if !ok {
+			c.HTML(http.StatusOK, "package-404", map[string]any{
+				"Config":      s.cfg,
+				"PackageName": pkgName,
+			})
+			return
+		}
+		c.HTML(http.StatusOK, "package-create-pr", map[string]any{
+			"Config":  s.cfg,
+			"Package": pkg,
+		})
+	})
+
 	r.POST("/webhook", s.handlePostWebhook)
 
 	httpFS := http.FS(staticFiles)
