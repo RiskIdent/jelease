@@ -29,7 +29,7 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 <section>
     <h3>Create GitHub PR</h3>
-    <form method="" action="">
+    <form method="POST" action="">
         <div class="row margin-bottom-none">
             <div class="col sm-6 md-4 padding-small">
                 <div class="form-group margin-bottom-none">
@@ -61,6 +61,6 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 <section>
     <h3>Console output</h3>
-    <pre><samp>// Will show text here after clicking "Submit"</samp></pre>
+    <pre><samp>{{ .ConsoleOutput }}</samp></pre>
 </section>
 {{ end }}

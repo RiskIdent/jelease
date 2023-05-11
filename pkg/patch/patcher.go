@@ -51,6 +51,11 @@ func New(cfg *config.Config) (Patcher, error) {
 	}, nil
 }
 
+func (p Patcher) CloneWithConfig(cfg *config.Config) Patcher {
+	p.cfg = cfg
+	return p
+}
+
 func (p Patcher) TestGitHubConnection(ctx context.Context) error {
 	if err := p.gh.TestConnection(context.TODO()); err != nil {
 		return fmt.Errorf("test GitHub connection: %w", err)

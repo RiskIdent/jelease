@@ -100,12 +100,7 @@ func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher, htmlTempla
 	addHTMLFromFS(ren, htmlTemplates, "package-create-pr", "layout.html", "packages/create-pr.html")
 	r.GET("/packages/:package/create-pr", func(c *gin.Context) {
 		version := c.Query("version")
-		dryRun := true
-		if dryRunStr, ok := c.GetQuery("dryrun"); ok {
-			dryRun = dryRunStr == "" ||
-				strings.EqualFold(dryRunStr, "true") ||
-				strings.EqualFold(dryRunStr, "on") // <input> checkboxes use "on"
-		}
+		dryRun := parseQueryBool(c, "dryrun", true)
 
 		pkgName := c.Param("package")
 		pkg, ok := s.cfg.TryFindNormalizedPackage(pkgName)
@@ -117,10 +112,43 @@ func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher, htmlTempla
 			return
 		}
 		c.HTML(http.StatusOK, "package-create-pr", map[string]any{
-			"Config":  s.cfg,
-			"Package": pkg,
-			"Version": version,
-			"DryRun":  dryRun,
+			"Config":        s.cfg,
+			"Package":       pkg,
+			"Version":       version,
+			"DryRun":        dryRun,
+			"ConsoleOutput": `// Will show text here after clicking "Submit"`,
+		})
+	})
+	r.POST("/packages/:package/create-pr", func(c *gin.Context) {
+		version := c.Query("version")
+		dryRun := parseQueryBool(c, "dryrun", true)
+
+		pkgName := c.Param("package")
+		pkg, ok := s.cfg.TryFindNormalizedPackage(pkgName)
+		if !ok {
+			c.HTML(http.StatusOK, "package-404", map[string]any{
+				"Config":      s.cfg,
+				"PackageName": pkgName,
+			})
+			return
+		}
+
+		cfgClone := *s.cfg
+		// Let config's "dry run" setting have precedence
+		cfgClone.DryRun = cfgClone.DryRun || dryRun
+		patcherClone := s.patcher.CloneWithConfig(&cfgClone)
+
+		patcherClone.CloneAndPublishAll(pkg.Repos, patch.TemplateContext{
+			Package: pkg.Name,
+			Version: version,
+		})
+
+		c.HTML(http.StatusOK, "package-create-pr", map[string]any{
+			"Config":        s.cfg,
+			"Package":       pkg,
+			"Version":       version,
+			"DryRun":        dryRun,
+			"ConsoleOutput": "",
 		})
 	})
 
@@ -142,6 +170,16 @@ func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher, htmlTempla
 	})
 
 	return s
+}
+
+func parseQueryBool(c *gin.Context, param string, ifMissing bool) bool {
+	value, ok := c.GetQuery(param)
+	if !ok {
+		return ifMissing
+	}
+	return value == "" ||
+		strings.EqualFold(value, "true") ||
+		strings.EqualFold(value, "on") // <input> checkboxes use "on"
 }
 
 func addHTMLFromFS(ren multitemplate.Render, fs fs.FS, name string, files ...string) {
