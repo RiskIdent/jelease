@@ -17,8 +17,19 @@ You should have received a copy of the GNU General Public License along
 with this program.  If not, see <http://www.gnu.org/licenses/>.
 -->*/}}
 
+{{ define "title" }}{{ .Package.Name }} - Jelease{{ end }}
 {{ define "content" }}
-<div class="row flex-center">
-    <img src="/images/jelease-gopher-card-512.jpg" alt="Jelease logo" />
-</div>
+<h2>{{ .Package.Name }}</h2>
+<h3>Affected repositories</h3>
+<ul>
+    {{ range $repo := .Package.Repos }}
+        <li>
+            <a href="{{ $repo.URL }}" target="_blank">{{ $repo.URL }}</a>
+        </li>
+    {{ end }}
+</ul>
+<h3>Config</h3>
+<pre><code class="language-yaml">
+{{- toYaml .Package -}}
+</code></pre>
 {{ end }}

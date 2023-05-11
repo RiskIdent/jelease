@@ -19,9 +19,15 @@ package config
 
 import (
 	"reflect"
+	"strings"
 
 	"github.com/RiskIdent/jelease/pkg/util"
 	"github.com/invopop/jsonschema"
+)
+
+var (
+	redacted    = "/redacted/"
+	redactedPtr = &redacted
 )
 
 type Config struct {
@@ -43,9 +49,28 @@ func (c Config) TryFindPackage(pkgName string) (Package, bool) {
 	return Package{}, false
 }
 
+func (c Config) TryFindNormalizedPackage(normalizedPkgName string) (Package, bool) {
+	for _, pkg := range c.Packages {
+		if pkg.NormalizedName() == normalizedPkgName {
+			return pkg, true
+		}
+	}
+	return Package{}, false
+}
+
+func (c Config) Censored() Config {
+	c.GitHub = c.GitHub.Censored()
+	c.Jira = c.Jira.Censored()
+	return c
+}
+
 type Package struct {
 	Name  string
 	Repos []PackageRepo
+}
+
+func (p Package) NormalizedName() string {
+	return strings.ReplaceAll(p.Name, "/", "-")
 }
 
 type PackageRepo struct {
@@ -75,16 +100,41 @@ type GitHub struct {
 	PR      GitHubPR
 }
 
+func (gh GitHub) Censored() GitHub {
+	gh.Auth = gh.Auth.Censored()
+	return gh
+}
+
 type GitHubAuth struct {
 	Type  GitHubAuthType
 	Token *string `yaml:",omitempty" jsonschema:"oneof_type=string;null"`
 	App   GitHubAuthApp
 }
 
+func (a GitHubAuth) Censored() GitHubAuth {
+	if a.Token != nil {
+		a.Token = redactedPtr
+	}
+	a.App = a.App.Censored()
+	return a
+}
+
 type GitHubAuthApp struct {
 	ID             int64
 	PrivateKeyPath *string           `yaml:"privateKeyPath,omitempty" jsonschema:"oneof_type=string;null,oneof_required=privateKeyPath"`
 	PrivateKeyPEM  *RSAPrivateKeyPEM `yaml:"privateKeyPem,omitempty" jsonschema:"oneof_required=privateKeyPem"`
+}
+
+func (a GitHubAuthApp) Censored() GitHubAuthApp {
+	if a.PrivateKeyPath != nil {
+		a.PrivateKeyPath = redactedPtr
+	}
+	if a.PrivateKeyPEM != nil {
+		a.PrivateKeyPEM = &RSAPrivateKeyPEM{
+			pem: []byte(redacted),
+		}
+	}
+	return a
 }
 
 type GitHubPR struct {
@@ -107,10 +157,25 @@ type Jira struct {
 	Issue          JiraIssue
 }
 
+func (j Jira) Censored() Jira {
+	j.Auth = j.Auth.Censored()
+	return j
+}
+
 type JiraAuth struct {
 	Type  JiraAuthType
 	Token string
 	User  string
+}
+
+func (a JiraAuth) Censored() JiraAuth {
+	if a.Token != "" {
+		a.Token = redacted
+	}
+	if a.User != "" {
+		a.User = redacted
+	}
+	return a
 }
 
 // Jira Ticket type

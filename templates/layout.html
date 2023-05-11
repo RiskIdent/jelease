@@ -1,27 +1,94 @@
+{{/*<!--
+SPDX-FileCopyrightText: 2022 Risk.Ident GmbH <contact@riskident.com>
+
+SPDX-License-Identifier: GPL-3.0-or-later
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+more details.
+
+You should have received a copy of the GNU General Public License along
+with this program.  If not, see <http://www.gnu.org/licenses/>.
+-->*/}}
+
 <!DOCTYPE html>
 <html lang="en">
 	<head>
-		<title>Jelease - Risk.Ident</title>
+		<title>{{ block "title" . }}Jelease{{ end }}</title>
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+		<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+		<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+		<link rel="manifest" href="/site.webmanifest">
+		<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+		<meta name="apple-mobile-web-app-title" content="Jelease">
+		<meta name="application-name" content="Jelease">
+		<meta name="msapplication-TileColor" content="#4ecbdd">
+		<meta name="theme-color" content="#ffffff">
+
 		<link rel="stylesheet" href="https://unpkg.com/papercss@1.8.3/dist/paper.min.css">
+		<link rel="stylesheet"
+
+			href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css"
+			integrity="sha512-0aPQyyeZrWj9sCA46UlmWgKOP0mUipLQ6OZXu8l4IcAmD2u31EPEy9VcIMvl7SoAaKe8bLXZhYoMaE/in+gcgA=="
+			crossorigin="anonymous"
+			referrerpolicy="no-referrer" />
 	</head>
 	<body>
 		{{ block "body" . }}
-		<div class="paper container margin-top">
-			{{ block "content" . }}
-			<p>
-				<em>This page has not been implemented yet.</em>
-			</p>
-			{{ end }}
+		<main class="paper container margin-top">
+			<nav class="border split-nav margin-bottom">
+				<div class="nav-brand">
+					<h3><a href="/">Jelease</a></h3>
+				</div>
+				<div class="collapsible">
+					<input id="collapsible-nav" type="checkbox" name="collapsible-nav">
+					<label for="collapsible-nav">
+						<div class="bar1"></div>
+						<div class="bar2"></div>
+						<div class="bar3"></div>
+					</label>
+					<div class="collapsible-body">
+						<ul class="inline">
+							<li><a href="/packages">Packages</a></li>
+							<li><a href="/config">Config</a></li>
+							<li><a href="https://github.com/RiskIdent/jelease" target="_blank">Github</a></li>
+						</ul>
+					</div>
+				</div>
+			</nav>
+			<article>
+				{{ block "content" . }}
+				<p>
+					<em>This page has not been implemented yet.</em>
+				</p>
+				{{ end }}
+			</article>
 			<hr/>
-			<p class="text-muted">
+			<p class="text-muted text-center">
 				Risk.Ident GmbH
 				| Created by the Platform team
-				| <a href="https://github.com/RiskIdent/jelease" target="_blank">Source code</a>
 			</p>
-		</div>
+		</main>
 		{{ end }}
-	</body>
+		<script
+			src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"
+			integrity="sha512-rdhY3cbXURo13l/WU9VlaRyaIYeJ/KBakckXIvJNAQde8DgpOmE+eZf7ha4vdqVjTtwQt69bD2wH2LXob/LB7Q=="
+			crossorigin="anonymous"
+			referrerpolicy="no-referrer"></script>
+		<script
+			src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/yaml.min.js"
+			integrity="sha512-uzLMr+y2UfIJhZodXJJXGUgSWhOTdT1FABVEECjTZ8rPNQ5mT8AJUldpJVPnxUYjT052sB8ddJwiB56MtAQA3g=="
+			crossorigin="anonymous"
+			referrerpolicy="no-referrer"></script>
+		<script>hljs.highlightAll();</script>
 </html>

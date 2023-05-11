@@ -22,6 +22,7 @@ import (
 	"html/template"
 	"io/fs"
 	"net/http"
+	"strings"
 
 	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/RiskIdent/jelease/pkg/github"
@@ -59,33 +60,71 @@ func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher, htmlTempla
 		patcher: patcher,
 	}
 
-	r.GET("/", s.handleGetRoot)
-	r.POST("/webhook", s.handlePostWebhook)
-	r.StaticFS("/static", http.FS(staticFiles))
-
 	ren := multitemplate.New()
 	r.HTMLRender = ren
+	defaultTemplateObj := map[string]any{"Config": s.cfg.Censored()}
 
 	addHTMLFromFS(ren, htmlTemplates, "index", "layout.html", "index.html")
+	r.GET("/", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "index", defaultTemplateObj)
+	})
+
+	addHTMLFromFS(ren, htmlTemplates, "config", "layout.html", "config.html")
+	r.GET("/config", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "config", defaultTemplateObj)
+	})
+
+	addHTMLFromFS(ren, htmlTemplates, "package-list", "layout.html", "packages/index.html")
+	r.GET("/packages", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "package-list", defaultTemplateObj)
+	})
+
+	addHTMLFromFS(ren, htmlTemplates, "package-item", "layout.html", "packages/package.html")
+	addHTMLFromFS(ren, htmlTemplates, "package-404", "layout.html", "packages/404.html")
+	r.GET("/packages/:package", func(c *gin.Context) {
+		pkgName := c.Param("package")
+		pkg, ok := s.cfg.TryFindNormalizedPackage(pkgName)
+		if !ok {
+			c.HTML(http.StatusOK, "package-404", map[string]any{
+				"Config":      s.cfg,
+				"PackageName": pkgName,
+			})
+			return
+		}
+		c.HTML(http.StatusOK, "package-item", map[string]any{
+			"Config":  s.cfg,
+			"Package": pkg,
+		})
+	})
+
+	r.POST("/webhook", s.handlePostWebhook)
+
+	httpFS := http.FS(staticFiles)
+	fs.WalkDir(staticFiles, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if strings.HasSuffix(path, ".license") {
+			return nil
+		}
+		r.StaticFileFS(path, path, httpFS)
+		return nil
+	})
 
 	return s
 }
 
 func addHTMLFromFS(ren multitemplate.Render, fs fs.FS, name string, files ...string) {
-	tmpl := template.Must(template.ParseFS(fs, files...))
+	tmpl := template.Must(template.New(files[0]).Funcs(FuncMap).ParseFS(fs, files...))
 	ren.Add(name, tmpl)
 }
 
 func (s HTTPServer) Serve() error {
 	log.Info().Uint16("port", s.cfg.HTTP.Port).Msg("Starting server.")
 	return s.engine.Run(fmt.Sprintf(":%v", s.cfg.HTTP.Port))
-}
-
-// handleGetRoot handles to GET requests for a basic reachability check
-func (s HTTPServer) handleGetRoot(c *gin.Context) {
-	c.HTML(http.StatusOK, "index", map[string]any{
-		"Config": s.cfg,
-	})
 }
 
 // handlePostWebhook handles newreleases.io webhook post requests

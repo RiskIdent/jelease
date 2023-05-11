@@ -15,39 +15,23 @@
 // You should have received a copy of the GNU General Public License along
 // with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package cmd
+package server
 
 import (
-	"os"
+	"bytes"
+	"html/template"
 
-	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
 
-var configFlags = struct {
-	noRedacting bool
-}{}
-
-// configCmd represents the config command
-var configCmd = &cobra.Command{
-	Use:   "config",
-	Short: "Prints the parsed config",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		enc := yaml.NewEncoder(os.Stdout)
+var FuncMap = template.FuncMap{
+	"toYaml": func(o any) (string, error) {
+		var buf bytes.Buffer
+		enc := yaml.NewEncoder(&buf)
 		enc.SetIndent(2)
-		defer enc.Close()
-
-		printableCfg := cfg
-		if !configFlags.noRedacting {
-			printableCfg = printableCfg.Censored()
+		if err := enc.Encode(o); err != nil {
+			return "", err
 		}
-
-		return enc.Encode(printableCfg)
+		return buf.String(), nil
 	},
-}
-
-func init() {
-	rootCmd.AddCommand(configCmd)
-
-	configCmd.Flags().BoolVar(&configFlags.noRedacting, "no-redacting", false, "Show secret fields, instead of redacting tokens and private keys.")
 }

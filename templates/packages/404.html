@@ -18,7 +18,9 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
 -->*/}}
 
 {{ define "content" }}
-<div class="row flex-center">
-    <img src="/images/jelease-gopher-card-512.jpg" alt="Jelease logo" />
+<h2>Package not found</h2>
+<div class="alert alert-danger">
+    <p>Error: No package with name <code>{{ .PackageName }}</code> found!</p>
+    <p>Go back to <a href="/packages">list of packages.</a></p>
 </div>
 {{ end }}
