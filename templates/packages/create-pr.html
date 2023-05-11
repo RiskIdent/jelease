@@ -34,14 +34,14 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
             <div class="col sm-6 md-4 padding-small">
                 <div class="form-group margin-bottom-none">
                     <label for="form-version">Version</label>
-                    <input type="text" placeholder="Example: v1.0.0" id="form-version" required />
+                    <input type="text" name="version" placeholder="Example: v1.0.0" id="form-version" required value="{{ .Version }}" />
                 </div>
             </div>
             <div class="col sm-6 md-6 padding-small">
                 <fieldset class="form-group margin-bottom-none">
                     <p class="margin-top-none">Settings</p>
                     <label class="paper-switch-2">
-                        <input id="form-dry-run" name="form-dry-run" type="checkbox" checked />
+                        <input id="form-dry-run" name="dryrun" type="checkbox" {{ if .DryRun }}checked{{ end }} />
                         <span class="paper-switch-slider"></span>
                     </label>
                     <label for="form-dry-run" class="paper-switch-2-label">

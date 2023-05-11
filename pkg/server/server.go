@@ -99,6 +99,14 @@ func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher, htmlTempla
 
 	addHTMLFromFS(ren, htmlTemplates, "package-create-pr", "layout.html", "packages/create-pr.html")
 	r.GET("/packages/:package/create-pr", func(c *gin.Context) {
+		version := c.Query("version")
+		dryRun := true
+		if dryRunStr, ok := c.GetQuery("dryrun"); ok {
+			dryRun = dryRunStr == "" ||
+				strings.EqualFold(dryRunStr, "true") ||
+				strings.EqualFold(dryRunStr, "on") // <input> checkboxes use "on"
+		}
+
 		pkgName := c.Param("package")
 		pkg, ok := s.cfg.TryFindNormalizedPackage(pkgName)
 		if !ok {
@@ -111,6 +119,8 @@ func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher, htmlTempla
 		c.HTML(http.StatusOK, "package-create-pr", map[string]any{
 			"Config":  s.cfg,
 			"Package": pkg,
+			"Version": version,
+			"DryRun":  dryRun,
 		})
 	})
 
