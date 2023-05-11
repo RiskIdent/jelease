@@ -20,6 +20,7 @@ package main
 import (
 	"embed"
 	"fmt"
+	"io/fs"
 
 	"github.com/RiskIdent/jelease/cmd"
 	"github.com/RiskIdent/jelease/pkg/config"
@@ -32,10 +33,23 @@ var defaultConfigYAML []byte
 //go:embed templates
 var templatesFS embed.FS
 
+//go:embed static
+var staticFilesFS embed.FS
+
 func main() {
 	var defaultConfig config.Config
 	if err := yaml.Unmarshal(defaultConfigYAML, &defaultConfig); err != nil {
 		panic(fmt.Errorf("Parse embedded config: %w", err))
 	}
-	cmd.Execute(defaultConfig, templatesFS)
+	templatesFSSub := mustSub(templatesFS, "templates")
+	staticFilesFSSub := mustSub(staticFilesFS, "static")
+	cmd.Execute(defaultConfig, templatesFSSub, staticFilesFSSub)
+}
+
+func mustSub(fsys fs.FS, dir string) fs.FS {
+	sub, err := fs.Sub(fsys, dir)
+	if err != nil {
+		panic(fmt.Errorf("Get subdirectory of filesystem: %w", err))
+	}
+	return sub
 }

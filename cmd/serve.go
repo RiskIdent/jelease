@@ -73,7 +73,7 @@ func run() error {
 		return err
 	}
 
-	s := server.New(&cfg, jiraClient, patcher, htmlTemplates)
+	s := server.New(&cfg, jiraClient, patcher, htmlTemplates, htmlStaticFiles)
 	return s.Serve()
 }
 

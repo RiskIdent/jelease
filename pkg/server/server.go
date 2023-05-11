@@ -39,7 +39,7 @@ type HTTPServer struct {
 	patcher patch.Patcher
 }
 
-func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher, htmlTemplates fs.FS) *HTTPServer {
+func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher, htmlTemplates fs.FS, staticFiles fs.FS) *HTTPServer {
 	gin.DefaultErrorWriter = log.Logger
 	gin.DefaultWriter = log.Logger
 
@@ -61,11 +61,12 @@ func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher, htmlTempla
 
 	r.GET("/", s.handleGetRoot)
 	r.POST("/webhook", s.handlePostWebhook)
+	r.StaticFS("/static", http.FS(staticFiles))
 
 	ren := multitemplate.New()
 	r.HTMLRender = ren
 
-	addHTMLFromFS(ren, htmlTemplates, "index", "templates/layout.html", "templates/index.html")
+	addHTMLFromFS(ren, htmlTemplates, "index", "layout.html", "index.html")
 
 	return s
 }
