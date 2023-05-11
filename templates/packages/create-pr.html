@@ -29,7 +29,7 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 <section>
     <h3>Create GitHub PR</h3>
-    <form method="POST" action="">
+    <form method="GET" action="">
         <div class="row margin-bottom-none">
             <div class="col sm-6 md-4 padding-small">
                 <div class="form-group margin-bottom-none">
@@ -43,6 +43,8 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
                     <label class="paper-switch-2">
                         <input id="form-dry-run" name="dryrun" type="checkbox" {{ if .DryRun }}checked{{ end }} />
                         <span class="paper-switch-slider"></span>
+                        <!-- should probably invert this, so true means "real run" -->
+                        <input name="dryrun" type="hidden" value="false" />
                     </label>
                     <label for="form-dry-run" class="paper-switch-2-label">
                         Dry run (do not create PR)
