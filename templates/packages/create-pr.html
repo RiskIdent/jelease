@@ -194,15 +194,12 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
 
         const url = new URL(location);
         for (const key of url.searchParams.keys()) {
-            console.log("deleting param", key);
             url.searchParams.delete(key);
         }
         for (const [key, value] of new FormData(form).entries()) {
             if (value === "true") {
-                console.log("adding boolean", key);
                 url.searchParams.set(key, "");
             } else if (typeof value === "string" && value !== "") {
-                console.log("adding nonempty string", key);
                 url.searchParams.set(key, value);
             }
         }
