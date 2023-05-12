@@ -29,7 +29,7 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 <section>
     <h3>Create GitHub PR</h3>
-    <form method="POST">
+    <form method="POST" id="create-pr-form">
         <div class="row margin-bottom-none">
             <div class="col sm-6 md-4 padding-small">
                 <div class="form-group margin-bottom-none">
@@ -64,7 +64,7 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
             <div class="col md-2 padding-small">
                 <div class="form-group margin-bottom-none">
                     <p class="margin-top-none"></p>
-                    <button type="submit">Submit</button>
+                    <button type="submit" id="submit">Submit</button>
                 </div>
             </div>
         </div>
@@ -73,6 +73,7 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 <section>
     <h3>Created PRs</h3>
+    <div id="results">
     {{ if .Executed }}
         {{ if .Error }}
             <div class="alert alert-danger">
@@ -147,5 +148,15 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
     {{ else }}
         <p><em class="text-muted">The results will be shown here, after you press "Submit".</em></p>
     {{ end }}
+    </div>
 </section>
+{{ end }}
+
+{{ define "scripts" }}
+<script>
+    document.getElementById("create-pr-form").addEventListener("submit", function() {
+        document.getElementById("results").innerHTML = `<p><em class="text-muted">Processing, please wait...</em></p>`;
+        document.getElementById("submit").setAttribute('disabled', 'disabled');
+    }); 
+</script>
 {{ end }}
