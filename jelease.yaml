@@ -76,10 +76,10 @@ github:
       {{ with .JiraIssue }}[{{ . }}] {{ end -}}
       Update `{{ .Package }}` to {{ .Version }}
     description: |
-      {{ with .JiraIssue }}
+      {{ with .JiraIssue -}}
       Jira issue: {{ . }}
-      {{ end }}
 
+      {{ end -}}
       Changed version of `{{ .Package }}` to {{ .Version }}
 
       <sub>
