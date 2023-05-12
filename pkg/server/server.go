@@ -31,6 +31,7 @@ import (
 	"github.com/RiskIdent/jelease/pkg/templatefuncs"
 	"github.com/gin-contrib/multitemplate"
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -42,8 +43,8 @@ type HTTPServer struct {
 }
 
 func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher, htmlTemplates fs.FS, staticFiles fs.FS) *HTTPServer {
-	gin.DefaultErrorWriter = log.Logger
-	gin.DefaultWriter = log.Logger
+	gin.DefaultErrorWriter = ginLogger{defaultLevel: zerolog.ErrorLevel}
+	gin.DefaultWriter = ginLogger{defaultLevel: zerolog.InfoLevel}
 
 	r := gin.New()
 	r.HandleMethodNotAllowed = true
