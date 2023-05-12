@@ -18,6 +18,7 @@
 package templatefuncs
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -30,7 +31,7 @@ import (
 
 	"github.com/RiskIdent/jelease/pkg/version"
 	"gopkg.in/typ.v4/slices"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -195,40 +196,32 @@ var FuncsMap = template.FuncMap{
 	},
 
 	// Encoding functions
-	"fromYaml": func(value string) any {
+	"fromYaml": func(value string) (any, error) {
 		var result any
-		if err := yaml.Unmarshal([]byte(value), &result); err != nil {
-			panic(err.Error())
-		}
-		return result
+		err := yaml.Unmarshal([]byte(value), &result)
+		return result, err
 	},
-	"toYaml": func(value any) string {
-		jsonValue, err := yaml.Marshal(value)
-		if err != nil {
-			panic(err.Error())
+	"toYaml": func(value any) (string, error) {
+		var buf bytes.Buffer
+		enc := yaml.NewEncoder(&buf)
+		enc.SetIndent(2)
+		if err := enc.Encode(value); err != nil {
+			return "", err
 		}
-		return string(jsonValue)
+		return buf.String(), nil
 	},
-	"toJson": func(value any) string {
+	"toJson": func(value any) (string, error) {
 		jsonValue, err := json.Marshal(value)
-		if err != nil {
-			panic(err.Error())
-		}
-		return string(jsonValue)
+		return string(jsonValue), err
 	},
-	"toPrettyJson": func(value any) string {
+	"toPrettyJson": func(value any) (string, error) {
 		jsonValue, err := json.MarshalIndent(value, "", "  ")
-		if err != nil {
-			panic(err.Error())
-		}
-		return string(jsonValue)
+		return string(jsonValue), err
 	},
-	"fromJson": func(value string) any {
+	"fromJson": func(value string) (any, error) {
 		var result any
-		if err := json.Unmarshal([]byte(value), &result); err != nil {
-			panic(err.Error())
-		}
-		return result
+		err := json.Unmarshal([]byte(value), &result)
+		return result, err
 	},
 
 	// String functions

@@ -28,6 +28,7 @@ import (
 	"github.com/RiskIdent/jelease/pkg/github"
 	"github.com/RiskIdent/jelease/pkg/jira"
 	"github.com/RiskIdent/jelease/pkg/patch"
+	"github.com/RiskIdent/jelease/pkg/templatefuncs"
 	"github.com/gin-contrib/multitemplate"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
@@ -203,7 +204,9 @@ func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher, htmlTempla
 }
 
 func addHTMLFromFS(ren multitemplate.Render, fs fs.FS, name string, files ...string) {
-	tmpl := template.Must(template.New(files[0]).Funcs(FuncMap).ParseFS(fs, files...))
+	tmpl := template.Must(template.New(files[0]).
+		Funcs(templatefuncs.FuncsMap).
+		ParseFS(fs, files...))
 	ren.Add(name, tmpl)
 }
 
