@@ -101,6 +101,7 @@ func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher, htmlTempla
 	addHTMLFromFS(ren, htmlTemplates, "package-create-pr", "layout.html", "packages/create-pr.html")
 	r.GET("/packages/:package/create-pr", func(c *gin.Context) {
 		version := c.Query("version")
+		jiraIssue := c.Query("issue")
 		create := c.Query("create") == "true"
 
 		pkgName := c.Param("package")
@@ -113,16 +114,18 @@ func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher, htmlTempla
 			return
 		}
 		c.HTML(http.StatusOK, "package-create-pr", map[string]any{
-			"Config":   s.cfg,
-			"Package":  pkg,
-			"Version":  version,
-			"DryRun":   !create,
-			"Executed": false,
+			"Config":    s.cfg,
+			"Package":   pkg,
+			"Version":   version,
+			"JiraIssue": jiraIssue,
+			"DryRun":    !create,
+			"Executed":  false,
 		})
 	})
 	r.POST("/packages/:package/create-pr", func(c *gin.Context) {
-		version := c.Query("version")
-		create := c.Query("create") == "true"
+		version := c.PostForm("version")
+		jiraIssue := c.PostForm("issue")
+		create := c.PostForm("create") == "true"
 
 		pkgName := c.Param("package")
 		pkg, ok := s.cfg.TryFindNormalizedPackage(pkgName)
@@ -140,17 +143,19 @@ func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher, htmlTempla
 		patcherClone := s.patcher.CloneWithConfig(&cfgClone)
 
 		prs, err := patcherClone.CloneAndPublishAll(pkg.Repos, patch.TemplateContext{
-			Package: pkg.Name,
-			Version: version,
+			Package:   pkg.Name,
+			Version:   version,
+			JiraIssue: jiraIssue,
 		})
 
 		c.HTML(http.StatusOK, "package-create-pr", map[string]any{
-			"Config":  s.cfg,
-			"Package": pkg,
-			"Version": version,
-			"DryRun":  !create,
+			"Config":    s.cfg,
+			"Package":   pkg,
+			"Version":   version,
+			"JiraIssue": jiraIssue,
+			"DryRun":    !create,
+			"Executed":  true,
 
-			"Executed":     true,
 			"PullRequests": prs,
 			"Error":        err,
 		})

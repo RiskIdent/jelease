@@ -29,39 +29,45 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 <section>
     <h3>Create GitHub PR</h3>
-    <form method="POST" id="create-pr-form">
+    <form method="POST" action="" id="create-pr-form">
         <div class="row margin-bottom-none">
             <div class="col sm-6 md-4 padding-small">
-                <div class="form-group margin-bottom-none">
-                    <label for="form-version">Version</label>
+                <div class="form-group">
+                    <label for="form-version" title="* = Required">Version <strong class="text-danger">*</strong></label>
                     <input type="text" name="version" placeholder="Example: v1.0.0" id="form-version" required value="{{ .Version }}" />
                 </div>
+                <div class="form-group margin-bottom-none">
+                    <label for="form-jira-issue">Jira issue</label>
+                    <input type="text" name="issue" placeholder="Example: OP-1234" id="form-jira-issue" value="{{ .JiraIssue }}" />
+                </div>
             </div>
-            <div class="col sm-6 md-6 padding-small">
-                <p class="margin-top-none">Settings</p>
-                <fieldset class="form-group margin-bottom-none {{ if .Config.DryRun }}disabled{{ end }}">
-                    <label class="paper-switch-2">
-                        <input id="form-create" name="create" type="checkbox" value="true"
-                             {{ if .Config.DryRun -}}
-                                disabled
-                             {{- else if not .DryRun -}}
-                                checked
-                             {{- end }}
-                             />
-                        <span class="paper-switch-slider"></span>
-                    </label>
-                    <label for="form-create" class="paper-switch-2-label">
-                        Create PR (
-                            {{- if .Config.DryRun -}}
-                                forced "dry run" via config
-                            {{- else -}}
-                                otherwise will do a "dry run"
-                            {{- end -}}
-                        )
-                    </label>
+            <div class="col sm-6 md-8 padding-small">
+                <fieldset class="form-group margin-bottom-none">
+                    <p class="margin-top-none">Settings</p>
+                    <div class="{{ if .Config.DryRun }}disabled{{ end }}">
+                        <label class="paper-switch-2">
+                            <input id="form-create" name="create" type="checkbox" value="true"
+                                {{ if .Config.DryRun -}}
+                                    disabled
+                                {{- else if not .DryRun -}}
+                                    checked
+                                {{- end }}
+                                />
+                            <span class="paper-switch-slider"></span>
+                        </label>
+                        <label for="form-create" class="paper-switch-2-label">
+                            Create PR (
+                                {{- if .Config.DryRun -}}
+                                    forced "dry run" via config
+                                {{- else -}}
+                                    otherwise will do a "dry run"
+                                {{- end -}}
+                            )
+                        </label>
+                    </div>
                 </fieldset>
             </div>
-            <div class="col md-2 padding-small">
+            <div class="col padding-small">
                 <div class="form-group margin-bottom-none">
                     <p class="margin-top-none"></p>
                     <button type="submit" id="submit">Submit</button>
