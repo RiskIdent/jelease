@@ -49,37 +49,38 @@ func (p *Repo) Close() error {
 	return err
 }
 
-func (p *Repo) ApplyManyAndCommit(patches []config.PackageRepoPatch) error {
+func (p *Repo) ApplyManyAndCommit(patches []config.PackageRepoPatch) (git.Commit, error) {
 	if len(patches) == 0 {
 		log.Warn().
 			Str("package", p.tmplCtx.Package).
 			Str("repo", p.remote).
 			Msg("No patches configured for repository.")
-		return ErrNoPatches
+		return git.Commit{}, ErrNoPatches
 	}
 
 	if err := p.ApplyManyInNewBranch(patches); err != nil {
-		return fmt.Errorf("template branch name: %w", err)
+		return git.Commit{}, fmt.Errorf("template branch name: %w", err)
 	}
 
 	if err := p.repo.StageChanges(); err != nil {
-		return err
+		return git.Commit{}, err
 	}
 	log.Debug().Msg("Staged changes.")
 
 	commitMsg, err := p.cfg.GitHub.PR.Commit.Render(p.tmplCtx)
 	if err != nil {
-		return fmt.Errorf("template commit message: %w", err)
+		return git.Commit{}, fmt.Errorf("template commit message: %w", err)
 	}
 	commit, err := p.repo.CreateCommit(commitMsg)
 	if err != nil {
-		return err
+		return git.Commit{}, err
 	}
 	log.Debug().
 		Str("hash", commit.AbbrHash).
 		Str("subject", commit.Subject).
 		Msg("Created commit.")
-	return nil
+	p.logDiff(commit.Diff)
+	return commit, nil
 }
 
 func (p *Repo) ApplyManyInNewBranch(patches []config.PackageRepoPatch) error {
@@ -98,14 +99,16 @@ func (p *Repo) ApplyManyInNewBranch(patches []config.PackageRepoPatch) error {
 		return err
 	}
 
-	p.logDiff()
 	return nil
 }
 
-func (p *Repo) PublishChangesUnlessDryRun() (github.PullRequest, error) {
+func (p *Repo) PublishChangesUnlessDryRun(commit git.Commit) (github.PullRequest, error) {
 	if p.cfg.DryRun {
 		log.Info().Msg("Dry run: skipping publishing changes.")
-		return github.PullRequest{}, nil
+		return github.PullRequest{
+			Commit:  commit,
+			RepoRef: p.ghRef,
+		}, nil
 	}
 	pr, err := p.PublishChanges()
 	if err != nil {
@@ -147,13 +150,8 @@ func (p *Repo) PublishChanges() (github.PullRequest, error) {
 	return pr, nil
 }
 
-func (p *Repo) logDiff() {
+func (p *Repo) logDiff(diff string) {
 	if log.Logger.GetLevel() > zerolog.DebugLevel {
-		return
-	}
-	diff, err := p.repo.DiffChanges()
-	if err != nil {
-		log.Warn().Err(err).Msg("Failed diffing changes. Trying to continue anyways.")
 		return
 	}
 	if p.cfg.Log.Format == config.LogFormatPretty {

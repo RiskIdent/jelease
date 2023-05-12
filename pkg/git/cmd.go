@@ -120,6 +120,14 @@ func (r *CmdRepo) DiffChanges() (string, error) {
 	return string(output), nil
 }
 
+func (r *CmdRepo) DiffStaged() (string, error) {
+	output, err := r.run("diff", "--staged")
+	if err != nil {
+		return "", fmt.Errorf("diff changes: %w", err)
+	}
+	return string(output), nil
+}
+
 func (r *CmdRepo) StageChanges() error {
 	_, err := r.run("add", "--all")
 	if err != nil {
@@ -129,8 +137,12 @@ func (r *CmdRepo) StageChanges() error {
 }
 
 func (r *CmdRepo) CreateCommit(message string) (Commit, error) {
-	_, err := r.run("commit", "-m", message, "--no-gpg-sign")
+	diff, err := r.DiffStaged()
 	if err != nil {
+		log.Warn().Err(err).Msg("Failed diffing changes. Trying to continue anyways.")
+		diff = "# Failed to diff. See console output"
+	}
+	if _, err := r.run("commit", "-m", message, "--no-gpg-sign"); err != nil {
 		return Commit{}, fmt.Errorf("commit changes: %w", err)
 	}
 	output, err := r.run("show", "--no-notes", "--no-patch", "--format=%H%n%h%n%P%n%p%n%s")
@@ -147,6 +159,7 @@ func (r *CmdRepo) CreateCommit(message string) (Commit, error) {
 		ParentHash:     string(lines[2]),
 		ParentAbbrHash: string(lines[3]),
 		Subject:        string(lines[4]),
+		Diff:           diff,
 	}, nil
 }
 

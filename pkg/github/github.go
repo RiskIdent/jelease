@@ -92,4 +92,5 @@ type PullRequest struct {
 	Description string
 	Head        string
 	Base        string
+	Commit      git.Commit
 }

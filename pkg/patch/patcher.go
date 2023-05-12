@@ -87,17 +87,18 @@ func (p Patcher) CloneAndPublishAll(pkgRepos []config.PackageRepo, tmplCtx Templ
 }
 
 func (p Patcher) CloneAndPublishRepo(pkgRepo config.PackageRepo, tmplCtx TemplateContext) (github.PullRequest, error) {
-	pkgPatcher, err := p.CloneRepo(pkgRepo.URL, tmplCtx)
+	repo, err := p.CloneRepo(pkgRepo.URL, tmplCtx)
 	if err != nil {
 		return github.PullRequest{}, err
 	}
-	defer pkgPatcher.Close()
+	defer repo.Close()
 
-	if err := pkgPatcher.ApplyManyAndCommit(pkgRepo.Patches); err != nil {
+	commit, err := repo.ApplyManyAndCommit(pkgRepo.Patches)
+	if err != nil {
 		return github.PullRequest{}, err
 	}
 
-	return pkgPatcher.PublishChangesUnlessDryRun()
+	return repo.PublishChangesUnlessDryRun(commit)
 }
 
 func (p Patcher) CloneRepo(remote string, tmplCtx TemplateContext) (*Repo, error) {

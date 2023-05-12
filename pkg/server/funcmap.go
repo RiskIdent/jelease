@@ -19,12 +19,15 @@ package server
 
 import (
 	"bytes"
+	"fmt"
 	"html/template"
+	"strconv"
 
 	"gopkg.in/yaml.v3"
 )
 
 var FuncMap = template.FuncMap{
+	// Encodings
 	"toYaml": func(o any) (string, error) {
 		var buf bytes.Buffer
 		enc := yaml.NewEncoder(&buf)
@@ -34,4 +37,62 @@ var FuncMap = template.FuncMap{
 		}
 		return buf.String(), nil
 	},
+
+	// Math
+	"add": func(values ...any) (float64, error) {
+		floats, err := toFloats(values)
+		if err != nil {
+			return 0, err
+		}
+		var sum float64
+		for _, f := range floats {
+			sum += f
+		}
+		return sum, nil
+	},
+}
+
+func toFloats(values []any) ([]float64, error) {
+	floats := make([]float64, len(values))
+	for i, val := range values {
+		f, err := toFloat(val)
+		if err != nil {
+			return nil, fmt.Errorf("argument index %d: %w", i, err)
+		}
+		floats[i] = f
+	}
+	return floats, nil
+}
+
+func toFloat(value any) (float64, error) {
+	switch value := value.(type) {
+	case string:
+		return strconv.ParseFloat(value, 64)
+	case float64:
+		return value, nil
+	case float32:
+		return float64(value), nil
+	case int:
+		return float64(value), nil
+	case int8:
+		return float64(value), nil
+	case int16:
+		return float64(value), nil
+	case int32:
+		return float64(value), nil
+	case int64:
+		return float64(value), nil
+	case uint:
+		return float64(value), nil
+	case uint8:
+		return float64(value), nil
+	case uint16:
+		return float64(value), nil
+	case uint32:
+		return float64(value), nil
+	case uint64:
+		return float64(value), nil
+	default:
+		return 0, fmt.Errorf("cannot convert type to float64: %T", value)
+	}
 }
