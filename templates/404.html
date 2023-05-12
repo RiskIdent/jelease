@@ -18,9 +18,11 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
 -->*/}}
 
 {{ define "content" }}
-<h2>Package not found</h2>
+<h2>Page not found</h2>
+{{ if .Alert }}
 <div class="alert alert-danger">
-    <p>Error: No package with name <code>{{ .PackageName }}</code> found!</p>
-    <p>Go back to <a href="/packages">list of packages.</a></p>
+    <p><strong>Error:</strong> {{ .Alert }}</p>
 </div>
+{{ end }}
+<p><a href="/">Click here</a> to return to the start page.</p>
 {{ end }}

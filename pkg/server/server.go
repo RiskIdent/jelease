@@ -45,6 +45,7 @@ func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher, htmlTempla
 	gin.DefaultWriter = log.Logger
 
 	r := gin.New()
+	r.HandleMethodNotAllowed = true
 
 	r.Use(
 		gin.LoggerWithConfig(gin.LoggerConfig{
@@ -80,14 +81,13 @@ func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher, htmlTempla
 	})
 
 	addHTMLFromFS(ren, htmlTemplates, "package-item", "layout.html", "packages/package.html")
-	addHTMLFromFS(ren, htmlTemplates, "package-404", "layout.html", "packages/404.html")
 	r.GET("/packages/:package", func(c *gin.Context) {
 		pkgName := c.Param("package")
 		pkg, ok := s.cfg.TryFindNormalizedPackage(pkgName)
 		if !ok {
-			c.HTML(http.StatusOK, "package-404", map[string]any{
-				"Config":      s.cfg,
-				"PackageName": pkgName,
+			c.HTML(http.StatusOK, "404", map[string]any{
+				"Config": s.cfg,
+				"Alert":  fmt.Sprintf("Package %q not found.", pkgName),
 			})
 			return
 		}
@@ -105,9 +105,9 @@ func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher, htmlTempla
 		pkgName := c.Param("package")
 		pkg, ok := s.cfg.TryFindNormalizedPackage(pkgName)
 		if !ok {
-			c.HTML(http.StatusOK, "package-404", map[string]any{
-				"Config":      s.cfg,
-				"PackageName": pkgName,
+			c.HTML(http.StatusOK, "404", map[string]any{
+				"Config": s.cfg,
+				"Alert":  fmt.Sprintf("Package %q not found.", pkgName),
 			})
 			return
 		}
@@ -150,6 +150,15 @@ func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher, htmlTempla
 			"DryRun":        dryRun,
 			"ConsoleOutput": "",
 		})
+	})
+
+	addHTMLFromFS(ren, htmlTemplates, "404", "layout.html", "404.html")
+	r.NoRoute(func(c *gin.Context) {
+		if strings.HasPrefix(c.Request.URL.Path, "/webhook") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Endpoint not found"})
+			return
+		}
+		c.HTML(http.StatusNotFound, "404", defaultTemplateObj)
 	})
 
 	r.POST("/webhook", s.handlePostWebhook)
