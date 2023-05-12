@@ -161,6 +161,24 @@ func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher, htmlTempla
 		c.HTML(http.StatusNotFound, "404", defaultTemplateObj)
 	})
 
+	addHTMLFromFS(ren, htmlTemplates, "405", "layout.html", "405.html")
+	r.NoMethod(func(c *gin.Context) {
+		var methodsAllowed []string
+		for _, route := range r.Routes() {
+			if route.Path == c.Request.URL.Path {
+				methodsAllowed = append(methodsAllowed, route.Method)
+			}
+		}
+		if strings.HasPrefix(c.Request.URL.Path, "/webhook") {
+			c.JSON(http.StatusMethodNotAllowed, gin.H{
+				"error":   "Method not allowed",
+				"methods": methodsAllowed,
+			})
+			return
+		}
+		c.HTML(http.StatusNotFound, "405", defaultTemplateObj)
+	})
+
 	r.POST("/webhook", s.handlePostWebhook)
 
 	httpFS := http.FS(staticFiles)
