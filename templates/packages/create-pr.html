@@ -104,6 +104,14 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
                                 <em>(missing Title)</em>
                                 {{- end -}}
                             </dd>
+                            <dt>Branches</dt>
+                            <dd>
+                                {{- if and $pr.Head $pr.Base -}}
+                                into <code>{{ $pr.Base }}</code> from <code>{{ $pr.Head }}</code>
+                                {{- else -}}
+                                <em>(missing branch info)</em>
+                                {{- end -}}
+                            </dd>
                             <dt>URL</dt>
                             <dd>
                                 {{- if $pr.URL -}}
@@ -122,7 +130,7 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
                                 <em>(missing description)</em>
                                 {{- end -}}
                             </dd>
-                            <dt>Diff</dt>
+                            <dt>Git diff</dt>
                             <dd>
                                 {{- if $pr.Commit.Diff -}}
                                 <pre><code class="language-diff">

@@ -105,9 +105,17 @@ func (p *Repo) ApplyManyInNewBranch(patches []config.PackageRepoPatch) error {
 func (p *Repo) PublishChangesUnlessDryRun(commit git.Commit) (github.PullRequest, error) {
 	if p.cfg.DryRun {
 		log.Info().Msg("Dry run: skipping publishing changes.")
+		newPR, err := p.TemplateNewPullRequest()
+		if err != nil {
+			return github.PullRequest{}, err
+		}
 		return github.PullRequest{
-			Commit:  commit,
-			RepoRef: p.ghRef,
+			Commit:      commit,
+			RepoRef:     newPR.RepoRef,
+			Title:       newPR.Title,
+			Description: newPR.Description,
+			Head:        newPR.Head,
+			Base:        newPR.Base,
 		}, nil
 	}
 	pr, err := p.PublishChanges()
@@ -125,22 +133,12 @@ func (p *Repo) PublishChanges() (github.PullRequest, error) {
 	log.Info().Str("branch", p.repo.CurrentBranch()).
 		Msg("Pushed changes to remote repository.")
 
-	title, err := p.cfg.GitHub.PR.Title.Render(p.tmplCtx)
+	newPR, err := p.TemplateNewPullRequest()
 	if err != nil {
-		return github.PullRequest{}, fmt.Errorf("template PR title: %w", err)
-	}
-	description, err := p.cfg.GitHub.PR.Description.Render(p.tmplCtx)
-	if err != nil {
-		return github.PullRequest{}, fmt.Errorf("template PR description: %w", err)
+		return github.PullRequest{}, err
 	}
 
-	pr, err := p.gh.CreatePullRequest(context.TODO(), github.NewPullRequest{
-		RepoRef:     p.ghRef,
-		Title:       title,
-		Description: description,
-		Head:        p.repo.CurrentBranch(),
-		Base:        p.repo.MainBranch(),
-	})
+	pr, err := p.gh.CreatePullRequest(context.TODO(), newPR)
 	if err != nil {
 		return github.PullRequest{}, fmt.Errorf("create GitHub PR: %w", err)
 	}
@@ -148,6 +146,25 @@ func (p *Repo) PublishChanges() (github.PullRequest, error) {
 		Str("url", pr.URL).
 		Msg("GitHub PR created.")
 	return pr, nil
+}
+
+func (p *Repo) TemplateNewPullRequest() (github.NewPullRequest, error) {
+	title, err := p.cfg.GitHub.PR.Title.Render(p.tmplCtx)
+	if err != nil {
+		return github.NewPullRequest{}, fmt.Errorf("template PR title: %w", err)
+	}
+	description, err := p.cfg.GitHub.PR.Description.Render(p.tmplCtx)
+	if err != nil {
+		return github.NewPullRequest{}, fmt.Errorf("template PR description: %w", err)
+	}
+
+	return github.NewPullRequest{
+		RepoRef:     p.ghRef,
+		Title:       title,
+		Description: description,
+		Head:        p.repo.CurrentBranch(),
+		Base:        p.repo.MainBranch(),
+	}, nil
 }
 
 func (p *Repo) logDiff(diff string) {
