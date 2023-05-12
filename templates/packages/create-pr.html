@@ -122,6 +122,8 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
                             <dd>
                                 {{- if $pr.URL -}}
                                 <a href="{{ $pr.URL }}" target="_blank">{{ $pr.URL }}</a>
+                                {{- else if $pr.RepoRef.URL -}}
+                                <em>(would've been created on repo: <a href="{{ $pr.RepoRef.URL }}" target="_blank">{{ $pr.RepoRef.URL }}</a>)</em>
                                 {{- else -}}
                                 <em>(missing URL)</em>
                                 {{- end -}}

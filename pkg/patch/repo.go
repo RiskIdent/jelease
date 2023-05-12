@@ -105,20 +105,20 @@ func (p *Repo) ApplyManyInNewBranch(patches []config.PackageRepoPatch) error {
 func (p *Repo) PublishChangesUnlessDryRun(commit git.Commit) (github.PullRequest, error) {
 	if p.cfg.DryRun {
 		log.Info().Msg("Dry run: skipping publishing changes.")
-		newPR, err := p.TemplateNewPullRequest()
+		newPR, err := p.TemplateNewPullRequest(commit)
 		if err != nil {
 			return github.PullRequest{}, err
 		}
 		return github.PullRequest{
-			Commit:      commit,
 			RepoRef:     newPR.RepoRef,
 			Title:       newPR.Title,
 			Description: newPR.Description,
 			Head:        newPR.Head,
 			Base:        newPR.Base,
+			Commit:      newPR.Commit,
 		}, nil
 	}
-	pr, err := p.PublishChanges()
+	pr, err := p.PublishChanges(commit)
 	if err != nil {
 		return github.PullRequest{}, err
 	}
@@ -126,14 +126,14 @@ func (p *Repo) PublishChangesUnlessDryRun(commit git.Commit) (github.PullRequest
 	return pr, nil
 }
 
-func (p *Repo) PublishChanges() (github.PullRequest, error) {
+func (p *Repo) PublishChanges(commit git.Commit) (github.PullRequest, error) {
 	if err := p.repo.PushChanges(); err != nil {
 		return github.PullRequest{}, err
 	}
 	log.Info().Str("branch", p.repo.CurrentBranch()).
 		Msg("Pushed changes to remote repository.")
 
-	newPR, err := p.TemplateNewPullRequest()
+	newPR, err := p.TemplateNewPullRequest(commit)
 	if err != nil {
 		return github.PullRequest{}, err
 	}
@@ -148,7 +148,7 @@ func (p *Repo) PublishChanges() (github.PullRequest, error) {
 	return pr, nil
 }
 
-func (p *Repo) TemplateNewPullRequest() (github.NewPullRequest, error) {
+func (p *Repo) TemplateNewPullRequest(commit git.Commit) (github.NewPullRequest, error) {
 	title, err := p.cfg.GitHub.PR.Title.Render(p.tmplCtx)
 	if err != nil {
 		return github.NewPullRequest{}, fmt.Errorf("template PR title: %w", err)
@@ -164,6 +164,7 @@ func (p *Repo) TemplateNewPullRequest() (github.NewPullRequest, error) {
 		Description: description,
 		Head:        p.repo.CurrentBranch(),
 		Base:        p.repo.MainBranch(),
+		Commit:      commit,
 	}, nil
 }
 
