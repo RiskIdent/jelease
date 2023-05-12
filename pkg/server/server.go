@@ -42,7 +42,7 @@ type HTTPServer struct {
 	patcher patch.Patcher
 }
 
-func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher, htmlTemplates fs.FS, staticFiles fs.FS) *HTTPServer {
+func New(cfg *config.Config, j jira.Client, patcher patch.Patcher, htmlTemplates fs.FS, staticFiles fs.FS) *HTTPServer {
 	gin.DefaultErrorWriter = ginLogger{defaultLevel: zerolog.ErrorLevel}
 	gin.DefaultWriter = ginLogger{defaultLevel: zerolog.InfoLevel}
 
@@ -59,7 +59,7 @@ func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher, htmlTempla
 	s := &HTTPServer{
 		engine:  r,
 		cfg:     cfg,
-		jira:    jira,
+		jira:    j,
 		patcher: patcher,
 	}
 
@@ -102,8 +102,9 @@ func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher, htmlTempla
 	addHTMLFromFS(ren, htmlTemplates, "package-create-pr", "layout.html", "packages/create-pr.html")
 	r.GET("/packages/:package/create-pr", func(c *gin.Context) {
 		version := c.Query("version")
-		jiraIssue := c.Query("issue")
-		create := c.Query("create") == "true"
+		jiraIssue := c.Query("jiraIssue")
+		jiraCreateComment := parseQueryBool(c, "jiraCreateComment")
+		prCreate := parseQueryBool(c, "prCreate")
 
 		pkgName := c.Param("package")
 		pkg, ok := s.cfg.TryFindNormalizedPackage(pkgName)
@@ -115,18 +116,20 @@ func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher, htmlTempla
 			return
 		}
 		c.HTML(http.StatusOK, "package-create-pr", map[string]any{
-			"Config":    s.cfg,
-			"Package":   pkg,
-			"Version":   version,
-			"JiraIssue": jiraIssue,
-			"DryRun":    !create,
-			"Executed":  false,
+			"Config":            s.cfg,
+			"Package":           pkg,
+			"Version":           version,
+			"JiraIssue":         jiraIssue,
+			"JiraCreateComment": jiraCreateComment,
+			"DryRun":            !prCreate,
+			"Executed":          false,
 		})
 	})
 	r.POST("/packages/:package/create-pr", func(c *gin.Context) {
 		version := c.PostForm("version")
-		jiraIssue := c.PostForm("issue")
-		create := c.PostForm("create") == "true"
+		jiraIssue := c.PostForm("jiraIssue")
+		jiraCreateComment := c.PostForm("jiraCreateComment") == "true"
+		prCreate := c.PostForm("prCreate") == "true"
 
 		pkgName := c.Param("package")
 		pkg, ok := s.cfg.TryFindNormalizedPackage(pkgName)
@@ -140,22 +143,42 @@ func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher, htmlTempla
 
 		cfgClone := *s.cfg
 		// Let config's "dry run" setting have precedence
-		cfgClone.DryRun = cfgClone.DryRun || !create
+		cfgClone.DryRun = cfgClone.DryRun || !prCreate
 		patcherClone := s.patcher.CloneWithConfig(&cfgClone)
 
-		prs, err := patcherClone.CloneAndPublishAll(pkg.Repos, patch.TemplateContext{
+		tmplCtx := patch.TemplateContext{
 			Package:   pkg.Name,
 			Version:   version,
 			JiraIssue: jiraIssue,
-		})
+		}
+		prs, err := patcherClone.CloneAndPublishAll(pkg.Repos, tmplCtx)
+
+		if jiraCreateComment {
+			issueRef := jira.IssueRef{} // TODO: Get this from issue Key
+			if len(prs) == 0 {
+				log.Warn().Str("project", pkgName).Msg("Found package config, but no repositories were patched.")
+				createTemplatedComment(j, issueRef, cfg.Jira.Issue.Comments.NoPatches, tmplCtx)
+			} else {
+				log.Info().
+					Str("project", pkgName).
+					Int("count", len(prs)).
+					Msg("Successfully created PRs for update.")
+
+				createTemplatedComment(j, issueRef, cfg.Jira.Issue.Comments.PRCreated, TemplateContextPullRequests{
+					TemplateContext: tmplCtx,
+					PullRequests:    prs,
+				})
+			}
+		}
 
 		c.HTML(http.StatusOK, "package-create-pr", map[string]any{
-			"Config":    s.cfg,
-			"Package":   pkg,
-			"Version":   version,
-			"JiraIssue": jiraIssue,
-			"DryRun":    !create,
-			"Executed":  true,
+			"Config":            s.cfg,
+			"Package":           pkg,
+			"Version":           version,
+			"JiraIssue":         jiraIssue,
+			"JiraCreateComment": jiraCreateComment,
+			"DryRun":            !prCreate,
+			"Executed":          true,
 
 			"PullRequests": prs,
 			"Error":        err,
@@ -207,6 +230,14 @@ func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher, htmlTempla
 	})
 
 	return s
+}
+
+func parseQueryBool(c *gin.Context, name string) bool {
+	value, ok := c.GetQuery(name)
+	if !ok {
+		return false
+	}
+	return value == "" || strings.EqualFold(value, "true")
 }
 
 func addHTMLFromFS(ren multitemplate.Render, fs fs.FS, name string, files ...string) {

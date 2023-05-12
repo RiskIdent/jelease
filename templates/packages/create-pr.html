@@ -38,33 +38,49 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
                 </div>
                 <div class="form-group margin-bottom-none">
                     <label for="form-jira-issue">Jira issue</label>
-                    <input type="text" name="issue" placeholder="Example: OP-1234" id="form-jira-issue" value="{{ .JiraIssue }}" />
+                    <input type="text" name="jiraIssue" placeholder="Example: OP-1234" id="form-jira-issue" value="{{ .JiraIssue }}" />
                 </div>
             </div>
             <div class="col sm-6 md-8 padding-small">
-                <fieldset class="form-group margin-bottom-none">
-                    <p class="margin-top-none">Settings</p>
-                    <div class="{{ if .Config.DryRun }}disabled{{ end }}">
-                        <label class="paper-switch-2">
-                            <input id="form-create" name="create" type="checkbox" value="true"
-                                {{ if .Config.DryRun -}}
-                                    disabled
-                                {{- else if not .DryRun -}}
-                                    checked
-                                {{- end }}
-                                />
-                            <span class="paper-switch-slider"></span>
-                        </label>
-                        <label for="form-create" class="paper-switch-2-label">
-                            Create PR (
-                                {{- if .Config.DryRun -}}
-                                    forced "dry run" via config
-                                {{- else -}}
-                                    otherwise will do a "dry run"
-                                {{- end -}}
-                            )
-                        </label>
-                    </div>
+                <p class="margin-top-none">Settings</p>
+                <fieldset class="form-group margin-bottom-none {{ if .Config.DryRun }}disabled{{ end }}">
+                    <label class="paper-switch-2">
+                        <input id="form-pr-create" name="prCreate" type="checkbox" value="true"
+                            {{ if .Config.DryRun -}}
+                                disabled
+                            {{- else if not .DryRun -}}
+                                checked
+                            {{- end }}
+                            />
+                        <span class="paper-switch-slider"></span>
+                    </label>
+                    <label for="form-pr-create" class="paper-switch-2-label">
+                        Create PR (
+                            {{- if .Config.DryRun -}}
+                                forced "dry run" via config
+                            {{- else -}}
+                                otherwise will do a "dry run"
+                            {{- end -}}
+                        )
+                    </label>
+                </fieldset>
+                <fieldset class="form-group margin-bottom-none {{ if .Config.DryRun }}disabled{{ end }}">
+                    <label class="paper-switch-2">
+                        <input id="form-jira-comment" name="jiraCreateComment" type="checkbox" value="true"
+                            {{ if .Config.DryRun -}}
+                                disabled
+                            {{- else if .JiraCreateComment -}}
+                                checked
+                            {{- end }}
+                            />
+                        <span class="paper-switch-slider"></span>
+                    </label>
+                    <label for="form-jira-comment" class="paper-switch-2-label">
+                        Create Jira comment
+                        {{ if .Config.DryRun -}}
+                            (forced "dry run" via config)
+                        {{- end -}}
+                    </label>
                 </fieldset>
             </div>
             <div class="col padding-small">
