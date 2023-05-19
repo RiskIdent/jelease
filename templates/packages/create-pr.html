@@ -185,7 +185,11 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
 
         // Some magic to make URL query params match the POSTed form data
         const url = new URL(location);
-        for (const key of url.searchParams.keys()) {
+        
+        // Need to Array.from(), as without that this becomes glitchy,
+        // because we're removing items at the same time we're iterating it.
+        const searchParamKeys = Array.from(url.searchParams.keys());
+        for (const key of searchParamKeys) {
             url.searchParams.delete(key);
         }
         for (const [key, value] of new FormData(form).entries()) {
@@ -193,6 +197,7 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
                 url.searchParams.set(key, value);
             }
         }
+        console.log("Pushing state:", url);
         history.pushState({}, "", url);
     });
 })();
