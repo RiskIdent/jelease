@@ -208,7 +208,7 @@ func tryApplyChanges(j jira.Client, patcher patch.Patcher, release Release, issu
 
 	if cfg.Jira.Issue.PRDeferredCreation {
 		if cfg.HTTP.PublicURL == nil {
-			log.Error().Msg("Cannot use deferred PR creation when no http.publicUrl is set.")
+			log.Error().Msg("Cannot use deferred PR creation when no http.publicUrl is set. Falling back to creating PR automatically instead.")
 		} else {
 			u := createDeferredCreationURL(cfg.HTTP.PublicURL.URL(), CreatePRRequest{
 				PackageName: pkg.Name,
