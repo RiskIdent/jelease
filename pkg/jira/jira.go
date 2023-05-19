@@ -114,7 +114,7 @@ func (i Issue) rawIssue() jira.Issue {
 			Type: jira.IssueType{
 				Name: i.TypeName,
 			},
-			Labels:   i.Labels,
+			Labels:   labels,
 			Summary:  i.Summary,
 			Unknowns: extraFields,
 		},

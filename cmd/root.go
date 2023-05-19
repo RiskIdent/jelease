@@ -93,7 +93,6 @@ func init() {
 			appVersion = buildInfo.Main.Version
 		}
 		goVersion = strings.TrimPrefix(buildInfo.GoVersion, "go")
-	} else {
 	}
 	if appVersion == "" {
 		appVersion = "unknown"
