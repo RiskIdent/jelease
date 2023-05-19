@@ -63,8 +63,15 @@ func (u *URL) MarshalText() ([]byte, error) {
 
 func (URL) JSONSchema() *jsonschema.Schema {
 	return &jsonschema.Schema{
-		Type:   "string",
 		Title:  "URL",
+		OneOf: []*jsonschema.Schema{
+			{
+				Type: "string",
+			},
+			{
+				Type: "null",
+			},
+		},
 		Format: "uri",
 		Examples: []any{
 			"http://localhost:8080",

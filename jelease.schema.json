@@ -514,7 +514,14 @@
       "title": "Go template"
     },
     "url": {
-      "type": "string",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
       "format": "uri",
       "title": "URL",
       "examples": [
