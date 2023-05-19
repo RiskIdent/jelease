@@ -19,7 +19,7 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 {{ define "title" }}Create PR - {{ .Package.Name }} - Jelease{{ end }}
 {{ define "content" }}
-<ul class="breadcrumb border">
+<ul class="breadcrumb border border-3">
   <li><a href="/packages">Packages</a></li>
   <li><a href="/packages/{{ .Package.NormalizedName }}">{{ .Package.Name }}</a></li>
   <li>Create PR</li>
@@ -38,14 +38,14 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
                 </div>
                 <div class="form-group margin-bottom-none">
                     <label for="form-jira-issue">Jira issue</label>
-                    <input type="text" name="jiraIssue" placeholder="Example: OP-1234" id="form-jira-issue" value="{{ .JiraIssue }}" />
+                    <input type="text" name="jiraIssue" class="border-2" placeholder="Example: OP-1234" id="form-jira-issue" value="{{ .JiraIssue }}" />
                 </div>
             </div>
             <div class="col sm-6 md-8 padding-small">
                 <p class="margin-top-none">Settings</p>
                 <fieldset class="form-group margin-bottom-none {{ if .Config.DryRun }}disabled{{ end }}">
                     <label class="paper-switch-2">
-                        <input id="form-pr-create" name="prCreate" type="checkbox" value="true"
+                        <input id="form-pr-create" name="prCreate" class="border-3" type="checkbox" value="true"
                             {{ if .Config.DryRun -}}
                                 disabled
                             {{- else if not .DryRun -}}
@@ -66,7 +66,7 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
                 </fieldset>
                 <fieldset class="form-group margin-bottom-none {{ if .Config.DryRun }}disabled{{ end }}">
                     <label class="paper-switch-2">
-                        <input id="form-jira-comment" name="jiraCreateComment" type="checkbox" value="true"
+                        <input id="form-jira-comment" name="jiraCreateComment" class="border-4" type="checkbox" value="true"
                             {{ if .Config.DryRun -}}
                                 disabled
                             {{- else if .JiraCreateComment -}}
@@ -86,7 +86,7 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
             <div class="col padding-small">
                 <div class="form-group margin-bottom-none">
                     <p class="margin-top-none"></p>
-                    <button type="submit" id="submit">Submit</button>
+                    <button type="submit" class="border-5" id="submit">Submit</button>
                 </div>
             </div>
         </div>
@@ -100,7 +100,7 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
         {{ if .Error }}
             <div class="alert alert-danger">
                 <p><strong>Error:</strong> There was an error when creating the Pull Request:</p>
-                <pre><samp>{{ .Error }}</samp></pre>
+                <pre><samp style="white-space: normal; word-break: break-word;">{{ .Error }}</samp></pre>
             </div>
         {{ else }}
             {{ if .DryRun }}
