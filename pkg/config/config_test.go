@@ -17,10 +17,14 @@
 
 package config
 
-import "testing"
+import (
+	"net/url"
+	"testing"
+)
 
 func TestCensored(t *testing.T) {
 	token := "secret-token"
+	tokenURL := "http://:" + token + "@localhost:8080/"
 	cfg := &Config{
 		GitHub: GitHub{
 			Auth: GitHubAuth{
@@ -31,6 +35,9 @@ func TestCensored(t *testing.T) {
 			Auth: JiraAuth{
 				Token: token,
 			},
+		},
+		HTTP: HTTP{
+			PublicURL: (*URL)(mustParseURL(t, tokenURL)),
 		},
 	}
 	censored := cfg.Censored()
@@ -51,4 +58,22 @@ func TestCensored(t *testing.T) {
 	if cfg.Jira.Auth.Token != token {
 		t.Fatalf("changed original config Jira.Auth.Token to %q, but should not do that", cfg.Jira.Auth.Token)
 	}
+	if cfg.HTTP.PublicURL == nil {
+		t.Fatalf("unexpected nil HTTP.PublicURL")
+	}
+	if censored.HTTP.PublicURL.String() == tokenURL {
+		t.Fatalf("did not censor HTTP.PublicURL")
+	}
+	if cfg.HTTP.PublicURL.String() != tokenURL {
+		t.Fatalf("changed original config HTTP.PublicURL to %q, but should not do that", cfg.HTTP.PublicURL)
+	}
+}
+
+func mustParseURL(t *testing.T, value string) *url.URL {
+	t.Helper()
+	u, err := url.Parse(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return u
 }

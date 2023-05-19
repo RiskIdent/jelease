@@ -184,6 +184,7 @@ type JiraIssue struct {
 	Type                   string
 	Project                string
 	ProjectNameCustomField uint `yaml:"projectNameCustomField"`
+
 	// PRDeferredCreation means Jelease will send a link to where user can
 	// manually trigger the PR creation, instead of creating it automatically.
 	PRDeferredCreation bool `yaml:"prDeferredCreation"`
@@ -208,7 +209,9 @@ type HTTP struct {
 func (h HTTP) Censored() HTTP {
 	if h.PublicURL != nil {
 		if h.PublicURL.User != nil {
-			h.PublicURL.User = url.User(redacted)
+			u := *h.PublicURL
+			u.User = url.User(redacted)
+			h.PublicURL = &u
 		}
 	}
 	return h
