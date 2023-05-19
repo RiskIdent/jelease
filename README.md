@@ -151,9 +151,19 @@ You can also persist build flags in a `.env` file, e.g:
 REGISTRY=docker.io/my-username
 ```
 
-## Deployment
+## Releasing
 
-**TODO**
+1. Create a new release on GitHub, with "v" prefix on version: <https://github.com/RiskIdent/jelease/releases/new>
+
+2. Write a small changelog, like so:
+
+   ```markdown
+   ## Changes (since v0.3.0)
+
+   - Added some feature. (#123)
+   ```
+
+3. Our GitHub Action with goreleaser will build and add artifacts to release
 
 ## Logo
 
