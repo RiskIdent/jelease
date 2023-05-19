@@ -35,21 +35,19 @@ type CreatePRContext struct {
 	Config  *config.Config
 	Package config.Package
 
-	Version           string
-	JiraIssue         string
-	JiraCreateComment bool
-	DryRun            bool
-	IsPost            bool
-	PullRequests      []github.PullRequest
-	Error             error
+	Version      string
+	JiraIssue    string
+	DryRun       bool
+	IsPost       bool
+	PullRequests []github.PullRequest
+	Error        error
 }
 
 // CreatePRRequest is the query or form data pushed by the web.
 type CreatePRRequest struct {
-	Version           string `form:"version"`
-	JiraIssue         string `form:"jiraIssue"`
-	JiraCreateComment bool   `form:"jiraCreateComment"`
-	PRCreate          bool   `form:"prCreate"`
+	Version   string `form:"version"`
+	JiraIssue string `form:"jiraIssue"`
+	PRCreate  bool   `form:"prCreate"`
 }
 
 func (s HTTPServer) bindCreatePRContext(c *gin.Context) (CreatePRContext, bool) {
@@ -65,23 +63,17 @@ func (s HTTPServer) bindCreatePRContext(c *gin.Context) (CreatePRContext, bool) 
 	var input CreatePRRequest
 	err := c.ShouldBind(&input)
 	model := CreatePRContext{
-		Config:            s.cfg,
-		Package: pkg,
-		Version:           input.Version,
-		JiraIssue:         input.JiraIssue,
-		JiraCreateComment: input.JiraCreateComment && !s.cfg.DryRun,
-		DryRun:            !input.PRCreate || s.cfg.DryRun,
-		IsPost:            c.Request.Method == http.MethodPost,
+		Config:    s.cfg,
+		Package:   pkg,
+		Version:   input.Version,
+		JiraIssue: input.JiraIssue,
+		DryRun:    !input.PRCreate || s.cfg.DryRun,
+		IsPost:    c.Request.Method == http.MethodPost,
 	}
 	if err != nil {
 		model.Error = err
 		c.HTML(http.StatusBadRequest, "package-create-pr", model)
 		return model, false
-	}
-
-	if s.cfg.DryRun || !input.PRCreate {
-		input.PRCreate = false
-		input.JiraCreateComment = false
 	}
 
 	return model, true
@@ -108,7 +100,7 @@ func (s HTTPServer) handlePostPRCreate(c *gin.Context) {
 	}
 
 	var issueRef jira.IssueRef
-	if model.JiraCreateComment || model.JiraIssue != "" {
+	if model.JiraIssue != "" {
 		issue, err := s.jira.FindIssueForKey(model.JiraIssue)
 		if err != nil {
 			model.Error = err
@@ -119,30 +111,21 @@ func (s HTTPServer) handlePostPRCreate(c *gin.Context) {
 	}
 
 	cfgClone := *s.cfg
+	cfgClone.DryRun = model.DryRun
 	patcherClone := s.patcher.CloneWithConfig(&cfgClone)
 
-	tmplCtx2 := patch.TemplateContext{
+	tmplCtx := patch.TemplateContext{
 		Package:   model.Package.Name,
 		Version:   model.Version,
 		JiraIssue: model.JiraIssue,
 	}
-	prs, err := patcherClone.CloneAndPublishAll(model.Package.Repos, tmplCtx2)
+	prs, err := patcherClone.CloneAndPublishAll(model.Package.Repos, tmplCtx)
+	if err != nil {
+		log.Error().Err(err).Str("project", model.Package.Name).Msg("Failed creating patches.")
+	}
 
-	if model.JiraCreateComment {
-		if len(prs) == 0 {
-			log.Warn().Str("project", model.Package.Name).Msg("Found package config, but no repositories were patched.")
-			createTemplatedComment(s.jira, issueRef, s.cfg.Jira.Issue.Comments.NoPatches, model)
-		} else {
-			log.Info().
-				Str("project", model.Package.Name).
-				Int("count", len(prs)).
-				Msg("Successfully created PRs for update.")
-
-			createTemplatedComment(s.jira, issueRef, s.cfg.Jira.Issue.Comments.PRCreated, TemplateContextPullRequests{
-				TemplateContext: tmplCtx2,
-				PullRequests:    prs,
-			})
-		}
+	if model.JiraIssue != "" && !model.DryRun && err == nil {
+		createDynamicComment(s.jira, issueRef, prs, model.Package.Name, &s.cfg.Jira.Issue.Comments, tmplCtx)
 	}
 
 	model.PullRequests = prs

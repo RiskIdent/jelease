@@ -46,7 +46,7 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
                     <input type="text" name="version" placeholder="Example: v1.0.0" id="form-version" required value="{{ .Version }}" />
                 </div>
                 <div class="form-group margin-bottom-none">
-                    <label for="form-jira-issue" id="form-jira-issue-label">Jira issue <strong id="form-jira-issue-required" class="text-danger"></strong></label>
+                    <label for="form-jira-issue">Jira issue</label>
                     <input type="text" name="jiraIssue" class="border-2" placeholder="Example: OP-1234" id="form-jira-issue" value="{{ .JiraIssue }}" />
                 </div>
             </div>
@@ -71,24 +71,6 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
                                 otherwise will do a "dry run"
                             {{- end -}}
                         )
-                    </label>
-                </fieldset>
-                <fieldset id="form-jira-comment-fieldset" class="form-group margin-bottom-none {{ if or .Config.DryRun .DryRun }}disabled{{ end }}">
-                    <label class="paper-switch-2">
-                        <input id="form-jira-comment" name="jiraCreateComment" class="border-4" type="checkbox" value="true"
-                            {{ if or .Config.DryRun .DryRun -}}
-                                disabled
-                            {{- else if .JiraCreateComment -}}
-                                checked
-                            {{- end }}
-                            />
-                        <span class="paper-switch-slider"></span>
-                    </label>
-                    <label for="form-jira-comment" class="paper-switch-2-label">
-                        Also create Jira comment
-                        {{ if .Config.DryRun -}}
-                            (forced "dry run" via config)
-                        {{- end -}}
                     </label>
                 </fieldset>
             </div>
@@ -212,38 +194,6 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
             }
         }
         history.pushState({}, "", url);
-    });
-
-    const prCreateToggle = document.getElementById("form-pr-create");
-    const jiraCommentToggle = document.getElementById("form-jira-comment");
-    const jiraCommentFieldset = document.getElementById("form-jira-comment-fieldset");
-    const jiraIssueInput = document.getElementById("form-jira-issue");
-    const jiraIssueLabel = document.getElementById("form-jira-issue-label");
-    const jiraIssueRequiredSpan = document.getElementById("form-jira-issue-required");
-
-    prCreateToggle.addEventListener("change", function() {
-        if (prCreateToggle.checked) {
-            jiraCommentToggle.removeAttribute('disabled');
-            jiraCommentFieldset.classList.remove('disabled');
-        } else {
-            if (jiraCommentToggle.checked) {
-                jiraCommentToggle.click();
-            }
-            jiraCommentToggle.setAttribute('disabled', 'disabled');
-            jiraCommentFieldset.classList.add('disabled');
-        }
-    });
-
-    jiraCommentToggle.addEventListener("change", function() {
-        if (jiraCommentToggle.checked) {
-            jiraIssueInput.setAttribute('required', 'required');
-            jiraIssueLabel.setAttribute('title', '* = Required');
-            jiraIssueRequiredSpan.innerText = '*';
-        } else {
-            jiraIssueInput.removeAttribute('required');
-            jiraIssueLabel.removeAttribute('title');
-            jiraIssueRequiredSpan.innerText = '';
-        }
     });
 })();
 </script>

@@ -213,17 +213,28 @@ func tryApplyChanges(j jira.Client, patcher patch.Patcher, release Release, issu
 		})
 		return
 	}
+	createDynamicComment(j, issueRef, prs, release.Project, &cfg.Jira.Issue.Comments, tmplCtx)
+}
+
+func createDynamicComment(
+	j jira.Client,
+	issueRef jira.IssueRef,
+	prs []github.PullRequest,
+	pkgName string,
+	commentTemplates *config.JiraIssueComments,
+	tmplCtx patch.TemplateContext,
+) {
 	if len(prs) == 0 {
-		log.Warn().Str("project", release.Project).Msg("Found package config, but no repositories were patched.")
-		createTemplatedComment(j, issueRef, cfg.Jira.Issue.Comments.NoPatches, tmplCtx)
+		log.Warn().Str("project", pkgName).Msg("Found package config, but no repositories were patched.")
+		createTemplatedComment(j, issueRef, commentTemplates.NoPatches, tmplCtx)
 		return
 	}
 	log.Info().
-		Str("project", release.Project).
+		Str("project", pkgName).
 		Int("count", len(prs)).
 		Msg("Successfully created PRs for update.")
 
-	createTemplatedComment(j, issueRef, cfg.Jira.Issue.Comments.PRCreated, TemplateContextPullRequests{
+	createTemplatedComment(j, issueRef, commentTemplates.PRCreated, TemplateContextPullRequests{
 		TemplateContext: tmplCtx,
 		PullRequests:    prs,
 	})
