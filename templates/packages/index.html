@@ -18,15 +18,23 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
 -->*/}}
 
 {{ define "title" }}Packages - Jelease{{ end }}
+
+{{ define "breadcrumbs" }}
+<aside>
+    <ul class="breadcrumb border border-3">
+        <li>Packages</li>
+    </ul>
+</aside>
+{{ end }}
+
 {{ define "content" }}
-<ul class="breadcrumb border border-3">
-  <li>Packages</li>
-</ul>
 
 <h2>Packages</h2>
+
 <p>
     List of all packages found in Jelease's configuration file.
 </p>
+
 <table>
     <thead>
         <tr>

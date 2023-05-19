@@ -70,6 +70,8 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
 					</div>
 				</div>
 			</nav>
+			{{- block "breadcrumbs" . }}
+			{{- end }}
 			<article class="margin-bottom">
 				{{ block "content" . }}
 				<p>
