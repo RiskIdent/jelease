@@ -47,23 +47,23 @@ type CreatePRContext struct {
 
 // CreatePRRequest is the query or form data pushed by the web.
 type CreatePRRequest struct {
-	PackageName string `uri:"package" binding:"required"`
-	Version     string `form:"version"`
-	JiraIssue   string `form:"jiraIssue"`
-	PRCreate    bool   `form:"prCreate"`
+	Version   string `form:"version"`
+	JiraIssue string `form:"jiraIssue"`
+	PRCreate  bool   `form:"prCreate"`
 }
 
 func (s HTTPServer) bindCreatePRContext(c *gin.Context) (CreatePRContext, bool) {
-	var input CreatePRRequest
-	bindErr := c.ShouldBind(&input)
-	pkg, ok := s.cfg.TryFindNormalizedPackage(input.PackageName)
+	pkgName := c.Param("package")
+	pkg, ok := s.cfg.TryFindNormalizedPackage(pkgName)
 	if !ok {
 		c.HTML(http.StatusOK, "404", map[string]any{
 			"Config": s.cfg,
-			"Alert":  fmt.Sprintf("Package %q not found.", input.PackageName),
+			"Alert":  fmt.Sprintf("Package %q not found.", pkgName),
 		})
 		return CreatePRContext{}, false
 	}
+	var input CreatePRRequest
+	err := c.ShouldBind(&input)
 	model := CreatePRContext{
 		Config:    s.cfg,
 		Package:   pkg,
@@ -72,8 +72,8 @@ func (s HTTPServer) bindCreatePRContext(c *gin.Context) (CreatePRContext, bool) 
 		DryRun:    !input.PRCreate || s.cfg.DryRun,
 		IsPost:    c.Request.Method == http.MethodPost,
 	}
-	if bindErr != nil {
-		model.Error = bindErr
+	if err != nil {
+		model.Error = err
 		c.HTML(http.StatusBadRequest, "package-create-pr", model)
 		return model, false
 	}
@@ -135,11 +135,11 @@ func (s HTTPServer) handlePostPRCreate(c *gin.Context) {
 	c.HTML(http.StatusOK, "package-create-pr", model)
 }
 
-func createDeferredCreationURL(publicURL *url.URL, req CreatePRRequest) *url.URL {
+func createDeferredCreationURL(publicURL *url.URL, pkgName string, req CreatePRRequest) *url.URL {
 	u := *publicURL
 	u.Path = fmt.Sprintf("%s/packages/%s/create-pr",
 		strings.TrimSuffix(u.Path, "/"),
-		url.PathEscape(config.NormalizePackageName(req.PackageName)),
+		url.PathEscape(config.NormalizePackageName(pkgName)),
 	)
 	values := url.Values{}
 	if req.Version != "" {

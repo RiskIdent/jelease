@@ -24,82 +24,82 @@ import (
 
 func TestCreateDeferredCreationURL(t *testing.T) {
 	tests := []struct {
-		name string
-		url  string
-		req  CreatePRRequest
-		want string
+		name    string
+		url     string
+		pkgName string
+		req     CreatePRRequest
+		want    string
 	}{
 		{
-			name: "regular path",
-			url:  "http://localhost:8080",
+			name:    "regular path",
+			url:     "http://localhost:8080",
+			pkgName: "my-package",
 			req: CreatePRRequest{
-				PackageName: "my-package",
-				Version:     "v1.2.3",
-				JiraIssue:   "OP-1234",
-				PRCreate:    true,
+				Version:   "v1.2.3",
+				JiraIssue: "OP-1234",
+				PRCreate:  true,
 			},
 			want: "http://localhost:8080/packages/my-package/create-pr?jiraIssue=OP-1234&prCreate=true&version=v1.2.3",
 		},
 		{
-			name: "ignores fragment and query",
-			url:  "http://localhost:8080?somequery=helloworld#foobar",
+			name:    "ignores fragment and query",
+			url:     "http://localhost:8080?somequery=helloworld#foobar",
+			pkgName: "my-package",
 			req: CreatePRRequest{
-				PackageName: "my-package",
-				Version:     "v1.2.3",
-				JiraIssue:   "OP-1234",
-				PRCreate:    true,
+				Version:   "v1.2.3",
+				JiraIssue: "OP-1234",
+				PRCreate:  true,
 			},
 			want: "http://localhost:8080/packages/my-package/create-pr?jiraIssue=OP-1234&prCreate=true&version=v1.2.3",
 		},
 		{
-			name: "optional fields",
-			url:  "http://localhost:8080",
-			req: CreatePRRequest{
-				PackageName: "my-package",
-			},
-			want: "http://localhost:8080/packages/my-package/create-pr",
+			name:    "optional fields",
+			url:     "http://localhost:8080",
+			pkgName: "my-package",
+			req:     CreatePRRequest{},
+			want:    "http://localhost:8080/packages/my-package/create-pr",
 		},
 		{
-			name: "ok with trailing slash",
-			url:  "http://localhost:8080/",
+			name:    "ok with trailing slash",
+			url:     "http://localhost:8080/",
+			pkgName: "my-package",
 			req: CreatePRRequest{
-				PackageName: "my-package",
-				Version:     "v1.2.3",
-				JiraIssue:   "OP-1234",
-				PRCreate:    true,
+				Version:   "v1.2.3",
+				JiraIssue: "OP-1234",
+				PRCreate:  true,
 			},
 			want: "http://localhost:8080/packages/my-package/create-pr?jiraIssue=OP-1234&prCreate=true&version=v1.2.3",
 		},
 		{
-			name: "ok with base path",
-			url:  "http://localhost:8080/base/",
+			name:    "ok with base path",
+			url:     "http://localhost:8080/base/",
+			pkgName: "my-package",
 			req: CreatePRRequest{
-				PackageName: "my-package",
-				Version:     "v1.2.3",
-				JiraIssue:   "OP-1234",
-				PRCreate:    true,
+				Version:   "v1.2.3",
+				JiraIssue: "OP-1234",
+				PRCreate:  true,
 			},
 			want: "http://localhost:8080/base/packages/my-package/create-pr?jiraIssue=OP-1234&prCreate=true&version=v1.2.3",
 		},
 		{
-			name: "normalizes name",
-			url:  "http://localhost:8080",
+			name:    "normalizes name",
+			url:     "http://localhost:8080",
+			pkgName: "my-org/my-pkg",
 			req: CreatePRRequest{
-				PackageName: "my-org/my-pkg",
-				Version:     "v1.2.3",
-				JiraIssue:   "OP-1234",
-				PRCreate:    true,
+				Version:   "v1.2.3",
+				JiraIssue: "OP-1234",
+				PRCreate:  true,
 			},
 			want: "http://localhost:8080/packages/my-org-my-pkg/create-pr?jiraIssue=OP-1234&prCreate=true&version=v1.2.3",
 		},
 		{
-			name: "keeps scheme",
-			url:  "https+loremipsum://localhost:8080",
+			name:    "keeps scheme",
+			url:     "https+loremipsum://localhost:8080",
+			pkgName: "my-org/my-pkg",
 			req: CreatePRRequest{
-				PackageName: "my-org/my-pkg",
-				Version:     "v1.2.3",
-				JiraIssue:   "OP-1234",
-				PRCreate:    true,
+				Version:   "v1.2.3",
+				JiraIssue: "OP-1234",
+				PRCreate:  true,
 			},
 			want: "https+loremipsum://localhost:8080/packages/my-org-my-pkg/create-pr?jiraIssue=OP-1234&prCreate=true&version=v1.2.3",
 		},
@@ -111,7 +111,7 @@ func TestCreateDeferredCreationURL(t *testing.T) {
 			if err != nil {
 				t.Fatalf("parse public URL: %s", err)
 			}
-			got := createDeferredCreationURL(publicURL, tc.req)
+			got := createDeferredCreationURL(publicURL, tc.pkgName, tc.req)
 			if got == nil {
 				t.Fatal("expected URL returned, got nil")
 			}

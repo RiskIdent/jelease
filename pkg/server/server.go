@@ -210,11 +210,10 @@ func tryApplyChanges(j jira.Client, patcher patch.Patcher, release Release, issu
 		if cfg.HTTP.PublicURL == nil {
 			log.Error().Msg("Cannot use deferred PR creation when no http.publicUrl is set. Falling back to creating PR automatically instead.")
 		} else {
-			u := createDeferredCreationURL(cfg.HTTP.PublicURL.URL(), CreatePRRequest{
-				PackageName: pkg.Name,
-				Version:     release.Version,
-				JiraIssue:   issueRef.Key,
-				PRCreate:    true,
+			u := createDeferredCreationURL(cfg.HTTP.PublicURL.URL(), pkg.Name, CreatePRRequest{
+				Version:   release.Version,
+				JiraIssue: issueRef.Key,
+				PRCreate:  true,
 			})
 
 			createTemplatedComment(j, issueRef, cfg.Jira.Issue.Comments.PRDeferredCreation, TemplateContextURL{
