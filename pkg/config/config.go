@@ -18,6 +18,7 @@
 package config
 
 import (
+	"net/url"
 	"reflect"
 	"strings"
 
@@ -26,7 +27,7 @@ import (
 )
 
 var (
-	redacted    = "/redacted/"
+	redacted    = "--redacted--"
 	redactedPtr = &redacted
 )
 
@@ -61,6 +62,7 @@ func (c Config) TryFindNormalizedPackage(normalizedPkgName string) (Package, boo
 func (c Config) Censored() Config {
 	c.GitHub = c.GitHub.Censored()
 	c.Jira = c.Jira.Censored()
+	c.HTTP = c.HTTP.Censored()
 	return c
 }
 
@@ -70,7 +72,11 @@ type Package struct {
 }
 
 func (p Package) NormalizedName() string {
-	return strings.ReplaceAll(p.Name, "/", "-")
+	return NormalizePackageName(p.Name)
+}
+
+func NormalizePackageName(pkgName string) string {
+	return strings.ReplaceAll(pkgName, "/", "-")
 }
 
 type PackageRepo struct {
@@ -186,20 +192,34 @@ type JiraIssue struct {
 	Type                   string
 	Project                string
 	ProjectNameCustomField uint `yaml:"projectNameCustomField"`
+	// PRDeferredCreation means Jelease will send a link to where user can
+	// manually trigger the PR creation, instead of creating it automatically.
+	PRDeferredCreation bool `yaml:"prDeferredCreation"`
 
 	Comments JiraIssueComments
 }
 
 type JiraIssueComments struct {
-	UpdatedIssue *Template `yaml:"updatedIssue"`
-	NoConfig     *Template `yaml:"noConfig"`
-	NoPatches    *Template `yaml:"noPatches"`
-	PRCreated    *Template `yaml:"prCreated"`
-	PRFailed     *Template `yaml:"prFailed"`
+	UpdatedIssue       *Template `yaml:"updatedIssue"`
+	NoConfig           *Template `yaml:"noConfig"`
+	NoPatches          *Template `yaml:"noPatches"`
+	PRCreated          *Template `yaml:"prCreated"`
+	PRFailed           *Template `yaml:"prFailed"`
+	PRDeferredCreation *Template `yaml:"prDeferredCreation"`
 }
 
 type HTTP struct {
-	Port uint16
+	Port      uint16
+	PublicURL *URL `yaml:"publicUrl"`
+}
+
+func (h HTTP) Censored() HTTP {
+	if h.PublicURL != nil {
+		if h.PublicURL.User != nil {
+			h.PublicURL.User = url.User(redacted)
+		}
+	}
+	return h
 }
 
 type Log struct {

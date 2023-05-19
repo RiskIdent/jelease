@@ -22,6 +22,7 @@ import (
 	"html/template"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/RiskIdent/jelease/pkg/config"
@@ -204,6 +205,26 @@ func tryApplyChanges(j jira.Client, patcher patch.Patcher, release Release, issu
 		createTemplatedComment(j, issueRef, cfg.Jira.Issue.Comments.NoConfig, tmplCtx)
 		return
 	}
+
+	if cfg.Jira.Issue.PRDeferredCreation {
+		if cfg.HTTP.PublicURL == nil {
+			log.Error().Msg("Cannot use deferred PR creation when no http.publicUrl is set.")
+		} else {
+			u := createDeferredCreationURL(cfg.HTTP.PublicURL.URL(), CreatePRRequest{
+				PackageName: pkg.Name,
+				Version:     release.Version,
+				JiraIssue:   issueRef.Key,
+				PRCreate:    true,
+			})
+
+			createTemplatedComment(j, issueRef, cfg.Jira.Issue.Comments.PRDeferredCreation, TemplateContextURL{
+				TemplateContext: tmplCtx,
+				URL:             u,
+			})
+			return
+		}
+	}
+
 	prs, err := patcher.CloneAndPublishAll(pkg.Repos, tmplCtx)
 	if err != nil {
 		log.Error().Err(err).Str("project", release.Project).Msg("Failed creating patches.")
@@ -260,6 +281,11 @@ type TemplateContextError struct {
 type TemplateContextPullRequests struct {
 	patch.TemplateContext
 	PullRequests []github.PullRequest
+}
+
+type TemplateContextURL struct {
+	patch.TemplateContext
+	URL *url.URL
 }
 
 type newJiraIssue struct {

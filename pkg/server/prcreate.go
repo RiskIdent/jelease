@@ -20,6 +20,8 @@ package server
 import (
 	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/RiskIdent/jelease/pkg/github"
@@ -45,23 +47,23 @@ type CreatePRContext struct {
 
 // CreatePRRequest is the query or form data pushed by the web.
 type CreatePRRequest struct {
-	Version   string `form:"version"`
-	JiraIssue string `form:"jiraIssue"`
-	PRCreate  bool   `form:"prCreate"`
+	PackageName string `uri:"package" binding:"required"`
+	Version     string `form:"version"`
+	JiraIssue   string `form:"jiraIssue"`
+	PRCreate    bool   `form:"prCreate"`
 }
 
 func (s HTTPServer) bindCreatePRContext(c *gin.Context) (CreatePRContext, bool) {
-	pkgName := c.Param("package")
-	pkg, ok := s.cfg.TryFindNormalizedPackage(pkgName)
+	var input CreatePRRequest
+	bindErr := c.ShouldBind(&input)
+	pkg, ok := s.cfg.TryFindNormalizedPackage(input.PackageName)
 	if !ok {
 		c.HTML(http.StatusOK, "404", map[string]any{
 			"Config": s.cfg,
-			"Alert":  fmt.Sprintf("Package %q not found.", pkgName),
+			"Alert":  fmt.Sprintf("Package %q not found.", input.PackageName),
 		})
 		return CreatePRContext{}, false
 	}
-	var input CreatePRRequest
-	err := c.ShouldBind(&input)
 	model := CreatePRContext{
 		Config:    s.cfg,
 		Package:   pkg,
@@ -70,8 +72,8 @@ func (s HTTPServer) bindCreatePRContext(c *gin.Context) (CreatePRContext, bool) 
 		DryRun:    !input.PRCreate || s.cfg.DryRun,
 		IsPost:    c.Request.Method == http.MethodPost,
 	}
-	if err != nil {
-		model.Error = err
+	if bindErr != nil {
+		model.Error = bindErr
 		c.HTML(http.StatusBadRequest, "package-create-pr", model)
 		return model, false
 	}
@@ -131,4 +133,25 @@ func (s HTTPServer) handlePostPRCreate(c *gin.Context) {
 	model.PullRequests = prs
 	model.Error = err
 	c.HTML(http.StatusOK, "package-create-pr", model)
+}
+
+func createDeferredCreationURL(publicURL *url.URL, req CreatePRRequest) *url.URL {
+	u := *publicURL
+	u.Path = fmt.Sprintf("%s/packages/%s/create-pr",
+		strings.TrimSuffix(u.Path, "/"),
+		url.PathEscape(config.NormalizePackageName(req.PackageName)),
+	)
+	values := url.Values{}
+	if req.Version != "" {
+		values.Set("version", req.Version)
+	}
+	if req.PRCreate {
+		values.Set("prCreate", "true")
+	}
+	if req.JiraIssue != "" {
+		values.Set("jiraIssue", req.JiraIssue)
+	}
+	u.RawQuery = values.Encode()
+	u.Fragment = ""
+	return &u
 }

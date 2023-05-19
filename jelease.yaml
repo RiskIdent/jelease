@@ -163,6 +163,9 @@ jira:
         {{ .Error }}
         {code}
 
+      prDeferredCreation: |-
+        Can create pull request for updating *{{ .Package }}* to *{{ .Version }}*: [Click to create|{{ .URL }}]
+
       noConfig: >-
         {color:#505F79}(i) _No config found for package *{{ .Package }}*.
         You can add some to automatically create PRs with the update._{color}
