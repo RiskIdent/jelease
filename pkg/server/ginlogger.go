@@ -46,6 +46,6 @@ func (g ginLogger) Write(b []byte) (int, error) {
 		level = zerolog.WarnLevel
 	}
 
-	log.WithLevel(level).Msgf("[GIN] %s", b)
+	log.WithLevel(level).Str("caller", "GIN").Msg(string(b))
 	return len(b), nil
 }
