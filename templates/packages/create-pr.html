@@ -27,6 +27,15 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 <h2>Create PR for {{ .Package.Name }}</h2>
 
+{{ if not .IsPost }}
+    {{ if .Error }}
+        <div class="alert alert-danger">
+            <p><strong>Error:</strong> Unexpected issue while loading page:</p>
+            <pre><samp style="white-space: normal; word-break: break-word;">{{ .Error }}</samp></pre>
+        </div>
+    {{ end }}
+{{ end }}
+
 <section>
     <h3>Create GitHub PR</h3>
     <form method="POST" action="" id="create-pr-form">
@@ -37,7 +46,7 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
                     <input type="text" name="version" placeholder="Example: v1.0.0" id="form-version" required value="{{ .Version }}" />
                 </div>
                 <div class="form-group margin-bottom-none">
-                    <label for="form-jira-issue">Jira issue</label>
+                    <label for="form-jira-issue" id="form-jira-issue-label">Jira issue <strong id="form-jira-issue-required" class="text-danger"></strong></label>
                     <input type="text" name="jiraIssue" class="border-2" placeholder="Example: OP-1234" id="form-jira-issue" value="{{ .JiraIssue }}" />
                 </div>
             </div>
@@ -64,10 +73,10 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
                         )
                     </label>
                 </fieldset>
-                <fieldset class="form-group margin-bottom-none {{ if .Config.DryRun }}disabled{{ end }}">
+                <fieldset id="form-jira-comment-fieldset" class="form-group margin-bottom-none {{ if or .Config.DryRun .DryRun }}disabled{{ end }}">
                     <label class="paper-switch-2">
                         <input id="form-jira-comment" name="jiraCreateComment" class="border-4" type="checkbox" value="true"
-                            {{ if .Config.DryRun -}}
+                            {{ if or .Config.DryRun .DryRun -}}
                                 disabled
                             {{- else if .JiraCreateComment -}}
                                 checked
@@ -96,7 +105,7 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
 <section>
     <h3>Created PRs</h3>
     <div id="results">
-    {{ if .Executed }}
+    {{ if .IsPost }}
         {{ if .Error }}
             <div class="alert alert-danger">
                 <p><strong>Error:</strong> There was an error when creating the Pull Request:</p>
@@ -192,18 +201,49 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
         document.getElementById("results").innerHTML = `<p><em class="text-muted">Processing, please wait...</em></p>`;
         document.getElementById("submit").setAttribute('disabled', 'disabled');
 
+        // Some magic to make URL query params match the POSTed form data
         const url = new URL(location);
         for (const key of url.searchParams.keys()) {
             url.searchParams.delete(key);
         }
         for (const [key, value] of new FormData(form).entries()) {
-            if (value === "true") {
-                url.searchParams.set(key, "");
-            } else if (typeof value === "string" && value !== "") {
+            if (typeof value === "string" && value !== "") {
                 url.searchParams.set(key, value);
             }
         }
         history.pushState({}, "", url);
+    });
+
+    const prCreateToggle = document.getElementById("form-pr-create");
+    const jiraCommentToggle = document.getElementById("form-jira-comment");
+    const jiraCommentFieldset = document.getElementById("form-jira-comment-fieldset");
+    const jiraIssueInput = document.getElementById("form-jira-issue");
+    const jiraIssueLabel = document.getElementById("form-jira-issue-label");
+    const jiraIssueRequiredSpan = document.getElementById("form-jira-issue-required");
+
+    prCreateToggle.addEventListener("change", function() {
+        if (prCreateToggle.checked) {
+            jiraCommentToggle.removeAttribute('disabled');
+            jiraCommentFieldset.classList.remove('disabled');
+        } else {
+            if (jiraCommentToggle.checked) {
+                jiraCommentToggle.click();
+            }
+            jiraCommentToggle.setAttribute('disabled', 'disabled');
+            jiraCommentFieldset.classList.add('disabled');
+        }
+    });
+
+    jiraCommentToggle.addEventListener("change", function() {
+        if (jiraCommentToggle.checked) {
+            jiraIssueInput.setAttribute('required', 'required');
+            jiraIssueLabel.setAttribute('title', '* = Required');
+            jiraIssueRequiredSpan.innerText = '*';
+        } else {
+            jiraIssueInput.removeAttribute('required');
+            jiraIssueLabel.removeAttribute('title');
+            jiraIssueRequiredSpan.innerText = '';
+        }
     });
 })();
 </script>
