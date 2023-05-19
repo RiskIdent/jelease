@@ -151,14 +151,6 @@ func New(cfg *config.Config, j jira.Client, patcher patch.Patcher, htmlTemplates
 	return s
 }
 
-func parseQueryBool(c *gin.Context, name string) bool {
-	value, ok := c.GetQuery(name)
-	if !ok {
-		return false
-	}
-	return value == "" || strings.EqualFold(value, "true")
-}
-
 func addHTMLFromFS(ren multitemplate.Render, fs fs.FS, name string, files ...string) {
 	tmpl := template.Must(template.New(files[0]).
 		Funcs(templatefuncs.FuncsMap).
