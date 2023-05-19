@@ -54,7 +54,7 @@ type CreatePRRequest struct {
 
 func (s HTTPServer) bindCreatePRContext(c *gin.Context) (CreatePRContext, bool) {
 	pkgName := c.Param("package")
-	pkg, ok := s.cfg.TryFindNormalizedPackage(pkgName)
+	pkg, ok := s.cfg.TryFindPackage(pkgName)
 	if !ok {
 		c.HTML(http.StatusOK, "404", map[string]any{
 			"Config": s.cfg,

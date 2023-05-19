@@ -42,17 +42,9 @@ type Config struct {
 }
 
 func (c Config) TryFindPackage(pkgName string) (Package, bool) {
+	normalized := NormalizePackageName(pkgName)
 	for _, pkg := range c.Packages {
-		if pkg.Name == pkgName {
-			return pkg, true
-		}
-	}
-	return Package{}, false
-}
-
-func (c Config) TryFindNormalizedPackage(normalizedPkgName string) (Package, bool) {
-	for _, pkg := range c.Packages {
-		if pkg.NormalizedName() == normalizedPkgName {
+		if pkg.NormalizedName() == normalized {
 			return pkg, true
 		}
 	}

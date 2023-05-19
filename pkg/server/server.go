@@ -86,7 +86,7 @@ func New(cfg *config.Config, j jira.Client, patcher patch.Patcher, htmlTemplates
 	addHTMLFromFS(ren, htmlTemplates, "package-item", "layout.html", "packages/package.html")
 	r.GET("/packages/:package", func(c *gin.Context) {
 		pkgName := c.Param("package")
-		pkg, ok := s.cfg.TryFindNormalizedPackage(pkgName)
+		pkg, ok := s.cfg.TryFindPackage(pkgName)
 		if !ok {
 			c.HTML(http.StatusOK, "404", map[string]any{
 				"Config": s.cfg,
