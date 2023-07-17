@@ -49,7 +49,7 @@ var configSchemaCmd = &cobra.Command{
 			fmt.Println(string(data))
 			return nil
 		}
-		if err := os.WriteFile(configSchemaFlags.output, data, 0644); err != nil {
+		if writeFile(configSchemaFlags.output, data); err != nil {
 			return err
 		}
 		log.Info().
@@ -61,6 +61,23 @@ var configSchemaCmd = &cobra.Command{
 		// Intentionally overrides the config loading from root.go
 		return nil
 	},
+}
+
+func writeFile(fileName string, data []byte) error {
+	file, err := os.OpenFile(configSchemaFlags.output, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	_, err = file.Write(data)
+	if err != nil {
+		return err
+	}
+	_, err = file.Write([]byte("\n"))
+	if err != nil {
+		return err
+	}
+	return file.Close()
 }
 
 func marshalJSON(v any, indented bool) ([]byte, error) {
