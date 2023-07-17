@@ -28,6 +28,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// Repo is an object to manage patches for a single repository.
+// It is obtained from the [Patcher] object.
 type Repo struct {
 	gh      github.Client
 	ghRef   github.RepoRef
@@ -37,6 +39,7 @@ type Repo struct {
 	tmplCtx TemplateContext
 }
 
+// Close cleans up the Git repository by removing the entire directory.
 func (p *Repo) Close() error {
 	err := p.repo.Close()
 	if err != nil {
@@ -49,6 +52,8 @@ func (p *Repo) Close() error {
 	return err
 }
 
+// ApplyManyAndCommit uses [ApplyManyInNewBranch] to apply a series of patches
+// in a new Git branch, followed by creating a Git commit.
 func (p *Repo) ApplyManyAndCommit(patches []config.PackageRepoPatch) (git.Commit, error) {
 	if len(patches) == 0 {
 		log.Warn().
@@ -83,6 +88,8 @@ func (p *Repo) ApplyManyAndCommit(patches []config.PackageRepoPatch) (git.Commit
 	return commit, nil
 }
 
+// ApplyManyInNewBranch creates a new Git branch and then applies multiple
+// patches in series using [ApplyMany].
 func (p *Repo) ApplyManyInNewBranch(patches []config.PackageRepoPatch) error {
 	branchName, err := p.cfg.GitHub.PR.Branch.Render(p.tmplCtx)
 	if err != nil {
@@ -102,6 +109,12 @@ func (p *Repo) ApplyManyInNewBranch(patches []config.PackageRepoPatch) error {
 	return nil
 }
 
+// PublishChangesUnlessDryRun calls [PublishChanges], unless dry-run is set
+// in the configs.
+//
+// If dry-run is enabled, then this function templates all PR fields
+// (title, description, etc), and then returns it as-is without pushing anything
+// to the Git remote.
 func (p *Repo) PublishChangesUnlessDryRun(commit git.Commit) (github.PullRequest, error) {
 	if p.cfg.DryRun {
 		log.Info().Msg("Dry run: skipping publishing changes.")
@@ -126,6 +139,8 @@ func (p *Repo) PublishChangesUnlessDryRun(commit git.Commit) (github.PullRequest
 	return pr, nil
 }
 
+// PublishChanges will push the current Git branch to the remote, and then
+// create a GitHub pull request.
 func (p *Repo) PublishChanges(commit git.Commit) (github.PullRequest, error) {
 	if err := p.repo.PushChanges(); err != nil {
 		return github.PullRequest{}, err
@@ -148,6 +163,8 @@ func (p *Repo) PublishChanges(commit git.Commit) (github.PullRequest, error) {
 	return pr, nil
 }
 
+// TemplateNewPullRequest will template using [text/template] the pull request
+// fields (title, description, etc), based on what's set in the config.
 func (p *Repo) TemplateNewPullRequest(commit git.Commit) (github.NewPullRequest, error) {
 	title, err := p.cfg.GitHub.PR.Title.Render(p.tmplCtx)
 	if err != nil {
@@ -168,6 +185,8 @@ func (p *Repo) TemplateNewPullRequest(commit git.Commit) (github.NewPullRequest,
 	}, nil
 }
 
+// logDiff sends a log message with a commit diff. Will optionally colorize it
+// if log format is set to "pretty".
 func (p *Repo) logDiff(diff string) {
 	if log.Logger.GetLevel() > zerolog.DebugLevel {
 		return

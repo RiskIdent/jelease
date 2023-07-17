@@ -35,11 +35,16 @@ var (
 	ErrNoPatches = errors.New("no patches configured for repository")
 )
 
+// Patcher is the manager for managing repositories and patching them,
+// as well as pushing the changes in form of GitHub pull requests.
+//
+// This is the main integration code between the other packages.
 type Patcher struct {
 	cfg *config.Config
 	gh  github.Client
 }
 
+// New creates a new [Patcher] using a base config.
 func New(cfg *config.Config) (Patcher, error) {
 	gh, err := github.New(&cfg.GitHub)
 	if err != nil {
@@ -51,11 +56,16 @@ func New(cfg *config.Config) (Patcher, error) {
 	}, nil
 }
 
+// CloneWithConfig creates a copy of this object, but with a new [config.Config]
+// applied. Useful if you want to change just a few fields, such as the dry-run
+// setting, while still reusing the GitHub App cache.
 func (p Patcher) CloneWithConfig(cfg *config.Config) Patcher {
 	p.cfg = cfg
 	return p
 }
 
+// TestGitHubConnection is practically a ping towards GitHub, to ensure the
+// credentials from the config are working.
 func (p Patcher) TestGitHubConnection(ctx context.Context) error {
 	if err := p.gh.TestConnection(context.TODO()); err != nil {
 		return fmt.Errorf("test GitHub connection: %w", err)
@@ -63,6 +73,9 @@ func (p Patcher) TestGitHubConnection(ctx context.Context) error {
 	return nil
 }
 
+// CloneAndPublishAll will clone a list of Git repository, apply all the
+// configured patches, and then publish the changes in the form of GitHub
+// pull requests.
 func (p Patcher) CloneAndPublishAll(pkgRepos []config.PackageRepo, tmplCtx TemplateContext) ([]github.PullRequest, error) {
 	if len(pkgRepos) == 0 {
 		log.Warn().Str("package", tmplCtx.Package).Msg("No repos configured for package.")
@@ -86,6 +99,8 @@ func (p Patcher) CloneAndPublishAll(pkgRepos []config.PackageRepo, tmplCtx Templ
 	return prs, nil
 }
 
+// CloneAndPublishRepo will clone a Git repository, apply all the configured
+// patches, and then publish the changes in the form of a GitHub pull requests.
 func (p Patcher) CloneAndPublishRepo(pkgRepo config.PackageRepo, tmplCtx TemplateContext) (github.PullRequest, error) {
 	repo, err := p.CloneRepo(pkgRepo.URL, tmplCtx)
 	if err != nil {
@@ -101,6 +116,8 @@ func (p Patcher) CloneAndPublishRepo(pkgRepo config.PackageRepo, tmplCtx Templat
 	return repo.PublishChangesUnlessDryRun(commit)
 }
 
+// CloneRepo will download a Git repository from GitHub using the configured
+// credentials. It is cloned using HTTPS instead of SSH.
 func (p Patcher) CloneRepo(remote string, tmplCtx TemplateContext) (*Repo, error) {
 	// Check this early so we don't fail right on the finish line
 	ghRef, err := github.ParseRepoRef(remote)
