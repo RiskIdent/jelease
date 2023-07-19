@@ -31,6 +31,9 @@ docker:
     && rm -rf /var/lib/apt/lists/*
   COPY +build/jelease /usr/local/bin
   CMD ["jelease", "serve"]
+  LABEL org.opencontainers.image.source=https://github.com/RiskIdent/jelease
+  LABEL org.opencontainers.image.description="Automatically create software update PRs and Jira tickets using newreleases.io webhooks."
+  LABEL org.opencontainers.image.licenses=GPL-3.0-or-later
   IF [ "$VERSION" != "latest" ]
     SAVE IMAGE --push $REGISTRY/jelease:latest
   END
