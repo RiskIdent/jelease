@@ -10,6 +10,7 @@ require (
 	github.com/andygrunwald/go-jira v1.15.1
 	github.com/bradleyfalzon/ghinstallation/v2 v2.1.1-0.20221216144751-8f41e6541ca6
 	github.com/fatih/color v1.13.0
+	github.com/gin-contrib/multitemplate v0.0.0-20230212012517-45920c92c271
 	github.com/gin-gonic/gin v1.8.1
 	github.com/golang-jwt/jwt/v4 v4.4.3
 	github.com/google/go-github/v48 v48.2.0

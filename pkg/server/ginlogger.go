@@ -15,39 +15,37 @@
 // You should have received a copy of the GNU General Public License along
 // with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package cmd
+package server
 
 import (
-	"os"
+	"bytes"
+	"io"
 
-	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
-var configFlags = struct {
-	noRedacting bool
-}{}
-
-// configCmd represents the config command
-var configCmd = &cobra.Command{
-	Use:   "config",
-	Short: "Prints the parsed config",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		enc := yaml.NewEncoder(os.Stdout)
-		enc.SetIndent(2)
-		defer enc.Close()
-
-		printableCfg := cfg
-		if !configFlags.noRedacting {
-			printableCfg = printableCfg.Censored()
-		}
-
-		return enc.Encode(printableCfg)
-	},
+type ginLogger struct {
+	defaultLevel zerolog.Level
 }
 
-func init() {
-	rootCmd.AddCommand(configCmd)
+// Ensure it implements the interface
+var _ io.Writer = ginLogger{}
 
-	configCmd.Flags().BoolVar(&configFlags.noRedacting, "no-redacting", false, "Show secret fields, instead of redacting tokens and private keys.")
+func (g ginLogger) Write(b []byte) (int, error) {
+	b = bytes.TrimSuffix(b, []byte("\n"))
+	level := g.defaultLevel
+
+	var ok bool
+	if b, ok = bytes.CutPrefix(b, []byte("[GIN-debug] ")); ok {
+		level = zerolog.DebugLevel
+	} else {
+		b = bytes.TrimPrefix(b, []byte("[GIN] "))
+	}
+	if b, ok = bytes.CutPrefix(b, []byte("[WARNING] ")); ok {
+		level = zerolog.WarnLevel
+	}
+
+	log.WithLevel(level).Str("caller", "GIN").Msg(string(b))
+	return len(b), nil
 }

@@ -19,13 +19,20 @@ package server
 
 import (
 	"fmt"
+	"html/template"
+	"io/fs"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/RiskIdent/jelease/pkg/github"
 	"github.com/RiskIdent/jelease/pkg/jira"
 	"github.com/RiskIdent/jelease/pkg/patch"
+	"github.com/RiskIdent/jelease/pkg/templatefuncs"
+	"github.com/gin-contrib/multitemplate"
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -36,11 +43,12 @@ type HTTPServer struct {
 	patcher patch.Patcher
 }
 
-func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher) *HTTPServer {
-	gin.DefaultErrorWriter = log.Logger
-	gin.DefaultWriter = log.Logger
+func New(cfg *config.Config, j jira.Client, patcher patch.Patcher, htmlTemplates fs.FS, staticFiles fs.FS) *HTTPServer {
+	gin.DefaultErrorWriter = ginLogger{defaultLevel: zerolog.ErrorLevel}
+	gin.DefaultWriter = ginLogger{defaultLevel: zerolog.InfoLevel}
 
 	r := gin.New()
+	r.HandleMethodNotAllowed = true
 
 	r.Use(
 		gin.LoggerWithConfig(gin.LoggerConfig{
@@ -52,24 +60,107 @@ func New(cfg *config.Config, jira jira.Client, patcher patch.Patcher) *HTTPServe
 	s := &HTTPServer{
 		engine:  r,
 		cfg:     cfg,
-		jira:    jira,
+		jira:    j,
 		patcher: patcher,
 	}
 
-	r.GET("/", s.handleGetRoot)
+	ren := multitemplate.New()
+	r.HTMLRender = ren
+	defaultTemplateObj := map[string]any{"Config": s.cfg.Censored()}
+
+	addHTMLFromFS(ren, htmlTemplates, "index", "layout.html", "index.html")
+	r.GET("/", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "index", defaultTemplateObj)
+	})
+
+	addHTMLFromFS(ren, htmlTemplates, "config", "layout.html", "config.html")
+	r.GET("/config", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "config", defaultTemplateObj)
+	})
+
+	addHTMLFromFS(ren, htmlTemplates, "package-list", "layout.html", "packages/index.html")
+	r.GET("/packages", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "package-list", defaultTemplateObj)
+	})
+
+	addHTMLFromFS(ren, htmlTemplates, "package-item", "layout.html", "packages/package.html")
+	r.GET("/packages/:package", func(c *gin.Context) {
+		pkgName := c.Param("package")
+		pkg, ok := s.cfg.TryFindPackage(pkgName)
+		if !ok {
+			c.HTML(http.StatusOK, "404", map[string]any{
+				"Config": s.cfg,
+				"Alert":  fmt.Sprintf("Package %q not found.", pkgName),
+			})
+			return
+		}
+		c.HTML(http.StatusOK, "package-item", map[string]any{
+			"Config":  s.cfg,
+			"Package": pkg,
+		})
+	})
+
+	addHTMLFromFS(ren, htmlTemplates, "package-create-pr", "layout.html", "packages/create-pr.html")
+	r.GET("/packages/:package/create-pr", s.handleGetPRCreate)
+	r.POST("/packages/:package/create-pr", s.handlePostPRCreate)
+
+	addHTMLFromFS(ren, htmlTemplates, "404", "layout.html", "404.html")
+	r.NoRoute(func(c *gin.Context) {
+		if strings.HasPrefix(c.Request.URL.Path, "/webhook") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Endpoint not found"})
+			return
+		}
+		c.HTML(http.StatusNotFound, "404", defaultTemplateObj)
+	})
+
+	addHTMLFromFS(ren, htmlTemplates, "405", "layout.html", "405.html")
+	r.NoMethod(func(c *gin.Context) {
+		var methodsAllowed []string
+		for _, route := range r.Routes() {
+			if route.Path == c.Request.URL.Path {
+				methodsAllowed = append(methodsAllowed, route.Method)
+			}
+		}
+		if strings.HasPrefix(c.Request.URL.Path, "/webhook") {
+			c.JSON(http.StatusMethodNotAllowed, gin.H{
+				"error":   "Method not allowed",
+				"methods": methodsAllowed,
+			})
+			return
+		}
+		c.HTML(http.StatusNotFound, "405", defaultTemplateObj)
+	})
+
 	r.POST("/webhook", s.handlePostWebhook)
 
+	httpFS := http.FS(staticFiles)
+	fs.WalkDir(staticFiles, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if strings.HasSuffix(path, ".license") {
+			return nil
+		}
+		r.StaticFileFS(path, path, httpFS)
+		return nil
+	})
+
 	return s
+}
+
+func addHTMLFromFS(ren multitemplate.Render, fs fs.FS, name string, files ...string) {
+	tmpl := template.Must(template.New(files[0]).
+		Funcs(templatefuncs.FuncsMap).
+		ParseFS(fs, files...))
+	ren.Add(name, tmpl)
 }
 
 func (s HTTPServer) Serve() error {
 	log.Info().Uint16("port", s.cfg.HTTP.Port).Msg("Starting server.")
 	return s.engine.Run(fmt.Sprintf(":%v", s.cfg.HTTP.Port))
-}
-
-// handleGetRoot handles to GET requests for a basic reachability check
-func (HTTPServer) handleGetRoot(c *gin.Context) {
-	c.Data(http.StatusOK, "text/plain", []byte("OK"))
 }
 
 // handlePostWebhook handles newreleases.io webhook post requests
@@ -106,6 +197,25 @@ func tryApplyChanges(j jira.Client, patcher patch.Patcher, release Release, issu
 		createTemplatedComment(j, issueRef, cfg.Jira.Issue.Comments.NoConfig, tmplCtx)
 		return
 	}
+
+	if cfg.Jira.Issue.PRDeferredCreation {
+		if cfg.HTTP.PublicURL == nil {
+			log.Error().Msg("Cannot use deferred PR creation when no http.publicUrl is set. Falling back to creating PR automatically instead.")
+		} else {
+			u := createDeferredCreationURL(cfg.HTTP.PublicURL.URL(), pkg.Name, CreatePRRequest{
+				Version:   release.Version,
+				JiraIssue: issueRef.Key,
+				PRCreate:  true,
+			})
+
+			createTemplatedComment(j, issueRef, cfg.Jira.Issue.Comments.PRDeferredCreation, TemplateContextURL{
+				TemplateContext: tmplCtx,
+				URL:             u,
+			})
+			return
+		}
+	}
+
 	prs, err := patcher.CloneAndPublishAll(pkg.Repos, tmplCtx)
 	if err != nil {
 		log.Error().Err(err).Str("project", release.Project).Msg("Failed creating patches.")
@@ -115,17 +225,28 @@ func tryApplyChanges(j jira.Client, patcher patch.Patcher, release Release, issu
 		})
 		return
 	}
+	createDynamicComment(j, issueRef, prs, release.Project, &cfg.Jira.Issue.Comments, tmplCtx)
+}
+
+func createDynamicComment(
+	j jira.Client,
+	issueRef jira.IssueRef,
+	prs []github.PullRequest,
+	pkgName string,
+	commentTemplates *config.JiraIssueComments,
+	tmplCtx patch.TemplateContext,
+) {
 	if len(prs) == 0 {
-		log.Warn().Str("project", release.Project).Msg("Found package config, but no repositories were patched.")
-		createTemplatedComment(j, issueRef, cfg.Jira.Issue.Comments.NoPatches, tmplCtx)
+		log.Warn().Str("project", pkgName).Msg("Found package config, but no repositories were patched.")
+		createTemplatedComment(j, issueRef, commentTemplates.NoPatches, tmplCtx)
 		return
 	}
 	log.Info().
-		Str("project", release.Project).
+		Str("project", pkgName).
 		Int("count", len(prs)).
 		Msg("Successfully created PRs for update.")
 
-	createTemplatedComment(j, issueRef, cfg.Jira.Issue.Comments.PRCreated, TemplateContextPullRequests{
+	createTemplatedComment(j, issueRef, commentTemplates.PRCreated, TemplateContextPullRequests{
 		TemplateContext: tmplCtx,
 		PullRequests:    prs,
 	})
@@ -151,6 +272,11 @@ type TemplateContextError struct {
 type TemplateContextPullRequests struct {
 	patch.TemplateContext
 	PullRequests []github.PullRequest
+}
+
+type TemplateContextURL struct {
+	patch.TemplateContext
+	URL *url.URL
 }
 
 type newJiraIssue struct {

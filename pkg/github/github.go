@@ -72,6 +72,7 @@ func CreatePullRequest(ctx context.Context, gh *github.Client, pr NewPullRequest
 		Description: created.GetBody(),
 		Head:        created.Head.GetLabel(),
 		Base:        created.Base.GetLabel(),
+		Commit:      pr.Commit,
 	}, nil
 }
 
@@ -81,6 +82,7 @@ type NewPullRequest struct {
 	Description string
 	Head        string
 	Base        string
+	Commit      git.Commit
 }
 
 type PullRequest struct {
@@ -92,4 +94,5 @@ type PullRequest struct {
 	Description string
 	Head        string
 	Base        string
+	Commit      git.Commit
 }

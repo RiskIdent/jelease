@@ -37,6 +37,7 @@ import (
 type Client interface {
 	ProjectMustExist(projectKey string) error
 	StatusMustExist(statusName string) error
+	FindIssueForKey(issueKey string) (Issue, error)
 	FindIssuesForPackage(packageName string) ([]Issue, error)
 	UpdateIssueSummary(issueRef IssueRef, newSummary string) error
 	CreateIssue(issue Issue) (IssueRef, error)
@@ -113,7 +114,7 @@ func (i Issue) rawIssue() jira.Issue {
 			Type: jira.IssueType{
 				Name: i.TypeName,
 			},
-			Labels:   i.Labels,
+			Labels:   labels,
 			Summary:  i.Summary,
 			Unknowns: extraFields,
 		},
@@ -209,6 +210,16 @@ func (c *client) StatusMustExist(statusName string) error {
 	}
 	return fmt.Errorf("status %q not found in Jira, but has: %v",
 		statusName, strings.Join(statusNames, ", "))
+}
+
+func (c *client) FindIssueForKey(issueKey string) (Issue, error) {
+	rawIssue, resp, err := c.raw.Issue.Get(issueKey, nil)
+	if err != nil {
+		err := fmt.Errorf("searching Jira for previous issues: %w", err)
+		logJiraErrResponse(resp, err)
+		return Issue{}, err
+	}
+	return newIssue(*rawIssue, c.cfg.Issue.ProjectNameCustomField), nil
 }
 
 func (c *client) FindIssuesForPackage(packageName string) ([]Issue, error) {

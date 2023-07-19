@@ -35,6 +35,7 @@ type Repo interface {
 
 	CheckoutNewBranch(branchName string) error
 	DiffChanges() (string, error)
+	DiffStaged() (string, error)
 	StageChanges() error
 	CreateCommit(message string) (Commit, error)
 	PushChanges() error
@@ -56,6 +57,7 @@ type Commit struct {
 	ParentHash     string
 	ParentAbbrHash string
 	Subject        string
+	Diff           string
 }
 
 func (c Commit) String() string {

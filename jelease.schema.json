@@ -185,6 +185,9 @@
       "properties": {
         "port": {
           "type": "integer"
+        },
+        "publicUrl": {
+          "$ref": "#/$defs/url"
         }
       },
       "additionalProperties": false,
@@ -255,6 +258,9 @@
         "projectNameCustomField": {
           "type": "integer"
         },
+        "prDeferredCreation": {
+          "type": "boolean"
+        },
         "comments": {
           "$ref": "#/$defs/jiraIssueComments"
         }
@@ -277,6 +283,9 @@
           "$ref": "#/$defs/template"
         },
         "prFailed": {
+          "$ref": "#/$defs/template"
+        },
+        "prDeferredCreation": {
           "$ref": "#/$defs/template"
         }
       },
@@ -503,6 +512,22 @@
     "template": {
       "type": "string",
       "title": "Go template"
+    },
+    "url": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "format": "uri",
+      "title": "URL",
+      "examples": [
+        "http://localhost:8080",
+        "https://example.com"
+      ]
     }
   }
 }

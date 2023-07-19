@@ -76,10 +76,10 @@ github:
       {{ with .JiraIssue }}[{{ . }}] {{ end -}}
       Update `{{ .Package }}` to {{ .Version }}
     description: |
-      {{ with .JiraIssue }}
+      {{ with .JiraIssue -}}
       Jira issue: {{ . }}
-      {{ end }}
 
+      {{ end -}}
       Changed version of `{{ .Package }}` to {{ .Version }}
 
       <sub>
@@ -145,6 +145,11 @@ jira:
     project: ''
     projectNameCustomField: 1084
 
+    # prDeferredCreation means Jelease will send a link to where user can
+    # manually trigger the PR creation, instead of creating it automatically.
+    # Note that http.publicUrl also has to be set for this.
+    prDeferredCreation: false
+
     comments:
       updatedIssue: |-
         (i) This Jira issue was updated to *{{ .Version }}*.
@@ -162,6 +167,9 @@ jira:
         {code}
         {{ .Error }}
         {code}
+
+      prDeferredCreation: |-
+        Can create pull request for updating *{{ .Package }}* to *{{ .Version }}*: [Click to create|{{ .URL }}]
 
       noConfig: >-
         {color:#505F79}(i) _No config found for package *{{ .Package }}*.
@@ -186,6 +194,18 @@ newReleases:
 # newreleases.io and GitHub.
 http:
   port: 8080
+
+  # URL to reach Jelease. Used when Jelease needs to link back to itself
+  # in Jira comments. Trailing slash is optional. Example:
+  #   publicUrl: http://locahost:8080
+  # will resolve links such as:
+  #   http://locahost:8080/packages/my-package/create-pr
+  #
+  # Base paths will be honored, such as:
+  #   publicUrl: http://my-infra.example.com/jelease/
+  # will resolve links such as:
+  #   http://my-infra.example.com/jelease/packages/my-package/create-pr
+  publicUrl: null
 
 # Console logging settings.
 log:

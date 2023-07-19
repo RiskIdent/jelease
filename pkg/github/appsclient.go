@@ -25,8 +25,8 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/RiskIdent/jelease/pkg/config"
@@ -196,7 +196,7 @@ func newAppsTransport(ghCfg *config.GitHub) (*ghinstallation.AppsTransport, erro
 }
 
 func readRSAPrivateKeyFromFile(path string) (*rsa.PrivateKey, error) {
-	bytes, err := ioutil.ReadFile(path)
+	bytes, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("could not read private key file: %w", err)
 	}

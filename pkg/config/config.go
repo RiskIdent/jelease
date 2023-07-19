@@ -18,10 +18,17 @@
 package config
 
 import (
+	"net/url"
 	"reflect"
+	"strings"
 
 	"github.com/RiskIdent/jelease/pkg/util"
 	"github.com/invopop/jsonschema"
+)
+
+var (
+	redacted    = "--redacted--"
+	redactedPtr = &redacted
 )
 
 type Config struct {
@@ -35,17 +42,33 @@ type Config struct {
 }
 
 func (c Config) TryFindPackage(pkgName string) (Package, bool) {
+	normalized := NormalizePackageName(pkgName)
 	for _, pkg := range c.Packages {
-		if pkg.Name == pkgName {
+		if pkg.NormalizedName() == normalized {
 			return pkg, true
 		}
 	}
 	return Package{}, false
 }
 
+func (c Config) Censored() Config {
+	c.GitHub = c.GitHub.Censored()
+	c.Jira = c.Jira.Censored()
+	c.HTTP = c.HTTP.Censored()
+	return c
+}
+
 type Package struct {
 	Name  string
 	Repos []PackageRepo
+}
+
+func (p Package) NormalizedName() string {
+	return NormalizePackageName(p.Name)
+}
+
+func NormalizePackageName(pkgName string) string {
+	return strings.ReplaceAll(pkgName, "/", "-")
 }
 
 type PackageRepo struct {
@@ -75,16 +98,41 @@ type GitHub struct {
 	PR      GitHubPR
 }
 
+func (gh GitHub) Censored() GitHub {
+	gh.Auth = gh.Auth.Censored()
+	return gh
+}
+
 type GitHubAuth struct {
 	Type  GitHubAuthType
 	Token *string `yaml:",omitempty" jsonschema:"oneof_type=string;null"`
 	App   GitHubAuthApp
 }
 
+func (a GitHubAuth) Censored() GitHubAuth {
+	if a.Token != nil {
+		a.Token = redactedPtr
+	}
+	a.App = a.App.Censored()
+	return a
+}
+
 type GitHubAuthApp struct {
 	ID             int64
 	PrivateKeyPath *string           `yaml:"privateKeyPath,omitempty" jsonschema:"oneof_type=string;null,oneof_required=privateKeyPath"`
 	PrivateKeyPEM  *RSAPrivateKeyPEM `yaml:"privateKeyPem,omitempty" jsonschema:"oneof_required=privateKeyPem"`
+}
+
+func (a GitHubAuthApp) Censored() GitHubAuthApp {
+	if a.PrivateKeyPath != nil {
+		a.PrivateKeyPath = redactedPtr
+	}
+	if a.PrivateKeyPEM != nil {
+		a.PrivateKeyPEM = &RSAPrivateKeyPEM{
+			pem: []byte(redacted),
+		}
+	}
+	return a
 }
 
 type GitHubPR struct {
@@ -107,10 +155,25 @@ type Jira struct {
 	Issue          JiraIssue
 }
 
+func (j Jira) Censored() Jira {
+	j.Auth = j.Auth.Censored()
+	return j
+}
+
 type JiraAuth struct {
 	Type  JiraAuthType
 	Token string
 	User  string
+}
+
+func (a JiraAuth) Censored() JiraAuth {
+	if a.Token != "" {
+		a.Token = redacted
+	}
+	if a.User != "" {
+		a.User = redacted
+	}
+	return a
 }
 
 // Jira Ticket type
@@ -122,19 +185,36 @@ type JiraIssue struct {
 	Project                string
 	ProjectNameCustomField uint `yaml:"projectNameCustomField"`
 
+	// PRDeferredCreation means Jelease will send a link to where user can
+	// manually trigger the PR creation, instead of creating it automatically.
+	PRDeferredCreation bool `yaml:"prDeferredCreation"`
+
 	Comments JiraIssueComments
 }
 
 type JiraIssueComments struct {
-	UpdatedIssue *Template `yaml:"updatedIssue"`
-	NoConfig     *Template `yaml:"noConfig"`
-	NoPatches    *Template `yaml:"noPatches"`
-	PRCreated    *Template `yaml:"prCreated"`
-	PRFailed     *Template `yaml:"prFailed"`
+	UpdatedIssue       *Template `yaml:"updatedIssue"`
+	NoConfig           *Template `yaml:"noConfig"`
+	NoPatches          *Template `yaml:"noPatches"`
+	PRCreated          *Template `yaml:"prCreated"`
+	PRFailed           *Template `yaml:"prFailed"`
+	PRDeferredCreation *Template `yaml:"prDeferredCreation"`
 }
 
 type HTTP struct {
-	Port uint16
+	Port      uint16
+	PublicURL *URL `yaml:"publicUrl"`
+}
+
+func (h HTTP) Censored() HTTP {
+	if h.PublicURL != nil {
+		if h.PublicURL.User != nil {
+			u := *h.PublicURL
+			u.User = url.User(redacted)
+			h.PublicURL = &u
+		}
+	}
+	return h
 }
 
 type Log struct {

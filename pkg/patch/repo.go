@@ -28,6 +28,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// Repo is an object to manage patches for a single repository.
+// It is obtained from the [Patcher] object.
 type Repo struct {
 	gh      github.Client
 	ghRef   github.RepoRef
@@ -37,6 +39,7 @@ type Repo struct {
 	tmplCtx TemplateContext
 }
 
+// Close cleans up the Git repository by removing the entire directory.
 func (p *Repo) Close() error {
 	err := p.repo.Close()
 	if err != nil {
@@ -49,39 +52,44 @@ func (p *Repo) Close() error {
 	return err
 }
 
-func (p *Repo) ApplyManyAndCommit(patches []config.PackageRepoPatch) error {
+// ApplyManyAndCommit uses [ApplyManyInNewBranch] to apply a series of patches
+// in a new Git branch, followed by creating a Git commit.
+func (p *Repo) ApplyManyAndCommit(patches []config.PackageRepoPatch) (git.Commit, error) {
 	if len(patches) == 0 {
 		log.Warn().
 			Str("package", p.tmplCtx.Package).
 			Str("repo", p.remote).
 			Msg("No patches configured for repository.")
-		return ErrNoPatches
+		return git.Commit{}, ErrNoPatches
 	}
 
 	if err := p.ApplyManyInNewBranch(patches); err != nil {
-		return fmt.Errorf("template branch name: %w", err)
+		return git.Commit{}, fmt.Errorf("template branch name: %w", err)
 	}
 
 	if err := p.repo.StageChanges(); err != nil {
-		return err
+		return git.Commit{}, err
 	}
 	log.Debug().Msg("Staged changes.")
 
 	commitMsg, err := p.cfg.GitHub.PR.Commit.Render(p.tmplCtx)
 	if err != nil {
-		return fmt.Errorf("template commit message: %w", err)
+		return git.Commit{}, fmt.Errorf("template commit message: %w", err)
 	}
 	commit, err := p.repo.CreateCommit(commitMsg)
 	if err != nil {
-		return err
+		return git.Commit{}, err
 	}
 	log.Debug().
 		Str("hash", commit.AbbrHash).
 		Str("subject", commit.Subject).
 		Msg("Created commit.")
-	return nil
+	p.logDiff(commit.Diff)
+	return commit, nil
 }
 
+// ApplyManyInNewBranch creates a new Git branch and then applies multiple
+// patches in series using [ApplyMany].
 func (p *Repo) ApplyManyInNewBranch(patches []config.PackageRepoPatch) error {
 	branchName, err := p.cfg.GitHub.PR.Branch.Render(p.tmplCtx)
 	if err != nil {
@@ -98,16 +106,32 @@ func (p *Repo) ApplyManyInNewBranch(patches []config.PackageRepoPatch) error {
 		return err
 	}
 
-	p.logDiff()
 	return nil
 }
 
-func (p *Repo) PublishChangesUnlessDryRun() (github.PullRequest, error) {
+// PublishChangesUnlessDryRun calls [PublishChanges], unless dry-run is set
+// in the configs.
+//
+// If dry-run is enabled, then this function templates all PR fields
+// (title, description, etc), and then returns it as-is without pushing anything
+// to the Git remote.
+func (p *Repo) PublishChangesUnlessDryRun(commit git.Commit) (github.PullRequest, error) {
 	if p.cfg.DryRun {
 		log.Info().Msg("Dry run: skipping publishing changes.")
-		return github.PullRequest{}, nil
+		newPR, err := p.TemplateNewPullRequest(commit)
+		if err != nil {
+			return github.PullRequest{}, err
+		}
+		return github.PullRequest{
+			RepoRef:     newPR.RepoRef,
+			Title:       newPR.Title,
+			Description: newPR.Description,
+			Head:        newPR.Head,
+			Base:        newPR.Base,
+			Commit:      newPR.Commit,
+		}, nil
 	}
-	pr, err := p.PublishChanges()
+	pr, err := p.PublishChanges(commit)
 	if err != nil {
 		return github.PullRequest{}, err
 	}
@@ -115,29 +139,21 @@ func (p *Repo) PublishChangesUnlessDryRun() (github.PullRequest, error) {
 	return pr, nil
 }
 
-func (p *Repo) PublishChanges() (github.PullRequest, error) {
+// PublishChanges will push the current Git branch to the remote, and then
+// create a GitHub pull request.
+func (p *Repo) PublishChanges(commit git.Commit) (github.PullRequest, error) {
 	if err := p.repo.PushChanges(); err != nil {
 		return github.PullRequest{}, err
 	}
 	log.Info().Str("branch", p.repo.CurrentBranch()).
 		Msg("Pushed changes to remote repository.")
 
-	title, err := p.cfg.GitHub.PR.Title.Render(p.tmplCtx)
+	newPR, err := p.TemplateNewPullRequest(commit)
 	if err != nil {
-		return github.PullRequest{}, fmt.Errorf("template PR title: %w", err)
-	}
-	description, err := p.cfg.GitHub.PR.Description.Render(p.tmplCtx)
-	if err != nil {
-		return github.PullRequest{}, fmt.Errorf("template PR description: %w", err)
+		return github.PullRequest{}, err
 	}
 
-	pr, err := p.gh.CreatePullRequest(context.TODO(), github.NewPullRequest{
-		RepoRef:     p.ghRef,
-		Title:       title,
-		Description: description,
-		Head:        p.repo.CurrentBranch(),
-		Base:        p.repo.MainBranch(),
-	})
+	pr, err := p.gh.CreatePullRequest(context.TODO(), newPR)
 	if err != nil {
 		return github.PullRequest{}, fmt.Errorf("create GitHub PR: %w", err)
 	}
@@ -147,13 +163,32 @@ func (p *Repo) PublishChanges() (github.PullRequest, error) {
 	return pr, nil
 }
 
-func (p *Repo) logDiff() {
-	if log.Logger.GetLevel() > zerolog.DebugLevel {
-		return
-	}
-	diff, err := p.repo.DiffChanges()
+// TemplateNewPullRequest will template using [text/template] the pull request
+// fields (title, description, etc), based on what's set in the config.
+func (p *Repo) TemplateNewPullRequest(commit git.Commit) (github.NewPullRequest, error) {
+	title, err := p.cfg.GitHub.PR.Title.Render(p.tmplCtx)
 	if err != nil {
-		log.Warn().Err(err).Msg("Failed diffing changes. Trying to continue anyways.")
+		return github.NewPullRequest{}, fmt.Errorf("template PR title: %w", err)
+	}
+	description, err := p.cfg.GitHub.PR.Description.Render(p.tmplCtx)
+	if err != nil {
+		return github.NewPullRequest{}, fmt.Errorf("template PR description: %w", err)
+	}
+
+	return github.NewPullRequest{
+		RepoRef:     p.ghRef,
+		Title:       title,
+		Description: description,
+		Head:        p.repo.CurrentBranch(),
+		Base:        p.repo.MainBranch(),
+		Commit:      commit,
+	}, nil
+}
+
+// logDiff sends a log message with a commit diff. Will optionally colorize it
+// if log format is set to "pretty".
+func (p *Repo) logDiff(diff string) {
+	if log.Logger.GetLevel() > zerolog.DebugLevel {
 		return
 	}
 	if p.cfg.Log.Format == config.LogFormatPretty {

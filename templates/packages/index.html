@@ -1,0 +1,63 @@
+{{/*<!--
+SPDX-FileCopyrightText: 2022 Risk.Ident GmbH <contact@riskident.com>
+
+SPDX-License-Identifier: GPL-3.0-or-later
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+more details.
+
+You should have received a copy of the GNU General Public License along
+with this program.  If not, see <http://www.gnu.org/licenses/>.
+-->*/}}
+
+{{ define "title" }}Packages - Jelease{{ end }}
+
+{{ define "breadcrumbs" }}
+<aside>
+    <ul class="breadcrumb border border-3">
+        <li>Packages</li>
+    </ul>
+</aside>
+{{ end }}
+
+{{ define "content" }}
+
+<h2>Packages</h2>
+
+<p>
+    List of all packages found in Jelease's configuration file.
+</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Associated repositories</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{ range $pkg := .Config.Packages }}
+        <tr>
+            <td>
+                <a href="/packages/{{ $pkg.NormalizedName }}">{{ $pkg.Name }}</a>
+            </td>
+            <td>
+                {{ range $i, $repo := $pkg.Repos }}
+                    {{ if gt $i 0 }}
+                    <br/>
+                    {{ end }}
+                    <a href="{{ $repo.URL }}" target="_blank">{{ $repo.URL }}</a>
+                {{ end }}
+            </td>
+        </tr>
+        {{ end }}
+    </tbody>
+</table>
+{{ end }}
