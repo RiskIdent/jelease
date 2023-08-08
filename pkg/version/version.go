@@ -23,8 +23,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-
-	"gopkg.in/typ.v4"
 )
 
 var parseRegex = regexp.MustCompile(`^(v?)((?:[0-9]+\.?)+)+([a-zA-Z0-9+_.=/-]*)$`)
@@ -74,10 +72,10 @@ func (v Version) String() string {
 }
 
 func (v Version) Bump(other Version) Version {
-	max := typ.Max(len(v.Segments), len(other.Segments))
-	segments := make([]uint, max)
+	numSegments := max(len(v.Segments), len(other.Segments))
+	segments := make([]uint, numSegments)
 	var resetFollowing bool
-	for i := 0; i < max; i++ {
+	for i := 0; i < numSegments; i++ {
 		add := indexOrZero(other.Segments, i)
 		switch {
 		case resetFollowing:

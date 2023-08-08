@@ -18,9 +18,8 @@
 package util
 
 import (
+	"slices"
 	"testing"
-
-	"golang.org/x/exp/slices"
 )
 
 func TestConcat(t *testing.T) {

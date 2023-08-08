@@ -63,7 +63,7 @@ func (u *URL) MarshalText() ([]byte, error) {
 
 func (URL) JSONSchema() *jsonschema.Schema {
 	return &jsonschema.Schema{
-		Title:  "URL",
+		Title: "URL",
 		OneOf: []*jsonschema.Schema{
 			{
 				Type: "string",
