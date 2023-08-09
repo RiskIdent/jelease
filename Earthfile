@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: CC0-1.0
 
 VERSION 0.6
-FROM golang:1.20-bullseye
+FROM golang:1.21-bullseye
 WORKDIR /jelease
 
 deps:

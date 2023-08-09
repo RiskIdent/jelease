@@ -25,12 +25,12 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"text/template"
 
 	"github.com/RiskIdent/jelease/pkg/version"
-	"gopkg.in/typ.v4/slices"
 	"gopkg.in/yaml.v3"
 )
 
