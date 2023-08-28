@@ -4,7 +4,13 @@
 
 name: govulncheck
 
-on: [push]
+on: 
+  push:
+    branches:
+      - main
+  pull_request:
+  schedule:
+    - cron: 0 8 * * 1  # 08:00 on mondays
 
 jobs:
   govulncheck:
@@ -22,3 +28,41 @@ jobs:
         with:
            go-version-input: ">=${{ steps.goversion.outputs.version }}.0"
            go-package: ./...
+
+      - name: Send Slack message
+        uses: slackapi/slack-github-action@v1.24.0
+        #if: ${{ failure() && steps.govulncheck.conclusion == 'failure' && github.ref == 'refs/heads/main' }}
+        if: ${{ failure() && steps.govulncheck.conclusion == 'failure' }}
+        with:
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "govulncheck",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Vulnerabilities in <${{ github.server_url }}/${{ github.repository }}|${{ github.repository }}> was found by govulncheck on ${{ github.ref_type }} <${{ github.event.pull_request.html_url || github.event.head_commit.url }}|${{ github.head_ref || github.ref_name }}>"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.workflow_ref }}>"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
