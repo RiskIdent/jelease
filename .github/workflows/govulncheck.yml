@@ -31,8 +31,7 @@ jobs:
 
       - name: Send Slack message
         uses: slackapi/slack-github-action@v1.24.0
-        #if: ${{ failure() && steps.govulncheck.conclusion == 'failure' && github.ref == 'refs/heads/main' }}
-        if: ${{ failure() && steps.govulncheck.conclusion == 'failure' }}
+        if: ${{ failure() && steps.govulncheck.conclusion == 'failure' && github.ref == 'refs/heads/main' }}
         with:
           payload: |
             {
