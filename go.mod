@@ -4,7 +4,7 @@
 
 module github.com/RiskIdent/jelease
 
-go 1.21
+go 1.21.1
 
 require (
 	github.com/andygrunwald/go-jira v1.16.0
