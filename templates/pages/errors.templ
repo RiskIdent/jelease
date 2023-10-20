@@ -1,0 +1,43 @@
+// SPDX-FileCopyrightText: 2022 Risk.Ident GmbH <contact@riskident.com>
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// This program is free software: you can redistribute it and/or modify it
+// under the terms of the GNU General Public License as published by the
+// Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+// more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+package pages
+
+import "github.com/RiskIdent/jelease/templates/components"
+
+templ Error404(message string) {
+    @Layout("Page not found") {
+        <h2>Page not found</h2>
+        if message != "" {
+            @components.AlertDanger(message)
+        }
+        <p><a href="/">Click here</a> to return to the start page.</p>
+    }
+}
+
+templ Error405() {
+    @Layout("Method not allowed") {
+        <h2>Method not allowed</h2>
+        <p>
+            Quite the interesting error you got there.
+            If you were navigated here by this website, then this is a bug,
+            and please report it here:
+            <a href="https://github.com/RiskIdent/jelease/issues/new" target="_blank">https://github.com/RiskIdent/jelease/issues/new</a>
+        </p>
+        <p><a href="/">Click here</a> to return to the start page.</p>
+    }
+}

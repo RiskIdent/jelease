@@ -1,0 +1,56 @@
+// SPDX-FileCopyrightText: 2022 Risk.Ident GmbH <contact@riskident.com>
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// This program is free software: you can redistribute it and/or modify it
+// under the terms of the GNU General Public License as published by the
+// Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+// more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+package pages
+
+import (
+    "github.com/RiskIdent/jelease/templates/components"
+	"github.com/RiskIdent/jelease/pkg/config"
+)
+
+type PackageItemModel struct {
+    Package config.Package
+}
+
+templ PackagesItem(model PackageItemModel) {
+    @Layout(model.Package.Name) {
+        @components.Breadcrumbs() {
+            <li>@components.Linkf("Packages", "/packages")</li>
+            <li>{ model.Package.Name }</li>
+        }
+
+        <h2>{ model.Package.Name }</h2>
+
+        @components.Buttonf("Create PR", "/packages/%s/create-pr", model.Package.NormalizedName())
+
+        <section>
+            <h3>Affected repositories</h3>
+            <ul>
+                for _, repo := range model.Package.Repos {
+                    <li>
+                        @components.ExternalLink(repo.URL, repo.URL)
+                    </li>
+                }
+            </ul>
+        </section>
+
+        <section>
+            <h3>Config</h3>
+            @components.CodeBlock(model.Package)
+        </section>
+    }
+}

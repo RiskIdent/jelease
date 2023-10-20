@@ -15,37 +15,40 @@
 // You should have received a copy of the GNU General Public License along
 // with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package main
+package server
 
 import (
-	"embed"
-	"fmt"
-	"io/fs"
+	"context"
+	"net/http"
 
-	"github.com/RiskIdent/jelease/cmd"
-	"github.com/RiskIdent/jelease/pkg/config"
-	"gopkg.in/yaml.v3"
+	"github.com/a-h/templ"
+	"github.com/gin-gonic/gin/render"
 )
 
-//go:embed jelease.yaml
-var defaultConfigYAML []byte
-
-//go:embed static
-var staticFilesFS embed.FS
-
-func main() {
-	var defaultConfig config.Config
-	if err := yaml.Unmarshal(defaultConfigYAML, &defaultConfig); err != nil {
-		panic(fmt.Errorf("Parse embedded config: %w", err))
-	}
-	staticFilesFSSub := mustSub(staticFilesFS, "static")
-	cmd.Execute(defaultConfig, staticFilesFSSub)
+type TemplRender struct {
+	Code int
+	Data templ.Component
 }
 
-func mustSub(fsys fs.FS, dir string) fs.FS {
-	sub, err := fs.Sub(fsys, dir)
-	if err != nil {
-		panic(fmt.Errorf("Get subdirectory of filesystem: %w", err))
+func (t TemplRender) Render(w http.ResponseWriter) error {
+	w.WriteHeader(t.Code)
+	if t.Data != nil {
+		return t.Data.Render(context.Background(), w)
 	}
-	return sub
+
+	return nil
+}
+
+func (t TemplRender) WriteContentType(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+}
+
+func (t *TemplRender) Instance(name string, data interface{}) render.Render {
+	if templData, ok := data.(templ.Component); ok {
+		return &TemplRender{
+			Code: http.StatusOK,
+			Data: templData,
+		}
+	}
+	return nil
 }

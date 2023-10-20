@@ -15,37 +15,17 @@
 // You should have received a copy of the GNU General Public License along
 // with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package main
-
+package components
 import (
-	"embed"
-	"fmt"
-	"io/fs"
-
-	"github.com/RiskIdent/jelease/cmd"
-	"github.com/RiskIdent/jelease/pkg/config"
-	"gopkg.in/yaml.v3"
+    "gopkg.in/yaml.v3"
 )
 
-//go:embed jelease.yaml
-var defaultConfigYAML []byte
-
-//go:embed static
-var staticFilesFS embed.FS
-
-func main() {
-	var defaultConfig config.Config
-	if err := yaml.Unmarshal(defaultConfigYAML, &defaultConfig); err != nil {
-		panic(fmt.Errorf("Parse embedded config: %w", err))
-	}
-	staticFilesFSSub := mustSub(staticFilesFS, "static")
-	cmd.Execute(defaultConfig, staticFilesFSSub)
-}
-
-func mustSub(fsys fs.FS, dir string) fs.FS {
-	sub, err := fs.Sub(fsys, dir)
-	if err != nil {
-		panic(fmt.Errorf("Get subdirectory of filesystem: %w", err))
-	}
-	return sub
+templ CodeBlock(value any) {
+    if b, err := yaml.Marshal(value); err != nil {
+        @AlertDangerErr("Failed to serialize YAML:", err)
+    } else {
+        <pre><code class="language-yaml">
+        { string(b) }
+        </code></pre>
+    }
 }

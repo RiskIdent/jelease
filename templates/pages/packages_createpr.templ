@@ -1,0 +1,224 @@
+// SPDX-FileCopyrightText: 2022 Risk.Ident GmbH <contact@riskident.com>
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// This program is free software: you can redistribute it and/or modify it
+// under the terms of the GNU General Public License as published by the
+// Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+// more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+package pages
+
+import (
+    "fmt"
+
+    "github.com/RiskIdent/jelease/templates/components"
+    "github.com/RiskIdent/jelease/pkg/config"
+    "github.com/RiskIdent/jelease/pkg/github"
+)
+
+type PackagesCreatePRModel struct {
+    Config *config.Config
+    Package config.Package
+    PullRequests []github.PullRequest
+    DryRun bool
+    Version string
+    JiraIssue string
+    IsPost bool
+    Error error
+}
+
+templ PackagesCreatePR(model PackagesCreatePRModel) {
+    @Layout("Create PR") {
+        @components.Breadcrumbs() {
+            <li>@components.Linkf("Packages", "/packages")</li>
+            <li>@components.Linkf(model.Package.Name, "/packages/%s", model.Package.NormalizedName())</li>
+            <li>Create PR</li>
+        }
+
+        <h2>Create PR for { model.Package.Name }</h2>
+
+        if model.IsPost && model.Error != nil {
+            @components.AlertDangerErr("Unexpected issue while loading page:", model.Error)
+        }
+
+        <section>
+            <h3>Create GitHub PR</h3>
+            <form method="POST" action="" id="create-pr-form">
+                <div class="row margin-bottom-none">
+                    <div class="col sm-6 md-4 padding-small">
+                        <div class="form-group">
+                            <label for="form-version" title="* = Required">Version <strong class="text-danger">*</strong></label>
+                            <input type="text" name="version" placeholder="Example: v1.0.0" id="form-version" required value={ model.Version } />
+                        </div>
+                        <div class="form-group margin-bottom-none">
+                            <label for="form-jira-issue">Jira issue</label>
+                            <input type="text" name="jiraIssue" class="border-2" placeholder="Example: OP-1234" id="form-jira-issue" value={ model.JiraIssue } />
+                        </div>
+                    </div>
+                    <div class="col sm-6 md-8 padding-small">
+                        <p class="margin-top-none">Settings</p>
+                        <fieldset class={ "form-group", "margin-bottom-none", templ.KV("disabled", model.Config.DryRun) }>
+                            <label class="paper-switch-2">
+                                <input id="form-pr-create" name="prCreate" class="border-3" type="checkbox" value="true"
+                                    if model.Config.DryRun {
+                                        disabled
+                                    } else if !model.DryRun {
+                                        checked
+                                    }
+                                    />
+                                <span class="paper-switch-slider"></span>
+                            </label>
+                            <label for="form-pr-create" class="paper-switch-2-label">
+                                Create PR
+                                if model.Config.DryRun {
+                                    (forced "dry run" via config)
+                                } else {
+                                    (otherwise will do a "dry run")
+                                }
+                            </label>
+                        </fieldset>
+                    </div>
+                    <div class="col padding-small">
+                        <div class="form-group margin-bottom-none">
+                            <p class="margin-top-none"></p>
+                            <button type="submit" class="border-5" id="submit">Submit</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </section>
+
+        <section>
+            <h3>Created PRs</h3>
+            @createPRResults(model)
+        </section>
+
+        <script>
+        (function() {
+            const form = document.getElementById("create-pr-form");
+            form.addEventListener("submit", function() {
+                document.getElementById("results").innerHTML = `<p><em class="text-muted">Processing, please wait...</em></p>`;
+                document.getElementById("submit").setAttribute('disabled', 'disabled');
+
+                // Some magic to make URL query params match the POSTed form data
+                const url = new URL(location);
+                
+                // Need to Array.from(), as without that this becomes glitchy,
+                // because we're removing items at the same time we're iterating it.
+                const searchParamKeys = Array.from(url.searchParams.keys());
+                for (const key of searchParamKeys) {
+                    url.searchParams.delete(key);
+                }
+                for (const [key, value] of new FormData(form).entries()) {
+                    if (typeof value === "string" && value !== "") {
+                        url.searchParams.set(key, value);
+                    }
+                }
+                console.log("Pushing state:", url);
+                history.pushState({}, "", url);
+            });
+        })();
+        </script>
+    }
+}
+
+templ createPRResults(model PackagesCreatePRModel) {
+    <div id="results">
+        if !model.IsPost {
+            <p><em class="text-muted">The results will be shown here, after you press "Submit".</em></p>
+        } else {
+            if model.Error != nil {
+                @components.AlertDangerErr("There was an error when creating the Pull Request:", model.Error)
+            } else {
+                @createPRResultsNoError(model)
+            }
+        }
+    </div>
+}
+
+templ createPRResultsNoError(model PackagesCreatePRModel) {
+    if model.DryRun {
+        <div class="alert alert-secondary">
+            <p><strong>Success:</strong> Request completed.
+                However, note that <code>dryrun</code> was enabled, so no Pull Requests has actually been created.</p>
+        </div>
+    } else {
+        <div class="alert alert-success">
+            <p><strong>Success:</strong> Request completed. See the created Pull Requests below.</p>
+        </div>
+    }
+    if len(model.PullRequests) == 0 {
+        <div class="alert alert-warning">
+            <p>
+                <strong>Warning:</strong> No Pull Requests were created.
+                Maybe @components.Linkf("look over the configuration", "/packages/%s", model.Package.NormalizedName()),
+                to ensure it's correct?
+            </p>
+        </div>
+    } else {
+        for i, pr := range model.PullRequests {
+            <section>
+                <h4>PR #{ fmt.Sprint(i + 1) }</h4>
+                <dl>
+                    <dt>Title</dt>
+                    <dd>
+                        if pr.Title != "" {
+                            { pr.Title }
+                        } else {
+                            <em>(missing title)</em>
+                        }
+                    </dd>
+                    <dt>Branches</dt>
+                    <dd>
+                        if pr.Base != "" && pr.Head != "" {
+                            into <code>{ pr.Base }</code> from <code>{ pr.Head }</code>
+                        } else {
+                            <em>(missing branch info)</em>
+                        }
+                    </dd>
+                    <dt>URL</dt>
+                    <dd>
+                        if pr.URL != "" {
+                            @components.ExternalLink(pr.URL, pr.URL)
+                        } else if pr.RepoRef.URL != "" {
+                            <em>(would've been created on repo:{" "}
+                                @components.ExternalLink(pr.RepoRef.URL, pr.RepoRef.URL)
+                            )</em>
+                        } else {
+                            <em>(missing URL)</em>
+                        }
+                    </dd>
+                    <dt>Description</dt>
+                    <dd>
+                        if pr.Description != "" {
+                            <pre><code class="language-markdown">
+                                { pr.Description }
+                            </code></pre>
+                        } else {
+                            <em>(missing description)</em>
+                        }
+                    </dd>
+                    <dt>Git diff</dt>
+                    <dd>
+                        if pr.Commit.Diff != "" {
+                            <pre><code class="language-diff">
+                                { pr.Commit.Diff }
+                            </code></pre>
+                        } else {
+                            <em>(missing Git diff)</em>
+                        }
+                    </dd>
+                </dl>
+            </section>
+        }
+    }
+}

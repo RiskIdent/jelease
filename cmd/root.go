@@ -35,7 +35,6 @@ import (
 
 var (
 	cfg             config.Config
-	htmlTemplates   fs.FS
 	htmlStaticFiles fs.FS
 
 	appVersion string // may be set via `go build` flags
@@ -58,8 +57,7 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-func Execute(defaultConfig config.Config, templatesFS fs.FS, staticFilesFS fs.FS) {
-	htmlTemplates = templatesFS
+func Execute(defaultConfig config.Config, staticFilesFS fs.FS) {
 	htmlStaticFiles = staticFilesFS
 	cfg = defaultConfig
 

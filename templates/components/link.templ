@@ -1,0 +1,83 @@
+// SPDX-FileCopyrightText: 2022 Risk.Ident GmbH <contact@riskident.com>
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// This program is free software: you can redistribute it and/or modify it
+// under the terms of the GNU General Public License as published by the
+// Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+// more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+package components
+
+import (
+    "net/url"
+    "fmt"
+)
+
+func formatLinkURL(format string, args ...string) string {
+    var encoded []any
+    for _, arg := range args {
+        encoded = append(encoded, url.PathEscape(arg))
+    }
+    return fmt.Sprintf(format, encoded...)
+}
+
+templ Buttonf(label, format string, args ...string) {
+    @Button(label, formatLinkURL(format, args...))
+}
+
+templ Button(label, url string) {
+    @ButtonCustom(url) {
+        { label }
+    }
+}
+
+templ ButtonCustomf(format string, args ...string) {
+    @ButtonCustom(formatLinkURL(format, args...)) {
+        { children... }
+    }
+}
+
+templ ButtonCustom(url string) {
+    <a href={ templ.URL(url) } class="paper-btn">{ children... }</a>
+}
+
+templ ExternalLink(label, url string) {
+    @ExternalLinkCustom(url) {
+        { label }
+    }
+}
+
+templ ExternalLinkCustom(url string) {
+    <a href={ templ.URL(url) } target="_blank">{ children... }</a>
+}
+
+templ Linkf(label, format string, args ...string) {
+    @LinkCustomf(formatLinkURL(format, args...)) {
+        { label }
+    }
+}
+
+templ Link(label, url string) {
+    @LinkCustom(url) {
+        { label }
+    }
+}
+
+templ LinkCustomf(format string, args ...string) {
+    @LinkCustom(formatLinkURL(format, args...)) {
+        { children... }
+    }
+}
+
+templ LinkCustom(url string) {
+    <a href={ templ.URL(url) }>{ children... }</a>
+}
