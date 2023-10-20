@@ -18,16 +18,16 @@
 package components
 
 templ AlertDanger(title string) {
-    <div class="alert alert-danger">
-        <p><strong>Error:</strong> {title}</p>
-        { children... }
-    </div>
+	<div class="alert alert-danger">
+		<p><strong>Error:</strong> {title}</p>
+		{ children... }
+	</div>
 }
 
 templ AlertDangerErr(title string, err error) {
-    <div class="alert alert-danger">
-        <p><strong>Error:</strong> {title}</p>
-        { children... }
-        <pre><samp style="white-space: normal; word-break: break-word;">{ err.Error() }</samp></pre>
-    </div>
+	<div class="alert alert-danger">
+		<p><strong>Error:</strong> {title}</p>
+		{ children... }
+		<pre><samp style="white-space: normal; word-break: break-word;">{ err.Error() }</samp></pre>
+	</div>
 }

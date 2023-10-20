@@ -18,39 +18,39 @@
 package pages
 
 import (
-    "github.com/RiskIdent/jelease/templates/components"
+	"github.com/RiskIdent/jelease/templates/components"
 	"github.com/RiskIdent/jelease/pkg/config"
 )
 
 type PackageItemModel struct {
-    Package config.Package
+	Package config.Package
 }
 
 templ PackagesItem(model PackageItemModel) {
-    @Layout(model.Package.Name) {
-        @components.Breadcrumbs() {
-            <li>@components.Linkf("Packages", "/packages")</li>
-            <li>{ model.Package.Name }</li>
-        }
+	@Layout(model.Package.Name) {
+		@components.Breadcrumbs() {
+			<li>@components.Linkf("Packages", "/packages")</li>
+			<li>{ model.Package.Name }</li>
+		}
 
-        <h2>{ model.Package.Name }</h2>
+		<h2>{ model.Package.Name }</h2>
 
-        @components.Buttonf("Create PR", "/packages/%s/create-pr", model.Package.NormalizedName())
+		@components.Buttonf("Create PR", "/packages/%s/create-pr", model.Package.NormalizedName())
 
-        <section>
-            <h3>Affected repositories</h3>
-            <ul>
-                for _, repo := range model.Package.Repos {
-                    <li>
-                        @components.ExternalLink(repo.URL, repo.URL)
-                    </li>
-                }
-            </ul>
-        </section>
+		<section>
+			<h3>Affected repositories</h3>
+			<ul>
+				for _, repo := range model.Package.Repos {
+					<li>
+						@components.ExternalLink(repo.URL, repo.URL)
+					</li>
+				}
+			</ul>
+		</section>
 
-        <section>
-            <h3>Config</h3>
-            @components.CodeBlock(model.Package)
-        </section>
-    }
+		<section>
+			<h3>Config</h3>
+			@components.CodeBlock(model.Package)
+		</section>
+	}
 }

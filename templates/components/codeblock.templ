@@ -17,15 +17,15 @@
 
 package components
 import (
-    "gopkg.in/yaml.v3"
+	"gopkg.in/yaml.v3"
 )
 
 templ CodeBlock(value any) {
-    if b, err := yaml.Marshal(value); err != nil {
-        @AlertDangerErr("Failed to serialize YAML:", err)
-    } else {
-        <pre><code class="language-yaml">
-        { string(b) }
-        </code></pre>
-    }
+	if b, err := yaml.Marshal(value); err != nil {
+		@AlertDangerErr("Failed to serialize YAML:", err)
+	} else {
+		<pre><code class="language-yaml">
+		{ string(b) }
+		</code></pre>
+	}
 }

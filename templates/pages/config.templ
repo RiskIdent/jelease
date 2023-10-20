@@ -17,13 +17,13 @@
 package pages
 
 import (
-    "github.com/RiskIdent/jelease/pkg/config"
+	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/RiskIdent/jelease/templates/components"
 )
 
 templ Config(config *config.Config) {
-    @Layout("Config") {
-        <h2>Config</h2>
-        @components.CodeBlock(config.Censored())
-    }
+	@Layout("Config") {
+		<h2>Config</h2>
+		@components.CodeBlock(config.Censored())
+	}
 }

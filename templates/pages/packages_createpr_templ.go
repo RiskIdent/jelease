@@ -270,31 +270,31 @@ func PackagesCreatePR(model PackagesCreatePRModel) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			templ_7745c5c3_Var18 := `
-        (function() {
-            const form = document.getElementById("create-pr-form");
-            form.addEventListener("submit", function() {
-                document.getElementById("results").innerHTML = ` + "`" + `<p><em class="text-muted">Processing, please wait...</em></p>` + "`" + `;
-                document.getElementById("submit").setAttribute('disabled', 'disabled');
+		(function() {
+			const form = document.getElementById("create-pr-form");
+			form.addEventListener("submit", function() {
+				document.getElementById("results").innerHTML = ` + "`" + `<p><em class="text-muted">Processing, please wait...</em></p>` + "`" + `;
+				document.getElementById("submit").setAttribute('disabled', 'disabled');
 
-                // Some magic to make URL query params match the POSTed form data
-                const url = new URL(location);
-                
-                // Need to Array.from(), as without that this becomes glitchy,
-                // because we're removing items at the same time we're iterating it.
-                const searchParamKeys = Array.from(url.searchParams.keys());
-                for (const key of searchParamKeys) {
-                    url.searchParams.delete(key);
-                }
-                for (const [key, value] of new FormData(form).entries()) {
-                    if (typeof value === "string" && value !== "") {
-                        url.searchParams.set(key, value);
-                    }
-                }
-                console.log("Pushing state:", url);
-                history.pushState({}, "", url);
-            });
-        })();
-        `
+				// Some magic to make URL query params match the POSTed form data
+				const url = new URL(location);
+
+				// Need to Array.from(), as without that this becomes glitchy,
+				// because we're removing items at the same time we're iterating it.
+				const searchParamKeys = Array.from(url.searchParams.keys());
+				for (const key of searchParamKeys) {
+					url.searchParams.delete(key);
+				}
+				for (const [key, value] of new FormData(form).entries()) {
+					if (typeof value === "string" && value !== "") {
+						url.searchParams.set(key, value);
+					}
+				}
+				console.log("Pushing state:", url);
+				history.pushState({}, "", url);
+			});
+		})();
+		`
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var18)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err

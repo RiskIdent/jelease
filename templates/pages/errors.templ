@@ -20,24 +20,24 @@ package pages
 import "github.com/RiskIdent/jelease/templates/components"
 
 templ Error404(message string) {
-    @Layout("Page not found") {
-        <h2>Page not found</h2>
-        if message != "" {
-            @components.AlertDanger(message)
-        }
-        <p><a href="/">Click here</a> to return to the start page.</p>
-    }
+	@Layout("Page not found") {
+		<h2>Page not found</h2>
+		if message != "" {
+			@components.AlertDanger(message)
+		}
+		<p><a href="/">Click here</a> to return to the start page.</p>
+	}
 }
 
 templ Error405() {
-    @Layout("Method not allowed") {
-        <h2>Method not allowed</h2>
-        <p>
-            Quite the interesting error you got there.
-            If you were navigated here by this website, then this is a bug,
-            and please report it here:
-            <a href="https://github.com/RiskIdent/jelease/issues/new" target="_blank">https://github.com/RiskIdent/jelease/issues/new</a>
-        </p>
-        <p><a href="/">Click here</a> to return to the start page.</p>
-    }
+	@Layout("Method not allowed") {
+		<h2>Method not allowed</h2>
+		<p>
+			Quite the interesting error you got there.
+			If you were navigated here by this website, then this is a bug,
+			and please report it here:
+			<a href="https://github.com/RiskIdent/jelease/issues/new" target="_blank">https://github.com/RiskIdent/jelease/issues/new</a>
+		</p>
+		<p><a href="/">Click here</a> to return to the start page.</p>
+	}
 }

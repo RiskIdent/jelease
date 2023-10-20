@@ -18,46 +18,46 @@
 package pages
 
 import (
-    "github.com/RiskIdent/jelease/templates/components"
+	"github.com/RiskIdent/jelease/templates/components"
 	"github.com/RiskIdent/jelease/pkg/config"
 )
 
 templ PackagesList(cfg *config.Config) {
-    @Layout("Packages") {
-        @components.Breadcrumbs() {
-            <li>Packages</li>
-        }
+	@Layout("Packages") {
+		@components.Breadcrumbs() {
+			<li>Packages</li>
+		}
 
-        <h2>Packages</h2>
+		<h2>Packages</h2>
 
-        <p>
-            List of all packages found in Jelease's configuration file.
-        </p>
+		<p>
+			List of all packages found in Jelease's configuration file.
+		</p>
 
-        <table>
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Associated repositories</th>
-                </tr>
-            </thead>
-            <tbody>
-                for _, pkg := range cfg.Packages {
-                    <tr>
-                        <td>
-                            @components.Linkf(pkg.Name, "/packages/%s", pkg.NormalizedName())
-                        </td>
-                        <td>
-                            for i, repo := range pkg.Repos {
-                                if i > 0 {
-                                    <br/>
-                                }
-                                @components.ExternalLink(repo.URL, repo.URL)
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    }
+		<table>
+			<thead>
+				<tr>
+					<th>Name</th>
+					<th>Associated repositories</th>
+				</tr>
+			</thead>
+			<tbody>
+				for _, pkg := range cfg.Packages {
+					<tr>
+						<td>
+							@components.Linkf(pkg.Name, "/packages/%s", pkg.NormalizedName())
+						</td>
+						<td>
+							for i, repo := range pkg.Repos {
+								if i > 0 {
+									<br/>
+								}
+								@components.ExternalLink(repo.URL, repo.URL)
+							}
+						</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	}
 }

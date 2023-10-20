@@ -18,66 +18,66 @@
 package components
 
 import (
-    "net/url"
-    "fmt"
+	"net/url"
+	"fmt"
 )
 
 func formatLinkURL(format string, args ...string) string {
-    var encoded []any
-    for _, arg := range args {
-        encoded = append(encoded, url.PathEscape(arg))
-    }
-    return fmt.Sprintf(format, encoded...)
+	var encoded []any
+	for _, arg := range args {
+		encoded = append(encoded, url.PathEscape(arg))
+	}
+	return fmt.Sprintf(format, encoded...)
 }
 
 templ Buttonf(label, format string, args ...string) {
-    @Button(label, formatLinkURL(format, args...))
+	@Button(label, formatLinkURL(format, args...))
 }
 
 templ Button(label, url string) {
-    @ButtonCustom(url) {
-        { label }
-    }
+	@ButtonCustom(url) {
+		{ label }
+	}
 }
 
 templ ButtonCustomf(format string, args ...string) {
-    @ButtonCustom(formatLinkURL(format, args...)) {
-        { children... }
-    }
+	@ButtonCustom(formatLinkURL(format, args...)) {
+		{ children... }
+	}
 }
 
 templ ButtonCustom(url string) {
-    <a href={ templ.URL(url) } class="paper-btn">{ children... }</a>
+	<a href={ templ.URL(url) } class="paper-btn">{ children... }</a>
 }
 
 templ ExternalLink(label, url string) {
-    @ExternalLinkCustom(url) {
-        { label }
-    }
+	@ExternalLinkCustom(url) {
+		{ label }
+	}
 }
 
 templ ExternalLinkCustom(url string) {
-    <a href={ templ.URL(url) } target="_blank">{ children... }</a>
+	<a href={ templ.URL(url) } target="_blank">{ children... }</a>
 }
 
 templ Linkf(label, format string, args ...string) {
-    @LinkCustomf(formatLinkURL(format, args...)) {
-        { label }
-    }
+	@LinkCustomf(formatLinkURL(format, args...)) {
+		{ label }
+	}
 }
 
 templ Link(label, url string) {
-    @LinkCustom(url) {
-        { label }
-    }
+	@LinkCustom(url) {
+		{ label }
+	}
 }
 
 templ LinkCustomf(format string, args ...string) {
-    @LinkCustom(formatLinkURL(format, args...)) {
-        { children... }
-    }
+	@LinkCustom(formatLinkURL(format, args...)) {
+		{ children... }
+	}
 }
 
 templ LinkCustom(url string) {
-    <a href={ templ.URL(url) }>{ children... }</a>
+	<a href={ templ.URL(url) }>{ children... }</a>
 }
