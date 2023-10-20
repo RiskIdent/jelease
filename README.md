@@ -130,6 +130,20 @@ config file:
    curl localhost:8080/webhook -d @examples/newreleasesio-webhook.json
    ```
 
+## Development
+
+Prerequisites:
+
+- Go 1.21 (or later): <https://go.dev/doc/install>
+- Templ 0.2.408 (or later): <https://templ.guide/quick-start/installation>
+
+The HTML pages are templated using Templ. This is a manual step that
+needs to be done after each code change to any `.templ` files.
+
+```bash
+go generate
+```
+
 ## Building the application and docker image
 
 The application uses [earthly](https://earthly.dev/get-earthly) for building
