@@ -143,13 +143,6 @@ podman push ghcr.io/riskident/jelease:${VERSION}
 podman push ghcr.io/riskident/jelease:latest
 ```
 
-You can also persist build flags in a `.env` file, e.g:
-
-```properties
-# Inside the .env file
-REGISTRY=docker.io/my-username
-```
-
 ## Releasing
 
 1. Create a new release on GitHub, with "v" prefix on version: <https://github.com/RiskIdent/jelease/releases/new>
