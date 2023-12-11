@@ -9,6 +9,7 @@ build
 # Files not needed during builds
 .dockerignore
 .gitignore
+Dockerfile
 Earthfile
 **/*.md
 **/*.license
