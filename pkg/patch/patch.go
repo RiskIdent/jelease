@@ -25,6 +25,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/RiskIdent/jelease/pkg/util"
@@ -46,7 +47,7 @@ type TemplateContextRegex struct {
 func ApplyMany(repoDir string, patches []config.PackageRepoPatch, tmplCtx TemplateContext) error {
 	for _, p := range patches {
 		if err := Apply(repoDir, p, tmplCtx); err != nil {
-			return err
+			return fmt.Errorf("file %q: %w", p.File, err)
 		}
 	}
 	return nil
@@ -54,6 +55,8 @@ func ApplyMany(repoDir string, patches []config.PackageRepoPatch, tmplCtx Templa
 
 // Apply applies a single patch to the repository.
 func Apply(repoDir string, patch config.PackageRepoPatch, tmplCtx TemplateContext) error {
+	log.Debug().Str("file", patch.File).Msg("Patching file.")
+
 	// TODO: Check that the patch path doesn't go outside the repo dir.
 	// For example, reject stuff like "../../../somefile.txt"
 	path := filepath.Join(repoDir, patch.File)
@@ -71,7 +74,6 @@ func Apply(repoDir string, patch config.PackageRepoPatch, tmplCtx TemplateContex
 		return fmt.Errorf("write patch: %w", err)
 	}
 
-	log.Debug().Str("file", patch.File).Msg("Patched file.")
 	return nil
 }
 
@@ -175,7 +177,7 @@ func readLinesFromReader(r io.Reader) ([][]byte, error) {
 	var lines [][]byte
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
-		lines = append(lines, scanner.Bytes())
+		lines = append(lines, slices.Clone(scanner.Bytes()))
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, err
