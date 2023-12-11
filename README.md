@@ -132,16 +132,15 @@ config file:
 
 ## Building the application and docker image
 
-The application uses [earthly](https://earthly.dev/get-earthly) for building
-and pushing a docker image.
-
-After installing earthly, the image can be built by running
-
 ```bash
-earhtly +docker
+VERSION=v0.4.1
 
-# if you want to push a new image version
-earhtly --push +docker --VERSION=v0.4.1
+podman build -t ghcr.io/riskident/jelease:${VERSION} --build-arg VERSION=${VERSION}
+podman tag ghcr.io/riskident/jelease:{${VERSION},latest}
+
+podman login ghcr.io
+podman push ghcr.io/riskident/jelease:${VERSION}
+podman push ghcr.io/riskident/jelease:latest
 ```
 
 You can also persist build flags in a `.env` file, e.g:
