@@ -135,7 +135,7 @@ config file:
 ```bash
 VERSION=v0.4.1
 
-podman build -t ghcr.io/riskident/jelease:${VERSION} --build-arg VERSION=${VERSION}
+podman build . -t ghcr.io/riskident/jelease:${VERSION} --build-arg VERSION=${VERSION}
 podman tag ghcr.io/riskident/jelease:{${VERSION},latest}
 
 podman login ghcr.io
