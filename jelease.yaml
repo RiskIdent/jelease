@@ -29,9 +29,12 @@ packages:
               file: go.mod
               match: '(github.com/joho/godotenv) v.*'
               replace: '{{ index .Groups 1 }} {{ .Version }}'
-          - exec:
-              cmd: [helm, dep, update]
-              dir: charts/jelease
+          - yaml:
+              file: charts/jelease/Chart.yaml
+              yamlPath: .appVersion
+              replace: '{{ .Version }}'
+          - helmDepUpdate:
+              chart: charts/jelease
 
 # GitHub settings
 github:
