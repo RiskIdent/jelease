@@ -67,6 +67,11 @@ func (Template) JSONSchema() *jsonschema.Schema {
 	return &jsonschema.Schema{
 		Type:  "string",
 		Title: "Go template",
+		Examples: []any{
+			"{{ .Version }}",
+			"version: {{ .Version | trimPrefix \"v\" }}",
+			"version: {{ index .Groups 1 | versionBump \"0.0.1\" }}",
+		},
 	}
 }
 

@@ -69,6 +69,7 @@ func (YAMLPathPattern) JSONSchema() *jsonschema.Schema {
 			".appVersion",
 			".version",
 			"$..spec.containers[*].image",
+			"$.dependencies[?(@.name==\"kafka\")].version",
 		},
 	}
 }

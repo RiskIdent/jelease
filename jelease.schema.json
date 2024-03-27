@@ -483,7 +483,7 @@
         "file": {
           "type": "string"
         },
-        "path": {
+        "yamlPath": {
           "$ref": "#/$defs/yamlPathPattern"
         },
         "replace": {
@@ -492,13 +492,17 @@
         "maxMatches": {
           "type": "integer",
           "minimum": 0
+        },
+        "indent": {
+          "type": "integer",
+          "minimum": 0
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
         "file",
-        "path",
+        "yamlPath",
         "replace"
       ]
     },
@@ -528,7 +532,12 @@
     },
     "template": {
       "type": "string",
-      "title": "Go template"
+      "title": "Go template",
+      "examples": [
+        "{{ .Version }}",
+        "version: {{ .Version | trimPrefix \"v\" }}",
+        "version: {{ index .Groups 1 | versionBump \"0.0.1\" }}"
+      ]
     },
     "url": {
       "oneOf": [
@@ -552,7 +561,8 @@
       "examples": [
         ".appVersion",
         ".version",
-        "$..spec.containers[*].image"
+        "$..spec.containers[*].image",
+        "$.dependencies[?(@.name==\"kafka\")].version"
       ]
     }
   }

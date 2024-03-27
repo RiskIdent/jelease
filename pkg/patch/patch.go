@@ -119,7 +119,7 @@ func regexSubmatchIndicesToStrings(line []byte, indices []int) []string {
 }
 
 func applyYAMLPatch(fstore FileStore, tmplCtx TemplateContext, patch config.PatchYAML) error {
-	log.Debug().Str("file", patch.File).Stringer("yamlpath", patch.Path).Msg("Patching YAML.")
+	log.Debug().Str("file", patch.File).Stringer("yamlpath", patch.YAMLPath).Msg("Patching YAML.")
 
 	content, err := fstore.ReadFile(patch.File)
 	if err != nil {
@@ -130,31 +130,31 @@ func applyYAMLPatch(fstore FileStore, tmplCtx TemplateContext, patch config.Patc
 		return err
 	}
 
-	matches, err := patch.Path.YAMLPath.Find(&node)
+	matches, err := patch.YAMLPath.YAMLPath.Find(&node)
 	if err != nil {
-		return fmt.Errorf("yamlpath %q: eval: %w", patch.Path, err)
+		return fmt.Errorf("yamlpath %q: eval: %w", patch.YAMLPath, err)
 	}
 
 	if len(matches) == 0 {
-		return fmt.Errorf("yamlpath %q: no matches found", patch.Path)
+		return fmt.Errorf("yamlpath %q: no matches found", patch.YAMLPath)
 	}
 
 	if patch.MaxMatches > 0 && len(matches) > patch.MaxMatches {
-		return fmt.Errorf("yamlpath %q: matched too many times: %d, max = %d", patch.Path, len(matches), patch.MaxMatches)
+		return fmt.Errorf("yamlpath %q: matched too many times: %d, max = %d", patch.YAMLPath, len(matches), patch.MaxMatches)
 	}
 
 	for _, match := range matches {
 		if match.ShortTag() != "!!str" {
-			return fmt.Errorf("yamlpath %q: line %d: only supports matching strings, but instead matched %q", patch.Path, match.Line, match.ShortTag())
+			return fmt.Errorf("yamlpath %q: line %d: only supports matching strings, but instead matched %q", patch.YAMLPath, match.Line, match.ShortTag())
 		}
 		var buf bytes.Buffer
 		if err := patch.Replace.Template().Execute(&buf, tmplCtx); err != nil {
-			return fmt.Errorf("yamlpath %q: line %d: execute replace template: %w", patch.Path, match.Line, err)
+			return fmt.Errorf("yamlpath %q: line %d: execute replace template: %w", patch.YAMLPath, match.Line, err)
 		}
 		setYAMLNodeRecursive(match, buf.String())
 	}
 
-	newContent, err := yamlEncode(&node)
+	newContent, err := yamlEncode(&node, patch.Indent)
 	if err != nil {
 		return err
 	}
@@ -170,10 +170,14 @@ func setYAMLNodeRecursive(node *yaml.Node, value string) {
 	node.SetString(value)
 }
 
-func yamlEncode(obj any) ([]byte, error) {
+func yamlEncode(obj any, indent int) ([]byte, error) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
-	enc.SetIndent(2)
+	if indent > 0 {
+		enc.SetIndent(indent)
+	} else {
+		enc.SetIndent(2)
+	}
 
 	if err := enc.Encode(obj); err != nil {
 		return nil, fmt.Errorf("encode: %w", err)

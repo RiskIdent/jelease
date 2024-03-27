@@ -63,9 +63,9 @@ func TestApplYAMLPatch(t *testing.T) {
 		"file.txt": "{foo: bar}\n",
 	})
 	patch := config.PatchYAML{
-		File:    "file.txt",
-		Path:    newYAMLPath(t, `.foo`),
-		Replace: newTemplate(t, `{{ .Package }}@{{ .Version }}`),
+		File:     "file.txt",
+		YAMLPath: newYAMLPath(t, `.foo`),
+		Replace:  newTemplate(t, `{{ .Package }}@{{ .Version }}`),
 	}
 
 	tmplCtx := TemplateContext{

@@ -89,9 +89,10 @@ type PatchRegex struct {
 
 type PatchYAML struct {
 	File       string           `jsonschema:"required"`
-	Path       *YAMLPathPattern `jsonschema:"required"`
+	YAMLPath   *YAMLPathPattern `yaml:"yamlPath" jsonschema:"required"`
 	Replace    *Template        `jsonschema:"required"`
 	MaxMatches int              `yaml:",omitempty" jsonschema:"minimum=0"`
+	Indent     int              `yaml:",omitempty" jsonschema:"minimum=0"`
 }
 
 type GitHub struct {
