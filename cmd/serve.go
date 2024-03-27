@@ -49,8 +49,8 @@ func init() {
 }
 
 func run() error {
-	if htmlTemplates == nil {
-		return fmt.Errorf("no HTML templates loaded")
+	if htmlStaticFiles == nil {
+		return fmt.Errorf("no static files loaded")
 	}
 
 	jiraClient, err := jira.New(&cfg.Jira)
@@ -73,7 +73,7 @@ func run() error {
 		return err
 	}
 
-	s := server.New(&cfg, jiraClient, patcher, htmlTemplates, htmlStaticFiles)
+	s := server.New(&cfg, jiraClient, patcher, htmlStaticFiles)
 	return s.Serve()
 }
 

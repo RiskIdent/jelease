@@ -24,26 +24,12 @@ import (
 	"strings"
 
 	"github.com/RiskIdent/jelease/pkg/config"
-	"github.com/RiskIdent/jelease/pkg/github"
 	"github.com/RiskIdent/jelease/pkg/jira"
 	"github.com/RiskIdent/jelease/pkg/patch"
+	"github.com/RiskIdent/jelease/templates/pages"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 )
-
-// CreatePRContext is the [html/template] context used when templating the
-// "create PR" page.
-type CreatePRContext struct {
-	Config  *config.Config
-	Package config.Package
-
-	Version      string
-	JiraIssue    string
-	DryRun       bool
-	IsPost       bool
-	PullRequests []github.PullRequest
-	Error        error
-}
 
 // CreatePRRequest is the query or form data pushed by the web.
 type CreatePRRequest struct {
@@ -52,19 +38,16 @@ type CreatePRRequest struct {
 	PRCreate  bool   `form:"prCreate"`
 }
 
-func (s HTTPServer) bindCreatePRContext(c *gin.Context) (CreatePRContext, bool) {
+func (s HTTPServer) bindCreatePRContext(c *gin.Context) (pages.PackagesCreatePRModel, bool) {
 	pkgName := c.Param("package")
 	pkg, ok := s.cfg.TryFindPackage(pkgName)
 	if !ok {
-		c.HTML(http.StatusNotFound, "404", map[string]any{
-			"Config": s.cfg,
-			"Alert":  fmt.Sprintf("Package %q not found.", pkgName),
-		})
-		return CreatePRContext{}, false
+		c.HTML(http.StatusNotFound, "", pages.Error404(fmt.Sprintf("Package %q not found.", pkgName)))
+		return pages.PackagesCreatePRModel{}, false
 	}
 	var input CreatePRRequest
 	err := c.ShouldBind(&input)
-	model := CreatePRContext{
+	model := pages.PackagesCreatePRModel{
 		Config:    s.cfg,
 		Package:   pkg,
 		Version:   input.Version,
@@ -74,7 +57,7 @@ func (s HTTPServer) bindCreatePRContext(c *gin.Context) (CreatePRContext, bool) 
 	}
 	if err != nil {
 		model.Error = err
-		c.HTML(http.StatusBadRequest, "package-create-pr", model)
+		c.HTML(http.StatusBadRequest, "", pages.PackagesCreatePR(model))
 		return model, false
 	}
 
@@ -89,7 +72,7 @@ func (s HTTPServer) handleGetPRCreate(c *gin.Context) {
 	if !ok {
 		return
 	}
-	c.HTML(http.StatusOK, "package-create-pr", model)
+	c.HTML(http.StatusOK, "", pages.PackagesCreatePR(model))
 }
 
 // handlePostPRCreate is the handler for:
@@ -106,7 +89,7 @@ func (s HTTPServer) handlePostPRCreate(c *gin.Context) {
 		issue, err := s.jira.FindIssueForKey(model.JiraIssue)
 		if err != nil {
 			model.Error = err
-			c.HTML(http.StatusOK, "package-create-pr", model)
+			c.HTML(http.StatusOK, "", pages.PackagesCreatePR(model))
 			return
 		}
 		issueRef = issue.IssueRef()
@@ -132,7 +115,7 @@ func (s HTTPServer) handlePostPRCreate(c *gin.Context) {
 
 	model.PullRequests = prs
 	model.Error = err
-	c.HTML(http.StatusOK, "package-create-pr", model)
+	c.HTML(http.StatusOK, "", pages.PackagesCreatePR(model))
 }
 
 func createDeferredCreationURL(publicURL *url.URL, pkgName string, req CreatePRRequest) *url.URL {

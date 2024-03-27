@@ -3,10 +3,14 @@
 # SPDX-License-Identifier: CC0-1.0
 
 .PHONY: all
-all: jelease.schema.json
+all: jelease.schema.json generate
 
 jelease.schema.json: pkg/config/*.go cmd/config_schema.go
 	go run . config schema --output jelease.schema.json
+
+.PHONY: generate
+generate:
+	go run github.com/a-h/templ/cmd/templ@$(shell go list -m -f '{{ .Version }}' github.com/a-h/templ) generate
 
 .PHONY: test
 test:

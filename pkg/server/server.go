@@ -19,7 +19,6 @@ package server
 
 import (
 	"fmt"
-	"html/template"
 	"io/fs"
 	"net/http"
 	"net/url"
@@ -29,8 +28,7 @@ import (
 	"github.com/RiskIdent/jelease/pkg/github"
 	"github.com/RiskIdent/jelease/pkg/jira"
 	"github.com/RiskIdent/jelease/pkg/patch"
-	"github.com/RiskIdent/jelease/pkg/templatefuncs"
-	"github.com/gin-contrib/multitemplate"
+	"github.com/RiskIdent/jelease/templates/pages"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -43,7 +41,7 @@ type HTTPServer struct {
 	patcher patch.Patcher
 }
 
-func New(cfg *config.Config, j jira.Client, patcher patch.Patcher, htmlTemplates fs.FS, staticFiles fs.FS) *HTTPServer {
+func New(cfg *config.Config, j jira.Client, patcher patch.Patcher, staticFiles fs.FS) *HTTPServer {
 	gin.DefaultErrorWriter = ginLogger{defaultLevel: zerolog.ErrorLevel}
 	gin.DefaultWriter = ginLogger{defaultLevel: zerolog.InfoLevel}
 
@@ -64,71 +62,57 @@ func New(cfg *config.Config, j jira.Client, patcher patch.Patcher, htmlTemplates
 		patcher: patcher,
 	}
 
-	ren := multitemplate.New()
-	r.HTMLRender = ren
-	defaultTemplateObj := map[string]any{"Config": s.cfg.Censored()}
+	r.HTMLRender = &TemplRender{}
 
-	addHTMLFromFS(ren, htmlTemplates, "index", "layout.html", "index.html")
 	r.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index", defaultTemplateObj)
+		c.HTML(http.StatusOK, "", pages.Index())
 	})
 
-	addHTMLFromFS(ren, htmlTemplates, "config", "layout.html", "config.html")
 	r.GET("/config", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "config", defaultTemplateObj)
+		c.HTML(http.StatusOK, "", pages.Config(cfg))
 	})
 
-	addHTMLFromFS(ren, htmlTemplates, "package-list", "layout.html", "packages/index.html")
 	r.GET("/packages", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "package-list", defaultTemplateObj)
+		c.HTML(http.StatusOK, "", pages.PackagesList(cfg))
 	})
 
-	addHTMLFromFS(ren, htmlTemplates, "package-item", "layout.html", "packages/package.html")
 	r.GET("/packages/:package", func(c *gin.Context) {
 		pkgName := c.Param("package")
 		pkg, ok := s.cfg.TryFindPackage(pkgName)
 		if !ok {
-			c.HTML(http.StatusOK, "404", map[string]any{
-				"Config": s.cfg,
-				"Alert":  fmt.Sprintf("Package %q not found.", pkgName),
-			})
+			c.HTML(http.StatusNotFound, "", pages.Error404(fmt.Sprintf("Package %q not found.", pkgName)))
 			return
 		}
-		c.HTML(http.StatusOK, "package-item", map[string]any{
-			"Config":  s.cfg,
-			"Package": pkg,
-		})
+		c.HTML(http.StatusOK, "", pages.PackagesItem(pages.PackageItemModel{
+			Package: pkg,
+		}))
 	})
 
-	addHTMLFromFS(ren, htmlTemplates, "package-create-pr", "layout.html", "packages/create-pr.html")
 	r.GET("/packages/:package/create-pr", s.handleGetPRCreate)
 	r.POST("/packages/:package/create-pr", s.handlePostPRCreate)
 
-	addHTMLFromFS(ren, htmlTemplates, "404", "layout.html", "404.html")
 	r.NoRoute(func(c *gin.Context) {
 		if strings.HasPrefix(c.Request.URL.Path, "/webhook") {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Endpoint not found"})
 			return
 		}
-		c.HTML(http.StatusNotFound, "404", defaultTemplateObj)
+		c.HTML(http.StatusNotFound, "", pages.Error404(""))
 	})
-
-	addHTMLFromFS(ren, htmlTemplates, "405", "layout.html", "405.html")
 	r.NoMethod(func(c *gin.Context) {
-		var methodsAllowed []string
-		for _, route := range r.Routes() {
-			if route.Path == c.Request.URL.Path {
-				methodsAllowed = append(methodsAllowed, route.Method)
-			}
-		}
 		if strings.HasPrefix(c.Request.URL.Path, "/webhook") {
+			var methodsAllowed []string
+			for _, route := range r.Routes() {
+				if route.Path == c.Request.URL.Path {
+					methodsAllowed = append(methodsAllowed, route.Method)
+				}
+			}
 			c.JSON(http.StatusMethodNotAllowed, gin.H{
 				"error":   "Method not allowed",
 				"methods": methodsAllowed,
 			})
 			return
 		}
-		c.HTML(http.StatusNotFound, "405", defaultTemplateObj)
+		c.HTML(http.StatusNotFound, "", pages.Error405())
 	})
 
 	r.POST("/webhook", s.handlePostWebhook)
@@ -149,13 +133,6 @@ func New(cfg *config.Config, j jira.Client, patcher patch.Patcher, htmlTemplates
 	})
 
 	return s
-}
-
-func addHTMLFromFS(ren multitemplate.Render, fs fs.FS, name string, files ...string) {
-	tmpl := template.Must(template.New(files[0]).
-		Funcs(templatefuncs.FuncsMap).
-		ParseFS(fs, files...))
-	ren.Add(name, tmpl)
 }
 
 func (s HTTPServer) Serve() error {

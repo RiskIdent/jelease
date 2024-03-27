@@ -1,0 +1,8 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: Jelease
+Upstream-Contact: Risk.Ident GmbH <contact@riskident.com>
+Source: https://github.com/RiskIdent/jelease
+
+Files: templates/*_templ.go
+Copyright: 2022 Risk.Ident GmbH
+License: GPL-3.0-or-later

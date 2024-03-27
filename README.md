@@ -130,6 +130,22 @@ config file:
    curl localhost:8080/webhook -d @examples/newreleasesio-webhook.json
    ```
 
+## Development
+
+Prerequisites:
+
+- Go 1.21 (or later): <https://go.dev/doc/install>
+
+The HTML pages are templated using Templ. This is a manual step that
+needs to be done after each code change to any `.templ` files.
+
+```bash
+go generate
+```
+
+The generate command effectively runs `go run ...`, so you don't
+need `templ` CLI installed.
+
 ## Building the application and docker image
 
 ```bash
