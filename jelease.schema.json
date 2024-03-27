@@ -445,6 +445,12 @@
             "yaml"
           ],
           "title": "yaml"
+        },
+        {
+          "required": [
+            "exec"
+          ],
+          "title": "exec"
         }
       ],
       "properties": {
@@ -453,10 +459,37 @@
         },
         "yaml": {
           "$ref": "#/$defs/patchYaml"
+        },
+        "exec": {
+          "$ref": "#/$defs/patchExec"
         }
       },
       "additionalProperties": false,
       "type": "object"
+    },
+    "patchExec": {
+      "properties": {
+        "dir": {
+          "type": "string"
+        },
+        "cmd": {
+          "items": {
+            "$ref": "#/$defs/template"
+          },
+          "type": "array"
+        },
+        "env": {
+          "additionalProperties": {
+            "$ref": "#/$defs/template"
+          },
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "cmd"
+      ]
     },
     "patchRegex": {
       "properties": {

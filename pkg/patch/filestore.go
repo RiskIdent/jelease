@@ -82,7 +82,7 @@ func (s *CachedFileStore) WriteFile(path string, content []byte) error {
 	return nil
 }
 
-func (s *CachedFileStore) Close() error {
+func (s *CachedFileStore) Flush() error {
 	for path, file := range s.files {
 		if err := os.WriteFile(filepath.Join(s.Dir, path), file.Content, file.Mode); err != nil {
 			return err
@@ -90,6 +90,10 @@ func (s *CachedFileStore) Close() error {
 	}
 	s.files = map[string]*File{}
 	return nil
+}
+
+func (s *CachedFileStore) Close() error {
+	return s.Flush()
 }
 
 func NewTestFileStore(files map[string]string) *TestFileStore {
