@@ -82,13 +82,13 @@ type PackageRepoPatch struct {
 }
 
 type PatchRegex struct {
-	File    string
+	File    string        `jsonschema:"required"`
 	Match   *RegexPattern `jsonschema:"required"`
 	Replace *Template     `jsonschema:"required"`
 }
 
 type PatchYAML struct {
-	File       string
+	File       string           `jsonschema:"required"`
 	Path       *YAMLPathPattern `jsonschema:"required"`
 	Replace    *Template        `jsonschema:"required"`
 	MaxMatches int              `yaml:",omitempty" jsonschema:"minimum=0"`
