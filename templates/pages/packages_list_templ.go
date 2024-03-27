@@ -91,7 +91,7 @@ func PackagesList(cfg *config.Config) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</tbody></table>")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("</tbody></table><p>To add more packages you have to update the <a href=\"/config\">Jelease config</a>. You can try out a new package config here: <a href=\"/config/try-package\">Try package config</a></p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

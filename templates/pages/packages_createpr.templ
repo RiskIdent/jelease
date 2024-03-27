@@ -99,7 +99,12 @@ templ PackagesCreatePR(model PackagesCreatePRModel) {
 
 		<section>
 			<h3>Created PRs</h3>
-			@createPRResults(model)
+			@createPRResults(prResults{
+				IsPost: model.IsPost,
+				DryRun: model.DryRun,
+				Error: model.Error,
+				PullRequests: model.PullRequests,
+			})
 		</section>
 
 		<script>
@@ -131,7 +136,14 @@ templ PackagesCreatePR(model PackagesCreatePRModel) {
 	}
 }
 
-templ createPRResults(model PackagesCreatePRModel) {
+type prResults struct {
+	IsPost bool
+	Error error
+	DryRun bool
+	PullRequests []github.PullRequest
+}
+
+templ createPRResults(model prResults) {
 	<div id="results">
 		if !model.IsPost {
 			<p><em class="text-muted">The results will be shown here, after you press "Submit".</em></p>
@@ -145,7 +157,7 @@ templ createPRResults(model PackagesCreatePRModel) {
 	</div>
 }
 
-templ createPRResultsNoError(model PackagesCreatePRModel) {
+templ createPRResultsNoError(model prResults) {
 	if model.DryRun {
 		<div class="alert alert-secondary">
 			<p><strong>Success:</strong> Request completed.

@@ -72,6 +72,9 @@ func New(cfg *config.Config, j jira.Client, patcher patch.Patcher, staticFiles f
 		c.HTML(http.StatusOK, "", pages.Config(cfg))
 	})
 
+	r.GET("/config/try-package", s.handleGetConfigTryPackage)
+	r.POST("/config/try-package", s.handlePostConfigTryPackage)
+
 	r.GET("/packages", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "", pages.PackagesList(cfg))
 	})

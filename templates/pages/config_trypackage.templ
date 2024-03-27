@@ -1,0 +1,101 @@
+// SPDX-FileCopyrightText: 2022 Risk.Ident GmbH <contact@riskident.com>
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// This program is free software: you can redistribute it and/or modify it
+// under the terms of the GNU General Public License as published by the
+// Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+// more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program.  If not, see <http://www.gnu.org/licenses/>.
+package pages
+
+import (
+	"github.com/RiskIdent/jelease/templates/components"
+	"github.com/RiskIdent/jelease/pkg/config"
+	"github.com/RiskIdent/jelease/pkg/github"
+)
+
+type ConfigTryPackageModel struct {
+	Config *config.Config
+	Package config.Package
+	PackageConfig string
+	Version string
+	IsPost bool
+	Error error
+	PullRequests []github.PullRequest
+}
+
+templ ConfigTryPackage(model ConfigTryPackageModel) {
+	@Layout("Try package config") {
+		@components.Breadcrumbs() {
+			<li>@components.Linkf("Config", "/config")</li>
+			<li>Try package config</li>
+		}
+
+		<section>
+			<h2>Try package config</h2>
+
+			if model.IsPost && model.Error != nil {
+				@components.AlertDangerErr("Unexpected issue while loading page:", model.Error)
+			}
+
+			<form method="POST" action="" id="try-package-form">
+				<div class="row margin-bottom-none">
+					<div class="col sm-12 lg-4 padding-small">
+						<div class="form-group">
+							<label for="form-version" title="* = Required">Version <strong class="text-danger">*</strong></label>
+							<input type="text" name="version" placeholder="Example: v1.0.0" id="form-version" required value={ model.Version } />
+						</div>
+					</div>
+					<div class="col sm-12 lg-8 padding-small">
+						<div class="form-group">
+							<label for="form-config" title="* = Required">Config <strong class="text-danger">*</strong></label>
+							<textarea id="form-config" name="config" required class={"border-2", textareaStyle()}>{ model.PackageConfig }</textarea>
+						</div>
+					</div>
+					<div class="col padding-small">
+						<div class="form-group margin-bottom-none">
+							<p class="margin-top-none"></p>
+							<button type="submit" class="border-5" id="submit">Submit</button>
+						</div>
+					</div>
+				</div>
+			</form>
+		</section>
+
+		<section>
+			<h3>Created PRs (only dry run results)</h3>
+			@createPRResults(prResults{
+				IsPost: model.IsPost,
+				DryRun: true,
+				Error: model.Error,
+				PullRequests: model.PullRequests,
+			})
+		</section>
+
+		<script>
+		(function() {
+			const form = document.getElementById("try-package-form");
+			form.addEventListener("submit", function() {
+				document.getElementById("results").innerHTML = `<p><em class="text-muted">Processing, please wait...</em></p>`;
+				document.getElementById("submit").setAttribute('disabled', 'disabled');
+			});
+		})();
+		</script>
+	}
+}
+
+css textareaStyle() {
+	width: 100%;
+	height: 20em;
+	font-family: monospace;
+	font-size: 80%;
+	padding: 1em;
+}

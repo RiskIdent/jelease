@@ -18,18 +18,16 @@
 package patch
 
 import (
-	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
-	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 
 	"github.com/RiskIdent/jelease/pkg/config"
-	"github.com/RiskIdent/jelease/pkg/util"
 	"github.com/rs/zerolog/log"
+	"gopkg.in/yaml.v3"
 )
 
 type TemplateContext struct {
@@ -47,7 +45,7 @@ type TemplateContextRegex struct {
 func ApplyMany(repoDir string, patches []config.PackageRepoPatch, tmplCtx TemplateContext) error {
 	for _, p := range patches {
 		if err := Apply(repoDir, p, tmplCtx); err != nil {
-			return fmt.Errorf("file %q: %w", p.File, err)
+			return err
 		}
 	}
 	return nil
@@ -55,77 +53,79 @@ func ApplyMany(repoDir string, patches []config.PackageRepoPatch, tmplCtx Templa
 
 // Apply applies a single patch to the repository.
 func Apply(repoDir string, patch config.PackageRepoPatch, tmplCtx TemplateContext) error {
-	log.Debug().Str("file", patch.File).Msg("Patching file.")
-
-	// TODO: Check that the patch path doesn't go outside the repo dir.
-	// For example, reject stuff like "../../../somefile.txt"
-	path := filepath.Join(repoDir, patch.File)
-
-	lines, err := readLines(path)
-	if err != nil {
-		return fmt.Errorf("read file for patch: %w", err)
-	}
-
-	if err := patchLines(patch, tmplCtx, lines); err != nil {
-		return fmt.Errorf("patch lines: %w", err)
-	}
-
-	if err := writeLines(path, lines); err != nil {
-		return fmt.Errorf("write patch: %w", err)
-	}
-
-	return nil
-}
-
-func patchLines(patch config.PackageRepoPatch, tmplCtx TemplateContext, lines [][]byte) error {
-	for i, line := range lines {
-		newLine, err := patchSingleLine(patch, tmplCtx, line)
-		if err != nil {
-			return err
-		}
-		if newLine == nil { // No match
-			continue
-		}
-		if bytes.Equal(line, newLine) {
-			return errors.New("found matching line, but already up-to-date")
-		}
-		lines[i] = newLine
-		return nil // Stop after first match
-	}
-	return errors.New("no match in file")
-}
-
-func patchSingleLine(patch config.PackageRepoPatch, tmplCtx TemplateContext, line []byte) ([]byte, error) {
+	fstore := NewCachedFileStore(repoDir)
+	defer fstore.Close()
 	switch {
 	case patch.Regex != nil:
-		return patchSingleLineRegex(*patch.Regex, tmplCtx, line)
+		if err := applyRegexPatch(fstore, tmplCtx, *patch.Regex); err != nil {
+			return fmt.Errorf("regex patch: %w", err)
+		}
+	case patch.YAML != nil:
+		if err := applyYAMLPatch(fstore, tmplCtx, *patch.YAML); err != nil {
+			return fmt.Errorf("yaml patch: %w", err)
+		}
+	case patch.HelmDepUpdate != nil:
+		// Flush the store as we need the up-to-date changes on disk
+		if err := fstore.Flush(); err != nil {
+			return err
+		}
+		if err := applyHelmDepUpdatePatch(repoDir, tmplCtx, *patch.HelmDepUpdate); err != nil {
+			return fmt.Errorf("exec patch: %w", err)
+		}
 	default:
-		return nil, errors.New("missing patch type config")
+		return errors.New("missing patch type config")
 	}
+
+	return fstore.Close()
 }
 
-func patchSingleLineRegex(patch config.PatchRegex, tmplCtx TemplateContext, line []byte) ([]byte, error) {
+func applyRegexPatch(fstore FileStore, tmplCtx TemplateContext, patch config.PatchRegex) error {
+	log.Debug().Str("file", patch.File).Stringer("match", patch.Match).Msg("Patching regex.")
+
+	if patch.File == "" {
+		return fmt.Errorf("missing required field 'file'")
+	}
+	if patch.Match == nil {
+		return fmt.Errorf("missing required field 'match'")
+	}
+	if patch.Replace == nil {
+		return fmt.Errorf("missing required field 'replace'")
+	}
+
+	content, err := fstore.ReadFile(patch.File)
+	if err != nil {
+		return err
+	}
 	regex := patch.Match.Regexp()
-	groupIndices := regex.FindSubmatchIndex(line)
-	if groupIndices == nil {
-		// No match
-		return nil, nil
+	lines := bytes.Split(content, []byte("\n"))
+
+	for i, line := range lines {
+		groupIndices := regex.FindSubmatchIndex(line)
+		if groupIndices == nil {
+			// No match
+			continue
+		}
+
+		fullMatchStart := groupIndices[0]
+		fullMatchEnd := groupIndices[1]
+
+		everythingBefore := line[:fullMatchStart]
+		everythingAfter := line[fullMatchEnd:]
+
+		var buf bytes.Buffer
+		if err := patch.Replace.Template().Execute(&buf, TemplateContextRegex{
+			TemplateContext: tmplCtx,
+			Groups:          regexSubmatchIndicesToStrings(line, groupIndices),
+		}); err != nil {
+			return fmt.Errorf("line %d: execute replace template: %w", i+1, err)
+		}
+		lines[i] = slices.Concat(everythingBefore, buf.Bytes(), everythingAfter)
+		newContent := bytes.Join(lines, []byte("\n"))
+
+		return fstore.WriteFile(patch.File, newContent)
 	}
-	fullMatchStart := groupIndices[0]
-	fullMatchEnd := groupIndices[1]
 
-	everythingBefore := line[:fullMatchStart]
-	everythingAfter := line[fullMatchEnd:]
-
-	var buf bytes.Buffer
-	if err := patch.Replace.Template().Execute(&buf, TemplateContextRegex{
-		TemplateContext: tmplCtx,
-		Groups:          regexSubmatchIndicesToStrings(line, groupIndices),
-	}); err != nil {
-		return nil, fmt.Errorf("execute replace template: %w", err)
-	}
-
-	return util.Concat(everythingBefore, buf.Bytes(), everythingAfter), nil
+	return fmt.Errorf("regex did not match any line: %s", patch.Match)
 }
 
 func regexSubmatchIndicesToStrings(line []byte, indices []int) []string {
@@ -138,49 +138,103 @@ func regexSubmatchIndicesToStrings(line []byte, indices []int) []string {
 	return strs
 }
 
-func writeLines(path string, lines [][]byte) error {
-	stat, err := os.Stat(path)
+func applyYAMLPatch(fstore FileStore, tmplCtx TemplateContext, patch config.PatchYAML) error {
+	log.Debug().Str("file", patch.File).Stringer("yamlpath", patch.YAMLPath).Msg("Patching YAML.")
+
+	if patch.File == "" {
+		return fmt.Errorf("missing required field 'file'")
+	}
+	if patch.YAMLPath == nil {
+		return fmt.Errorf("missing required field 'yamlPath'")
+	}
+	if patch.Replace == nil {
+		return fmt.Errorf("missing required field 'replace'")
+	}
+
+	content, err := fstore.ReadFile(patch.File)
 	if err != nil {
 		return err
 	}
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_TRUNC, stat.Mode())
-	if err != nil {
+	var node yaml.Node
+	if err := yaml.Unmarshal(content, &node); err != nil {
 		return err
 	}
-	defer file.Close()
-	for _, line := range lines {
-		for len(line) > 0 {
-			n, err := file.Write(line)
-			if err != nil {
-				return err
-			}
-			if n == 0 {
-				return errors.New("wrote 0 bytes, stopping infinite loop")
-			}
-			line = line[n:]
+
+	matches, err := patch.YAMLPath.YAMLPath.Find(&node)
+	if err != nil {
+		return fmt.Errorf("yamlpath %q: eval: %w", patch.YAMLPath, err)
+	}
+
+	if len(matches) == 0 {
+		return fmt.Errorf("yamlpath %q: no matches found", patch.YAMLPath)
+	}
+
+	if patch.MaxMatches > 0 && len(matches) > patch.MaxMatches {
+		return fmt.Errorf("yamlpath %q: matched too many times: %d, max = %d", patch.YAMLPath, len(matches), patch.MaxMatches)
+	}
+
+	for _, match := range matches {
+		if match.ShortTag() != "!!str" {
+			return fmt.Errorf("yamlpath %q: line %d: only supports matching strings, but instead matched %q", patch.YAMLPath, match.Line, match.ShortTag())
 		}
-		file.Write([]byte("\n"))
+		var buf bytes.Buffer
+		if err := patch.Replace.Template().Execute(&buf, tmplCtx); err != nil {
+			return fmt.Errorf("yamlpath %q: line %d: execute replace template: %w", patch.YAMLPath, match.Line, err)
+		}
+		setYAMLNodeRecursive(match, buf.String())
 	}
-	return nil
-}
 
-func readLines(path string) ([][]byte, error) {
-	file, err := os.Open(path)
+	newContent, err := yamlEncode(&node, patch.Indent)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	defer file.Close()
-	return readLinesFromReader(file)
+
+	return fstore.WriteFile(patch.File, newContent)
 }
 
-func readLinesFromReader(r io.Reader) ([][]byte, error) {
-	var lines [][]byte
-	scanner := bufio.NewScanner(r)
-	for scanner.Scan() {
-		lines = append(lines, slices.Clone(scanner.Bytes()))
+func setYAMLNodeRecursive(node *yaml.Node, value string) {
+	if node.Alias != nil {
+		setYAMLNodeRecursive(node.Alias, value)
+		return
 	}
-	if err := scanner.Err(); err != nil {
+	node.SetString(value)
+}
+
+func yamlEncode(obj any, indent int) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	if indent > 0 {
+		enc.SetIndent(indent)
+	} else {
+		enc.SetIndent(2)
+	}
+
+	if err := enc.Encode(obj); err != nil {
+		return nil, fmt.Errorf("encode: %w", err)
+	}
+	if err := enc.Close(); err != nil {
 		return nil, err
 	}
-	return lines, nil
+
+	return buf.Bytes(), nil
+}
+
+func applyHelmDepUpdatePatch(repoDir string, tmplCtx TemplateContext, patch config.PatchHelmDepUpdate) error {
+	if patch.Chart == nil {
+		return fmt.Errorf("missing required field 'chart'")
+	}
+
+	chart, err := patch.Chart.ExecuteString(tmplCtx)
+	if err != nil {
+		return fmt.Errorf("execute chart dir template: %w", err)
+	}
+
+	log.Info().Str("chart", chart).Msg("Executing `helm dependency update`")
+	cmd := exec.Command("helm", "dependency", "update")
+	cmd.Dir = filepath.Join(repoDir, chart)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("%w; command output:\n%s", err, out)
+	}
+
+	return nil
 }

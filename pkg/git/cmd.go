@@ -24,9 +24,9 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 
-	"github.com/RiskIdent/jelease/pkg/util"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -183,7 +183,7 @@ func runAsCommitterInDir(committer Committer, targetDir string, args ...string) 
 	if committer.Email != "" {
 		extraArgs = append(extraArgs, "-c", "user.email="+committer.Email)
 	}
-	return runGitCmd(util.Concat(extraArgs, args)...)
+	return runGitCmd(slices.Concat(extraArgs, args)...)
 }
 
 func runGitCmd(args ...string) ([]byte, error) {
