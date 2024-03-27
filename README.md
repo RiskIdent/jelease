@@ -135,7 +135,6 @@ config file:
 Prerequisites:
 
 - Go 1.21 (or later): <https://go.dev/doc/install>
-- Templ v0.2.648 (or later): <https://templ.guide/quick-start/installation>
 
 The HTML pages are templated using Templ. This is a manual step that
 needs to be done after each code change to any `.templ` files.
@@ -143,6 +142,9 @@ needs to be done after each code change to any `.templ` files.
 ```bash
 go generate
 ```
+
+The generate command effectively runs `go run ...`, so you don't
+need `templ` CLI installed.
 
 ## Building the application and docker image
 
