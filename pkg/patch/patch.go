@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -44,7 +45,7 @@ type TemplateContextRegex struct {
 func ApplyMany(repoDir string, patches []config.PackageRepoPatch, tmplCtx TemplateContext) error {
 	for _, p := range patches {
 		if err := Apply(repoDir, p, tmplCtx); err != nil {
-			return fmt.Errorf("file %q: %w", p.File, err)
+			return err
 		}
 	}
 	return nil
@@ -52,34 +53,30 @@ func ApplyMany(repoDir string, patches []config.PackageRepoPatch, tmplCtx Templa
 
 // Apply applies a single patch to the repository.
 func Apply(repoDir string, patch config.PackageRepoPatch, tmplCtx TemplateContext) error {
-	log.Debug().Str("file", patch.File).Msg("Patching file.")
+	switch {
+	case patch.Regex != nil:
+		if err := applyRegexPatch(repoDir, tmplCtx, *patch.Regex); err != nil {
+			return fmt.Errorf("regex patch: %w", err)
+		}
+	case patch.YQ != nil:
+		return errors.New("yq patch: not implemented")
+	default:
+		return errors.New("missing patch type config")
+	}
+
+	return nil
+}
+
+func applyRegexPatch(repoDir string, tmplCtx TemplateContext, patch config.PatchRegex) error {
+	log.Debug().Str("file", patch.File).Stringer("match", patch.Match).Msg("Patching regex.")
 
 	// TODO: Check that the patch path doesn't go outside the repo dir.
 	// For example, reject stuff like "../../../somefile.txt"
 	path := filepath.Join(repoDir, patch.File)
-	stat, err := os.Stat(path)
+	content, stat, err := readFile(path)
 	if err != nil {
 		return err
 	}
-	content, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-
-	switch {
-	case patch.Regex != nil:
-		content, err = applyRegexPatch(content, tmplCtx, *patch.Regex)
-	default:
-		return errors.New("missing patch type config")
-	}
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(path, content, stat.Mode())
-}
-
-func applyRegexPatch(content []byte, tmplCtx TemplateContext, patch config.PatchRegex) ([]byte, error) {
 	regex := patch.Match.Regexp()
 	lines := bytes.Split(content, []byte("\n"))
 
@@ -101,13 +98,15 @@ func applyRegexPatch(content []byte, tmplCtx TemplateContext, patch config.Patch
 			TemplateContext: tmplCtx,
 			Groups:          regexSubmatchIndicesToStrings(line, groupIndices),
 		}); err != nil {
-			return nil, fmt.Errorf("line %d: execute replace template: %w", i+1, err)
+			return fmt.Errorf("line %d: execute replace template: %w", i+1, err)
 		}
 		lines[i] = slices.Concat(everythingBefore, buf.Bytes(), everythingAfter)
-		return bytes.Join(lines, []byte("\n")), nil
+		newContent := bytes.Join(lines, []byte("\n"))
+
+		return os.WriteFile(path, newContent, stat.Mode())
 	}
 
-	return nil, fmt.Errorf("regex did not match any line: %s", patch.Match)
+	return fmt.Errorf("regex did not match any line: %s", patch.Match)
 }
 
 func regexSubmatchIndicesToStrings(line []byte, indices []int) []string {
@@ -119,29 +118,14 @@ func regexSubmatchIndicesToStrings(line []byte, indices []int) []string {
 	}
 	return strs
 }
-
-func writeLines(path string, lines [][]byte) error {
+func readFile(path string) ([]byte, fs.FileInfo, error) {
 	stat, err := os.Stat(path)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_TRUNC, stat.Mode())
+	content, err := os.ReadFile(path)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	defer file.Close()
-	for _, line := range lines {
-		for len(line) > 0 {
-			n, err := file.Write(line)
-			if err != nil {
-				return err
-			}
-			if n == 0 {
-				return errors.New("wrote 0 bytes, stopping infinite loop")
-			}
-			line = line[n:]
-		}
-		file.Write([]byte("\n"))
-	}
-	return nil
+	return content, stat, nil
 }

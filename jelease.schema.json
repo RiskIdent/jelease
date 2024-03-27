@@ -448,9 +448,6 @@
         }
       ],
       "properties": {
-        "file": {
-          "type": "string"
-        },
         "regex": {
           "$ref": "#/$defs/patchRegex"
         },
@@ -463,6 +460,9 @@
     },
     "patchRegex": {
       "properties": {
+        "file": {
+          "type": "string"
+        },
         "match": {
           "$ref": "#/$defs/regexPattern"
         },
@@ -479,6 +479,9 @@
     },
     "patchYq": {
       "properties": {
+        "file": {
+          "type": "string"
+        },
         "expression": {
           "type": "string"
         }

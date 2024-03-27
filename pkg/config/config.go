@@ -77,17 +77,18 @@ type PackageRepo struct {
 }
 
 type PackageRepoPatch struct {
-	File  string
 	Regex *PatchRegex `yaml:",omitempty" json:",omitempty" jsonschema:"oneof_required=regex"`
 	YQ    *PatchYQ    `yaml:",omitempty" json:",omitempty" jsonschema:"oneof_required=yq"`
 }
 
 type PatchRegex struct {
+	File    string
 	Match   *RegexPattern `jsonschema:"required"`
 	Replace *Template     `jsonschema:"required"`
 }
 
 type PatchYQ struct {
+	File       string
 	Expression string `jsonschema:"required"`
 }
 
