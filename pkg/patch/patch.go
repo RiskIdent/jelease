@@ -64,12 +64,12 @@ func Apply(repoDir string, patch config.PackageRepoPatch, tmplCtx TemplateContex
 		if err := applyYAMLPatch(fstore, tmplCtx, *patch.YAML); err != nil {
 			return fmt.Errorf("yaml patch: %w", err)
 		}
-	case patch.Helm != nil:
+	case patch.HelmDepUpdate != nil:
 		// Flush the store as we need the up-to-date changes on disk
 		if err := fstore.Flush(); err != nil {
 			return err
 		}
-		if err := applyHelmPatch(repoDir, tmplCtx, *patch.Helm); err != nil {
+		if err := applyHelmDepUpdatePatch(repoDir, tmplCtx, *patch.HelmDepUpdate); err != nil {
 			return fmt.Errorf("exec patch: %w", err)
 		}
 	default:
@@ -199,21 +199,17 @@ func yamlEncode(obj any, indent int) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func applyHelmPatch(repoDir string, tmplCtx TemplateContext, patch config.PatchHelm) error {
+func applyHelmDepUpdatePatch(repoDir string, tmplCtx TemplateContext, patch config.PatchHelmDepUpdate) error {
 	chart, err := patch.Chart.ExecuteString(tmplCtx)
 	if err != nil {
 		return fmt.Errorf("execute chart dir template: %w", err)
 	}
 
-	log.Debug().Str("chart", chart).Msg("Patching helm.")
-
-	if patch.DependencyUpdate {
-		log.Info().Str("chart", chart).Msg("Executing `helm dependency update`")
-		cmd := exec.Command("helm", "dependency", "update")
-		cmd.Dir = filepath.Join(repoDir, chart)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("%w; command output:\n%s", err, out)
-		}
+	log.Info().Str("chart", chart).Msg("Executing `helm dependency update`")
+	cmd := exec.Command("helm", "dependency", "update")
+	cmd.Dir = filepath.Join(repoDir, chart)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("%w; command output:\n%s", err, out)
 	}
 
 	return nil

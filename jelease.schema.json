@@ -448,9 +448,9 @@
         },
         {
           "required": [
-            "helm"
+            "helmDepUpdate"
           ],
-          "title": "helm"
+          "title": "helmDepUpdate"
         }
       ],
       "properties": {
@@ -460,20 +460,17 @@
         "yaml": {
           "$ref": "#/$defs/patchYaml"
         },
-        "helm": {
-          "$ref": "#/$defs/patchHelm"
+        "helmDepUpdate": {
+          "$ref": "#/$defs/patchHelmDepUpdate"
         }
       },
       "additionalProperties": false,
       "type": "object"
     },
-    "patchHelm": {
+    "patchHelmDepUpdate": {
       "properties": {
         "chart": {
           "$ref": "#/$defs/template"
-        },
-        "dependencyUpdate": {
-          "type": "boolean"
         }
       },
       "additionalProperties": false,
