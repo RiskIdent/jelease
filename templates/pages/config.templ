@@ -24,6 +24,12 @@ import (
 templ Config(config *config.Config) {
 	@Layout("Config") {
 		<h2>Config</h2>
+
+		<p>
+			You can try out a new package config here:
+			<a href="/config/try-package">Try package config</a>
+		</p>
+
 		@components.CodeBlock(config.Censored())
 	}
 }
