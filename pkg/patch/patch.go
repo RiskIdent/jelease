@@ -18,17 +18,14 @@
 package patch
 
 import (
-	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"slices"
 
 	"github.com/RiskIdent/jelease/pkg/config"
-	"github.com/RiskIdent/jelease/pkg/util"
 	"github.com/rs/zerolog/log"
 )
 
@@ -60,72 +57,57 @@ func Apply(repoDir string, patch config.PackageRepoPatch, tmplCtx TemplateContex
 	// TODO: Check that the patch path doesn't go outside the repo dir.
 	// For example, reject stuff like "../../../somefile.txt"
 	path := filepath.Join(repoDir, patch.File)
-
-	lines, err := readLines(path)
+	stat, err := os.Stat(path)
 	if err != nil {
-		return fmt.Errorf("read file for patch: %w", err)
+		return err
+	}
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return err
 	}
 
-	if err := patchLines(patch, tmplCtx, lines); err != nil {
-		return fmt.Errorf("patch lines: %w", err)
-	}
-
-	if err := writeLines(path, lines); err != nil {
-		return fmt.Errorf("write patch: %w", err)
-	}
-
-	return nil
-}
-
-func patchLines(patch config.PackageRepoPatch, tmplCtx TemplateContext, lines [][]byte) error {
-	for i, line := range lines {
-		newLine, err := patchSingleLine(patch, tmplCtx, line)
-		if err != nil {
-			return err
-		}
-		if newLine == nil { // No match
-			continue
-		}
-		if bytes.Equal(line, newLine) {
-			return errors.New("found matching line, but already up-to-date")
-		}
-		lines[i] = newLine
-		return nil // Stop after first match
-	}
-	return errors.New("no match in file")
-}
-
-func patchSingleLine(patch config.PackageRepoPatch, tmplCtx TemplateContext, line []byte) ([]byte, error) {
 	switch {
 	case patch.Regex != nil:
-		return patchSingleLineRegex(*patch.Regex, tmplCtx, line)
+		content, err = applyRegexPatch(content, tmplCtx, *patch.Regex)
 	default:
-		return nil, errors.New("missing patch type config")
+		return errors.New("missing patch type config")
 	}
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, content, stat.Mode())
 }
 
-func patchSingleLineRegex(patch config.PatchRegex, tmplCtx TemplateContext, line []byte) ([]byte, error) {
+func applyRegexPatch(content []byte, tmplCtx TemplateContext, patch config.PatchRegex) ([]byte, error) {
 	regex := patch.Match.Regexp()
-	groupIndices := regex.FindSubmatchIndex(line)
-	if groupIndices == nil {
-		// No match
-		return nil, nil
+	lines := bytes.Split(content, []byte("\n"))
+
+	for i, line := range lines {
+		groupIndices := regex.FindSubmatchIndex(line)
+		if groupIndices == nil {
+			// No match
+			continue
+		}
+
+		fullMatchStart := groupIndices[0]
+		fullMatchEnd := groupIndices[1]
+
+		everythingBefore := line[:fullMatchStart]
+		everythingAfter := line[fullMatchEnd:]
+
+		var buf bytes.Buffer
+		if err := patch.Replace.Template().Execute(&buf, TemplateContextRegex{
+			TemplateContext: tmplCtx,
+			Groups:          regexSubmatchIndicesToStrings(line, groupIndices),
+		}); err != nil {
+			return nil, fmt.Errorf("line %d: execute replace template: %w", i+1, err)
+		}
+		lines[i] = slices.Concat(everythingBefore, buf.Bytes(), everythingAfter)
+		return bytes.Join(lines, []byte("\n")), nil
 	}
-	fullMatchStart := groupIndices[0]
-	fullMatchEnd := groupIndices[1]
 
-	everythingBefore := line[:fullMatchStart]
-	everythingAfter := line[fullMatchEnd:]
-
-	var buf bytes.Buffer
-	if err := patch.Replace.Template().Execute(&buf, TemplateContextRegex{
-		TemplateContext: tmplCtx,
-		Groups:          regexSubmatchIndicesToStrings(line, groupIndices),
-	}); err != nil {
-		return nil, fmt.Errorf("execute replace template: %w", err)
-	}
-
-	return util.Concat(everythingBefore, buf.Bytes(), everythingAfter), nil
+	return nil, fmt.Errorf("regex did not match any line: %s", patch.Match)
 }
 
 func regexSubmatchIndicesToStrings(line []byte, indices []int) []string {
@@ -162,25 +144,4 @@ func writeLines(path string, lines [][]byte) error {
 		file.Write([]byte("\n"))
 	}
 	return nil
-}
-
-func readLines(path string) ([][]byte, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	return readLinesFromReader(file)
-}
-
-func readLinesFromReader(r io.Reader) ([][]byte, error) {
-	var lines [][]byte
-	scanner := bufio.NewScanner(r)
-	for scanner.Scan() {
-		lines = append(lines, slices.Clone(scanner.Bytes()))
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-	return lines, nil
 }

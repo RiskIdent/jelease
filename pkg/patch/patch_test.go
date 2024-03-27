@@ -25,8 +25,8 @@ import (
 	"github.com/RiskIdent/jelease/pkg/config"
 )
 
-func TestPatchSingleLineRegex(t *testing.T) {
-	line := []byte("<<my-dep v0.1.0>>")
+func TestApplyRegexPatch(t *testing.T) {
+	content := []byte("<<my-dep v0.1.0>>")
 	patch := config.PatchRegex{
 		Match:   newRegex(t, `(my-dep) v0.1.0`),
 		Replace: newTemplate(t, `{{ index .Groups 1 }} {{ .Version }}`),
@@ -37,7 +37,7 @@ func TestPatchSingleLineRegex(t *testing.T) {
 		Version: "v1.2.3",
 	}
 
-	newLine, err := patchSingleLineRegex(patch, tmplCtx, line)
+	newLine, err := applyRegexPatch(content, tmplCtx, patch)
 	if err != nil {
 		t.Fatal(err)
 	}
