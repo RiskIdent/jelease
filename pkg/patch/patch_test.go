@@ -26,8 +26,11 @@ import (
 )
 
 func TestApplyRegexPatch(t *testing.T) {
-	content := []byte("<<my-dep v0.1.0>>")
+	fstore := NewTestFileStore(map[string]string{
+		"file.txt": "<<my-dep v0.1.0>>",
+	})
 	patch := config.PatchRegex{
+		File:    "file.txt",
 		Match:   newRegex(t, `(my-dep) v0.1.0`),
 		Replace: newTemplate(t, `{{ index .Groups 1 }} {{ .Version }}`),
 	}
@@ -37,17 +40,18 @@ func TestApplyRegexPatch(t *testing.T) {
 		Version: "v1.2.3",
 	}
 
-	newLine, err := applyRegexPatch(content, tmplCtx, patch)
+	err := applyRegexPatch(fstore, tmplCtx, patch)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	want := "<<my-dep v1.2.3>>"
-	if newLine == nil {
-		t.Fatalf("want %q, got nil", want)
+	gotBytes, err := fstore.ReadFile("file.txt")
+	if err != nil {
+		t.Fatal(err)
 	}
+	got := string(gotBytes)
 
-	got := string(newLine)
 	if got != want {
 		t.Errorf("want %q, got %q", want, got)
 	}

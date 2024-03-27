@@ -21,9 +21,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/fs"
-	"os"
-	"path/filepath"
 	"slices"
 
 	"github.com/RiskIdent/jelease/pkg/config"
@@ -53,9 +50,11 @@ func ApplyMany(repoDir string, patches []config.PackageRepoPatch, tmplCtx Templa
 
 // Apply applies a single patch to the repository.
 func Apply(repoDir string, patch config.PackageRepoPatch, tmplCtx TemplateContext) error {
+	fstore := NewCachedFileStore(repoDir)
+	defer fstore.Close()
 	switch {
 	case patch.Regex != nil:
-		if err := applyRegexPatch(repoDir, tmplCtx, *patch.Regex); err != nil {
+		if err := applyRegexPatch(fstore, tmplCtx, *patch.Regex); err != nil {
 			return fmt.Errorf("regex patch: %w", err)
 		}
 	case patch.YQ != nil:
@@ -64,16 +63,13 @@ func Apply(repoDir string, patch config.PackageRepoPatch, tmplCtx TemplateContex
 		return errors.New("missing patch type config")
 	}
 
-	return nil
+	return fstore.Close()
 }
 
-func applyRegexPatch(repoDir string, tmplCtx TemplateContext, patch config.PatchRegex) error {
+func applyRegexPatch(fstore FileStore, tmplCtx TemplateContext, patch config.PatchRegex) error {
 	log.Debug().Str("file", patch.File).Stringer("match", patch.Match).Msg("Patching regex.")
 
-	// TODO: Check that the patch path doesn't go outside the repo dir.
-	// For example, reject stuff like "../../../somefile.txt"
-	path := filepath.Join(repoDir, patch.File)
-	content, stat, err := readFile(path)
+	content, err := fstore.ReadFile(patch.File)
 	if err != nil {
 		return err
 	}
@@ -103,7 +99,7 @@ func applyRegexPatch(repoDir string, tmplCtx TemplateContext, patch config.Patch
 		lines[i] = slices.Concat(everythingBefore, buf.Bytes(), everythingAfter)
 		newContent := bytes.Join(lines, []byte("\n"))
 
-		return os.WriteFile(path, newContent, stat.Mode())
+		return fstore.WriteFile(patch.File, newContent)
 	}
 
 	return fmt.Errorf("regex did not match any line: %s", patch.Match)
@@ -117,15 +113,4 @@ func regexSubmatchIndicesToStrings(line []byte, indices []int) []string {
 		strs = append(strs, string(line[start:end]))
 	}
 	return strs
-}
-func readFile(path string) ([]byte, fs.FileInfo, error) {
-	stat, err := os.Stat(path)
-	if err != nil {
-		return nil, nil, err
-	}
-	content, err := os.ReadFile(path)
-	if err != nil {
-		return nil, nil, err
-	}
-	return content, stat, nil
 }
