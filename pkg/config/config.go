@@ -79,7 +79,7 @@ type PackageRepo struct {
 type PackageRepoPatch struct {
 	Regex *PatchRegex `yaml:",omitempty" json:",omitempty" jsonschema:"oneof_required=regex"`
 	YAML  *PatchYAML  `yaml:",omitempty" json:",omitempty" jsonschema:"oneof_required=yaml"`
-	Exec  *PatchExec  `yaml:",omitempty" json:",omitempty" jsonschema:"oneof_required=exec"`
+	Helm  *PatchHelm  `yaml:",omitempty" json:",omitempty" jsonschema:"oneof_required=helm"`
 }
 
 type PatchRegex struct {
@@ -92,14 +92,13 @@ type PatchYAML struct {
 	File       string           `jsonschema:"required"`
 	YAMLPath   *YAMLPathPattern `yaml:"yamlPath" jsonschema:"required"`
 	Replace    *Template        `jsonschema:"required"`
-	MaxMatches int              `yaml:",omitempty" jsonschema:"minimum=0"`
+	MaxMatches int              `yaml:"maxMatches,omitempty" jsonschema:"minimum=0"`
 	Indent     int              `yaml:",omitempty" jsonschema:"minimum=0"`
 }
 
-type PatchExec struct {
-	Dir string
-	Cmd []*Template `jsonschema:"required"`
-	Env map[string]*Template
+type PatchHelm struct {
+	Chart            *Template `jsonschema:"required,default=.,example=charts/jelease"`
+	DependencyUpdate bool      `yaml:"dependencyUpdate,omitempty"`
 }
 
 type GitHub struct {

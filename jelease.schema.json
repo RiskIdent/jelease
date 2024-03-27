@@ -448,9 +448,9 @@
         },
         {
           "required": [
-            "exec"
+            "helm"
           ],
-          "title": "exec"
+          "title": "helm"
         }
       ],
       "properties": {
@@ -460,35 +460,26 @@
         "yaml": {
           "$ref": "#/$defs/patchYaml"
         },
-        "exec": {
-          "$ref": "#/$defs/patchExec"
+        "helm": {
+          "$ref": "#/$defs/patchHelm"
         }
       },
       "additionalProperties": false,
       "type": "object"
     },
-    "patchExec": {
+    "patchHelm": {
       "properties": {
-        "dir": {
-          "type": "string"
+        "chart": {
+          "$ref": "#/$defs/template"
         },
-        "cmd": {
-          "items": {
-            "$ref": "#/$defs/template"
-          },
-          "type": "array"
-        },
-        "env": {
-          "additionalProperties": {
-            "$ref": "#/$defs/template"
-          },
-          "type": "object"
+        "dependencyUpdate": {
+          "type": "boolean"
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "cmd"
+        "chart"
       ]
     },
     "patchRegex": {

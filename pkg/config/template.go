@@ -20,6 +20,7 @@ package config
 import (
 	"bytes"
 	"encoding"
+	"io"
 	"text/template"
 
 	"github.com/RiskIdent/jelease/pkg/templatefuncs"
@@ -36,6 +37,18 @@ var _ jsonSchemaInterface = Template{}
 
 func (t *Template) Template() *template.Template {
 	return (*template.Template)(t)
+}
+
+func (t *Template) Execute(w io.Writer, data any) error {
+	return t.Template().Execute(w, data)
+}
+
+func (t *Template) ExecuteString(data any) (string, error) {
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, data); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }
 
 func (t *Template) String() string {

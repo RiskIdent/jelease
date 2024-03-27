@@ -21,11 +21,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
-	"strings"
 
 	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/rs/zerolog/log"
@@ -66,12 +64,12 @@ func Apply(repoDir string, patch config.PackageRepoPatch, tmplCtx TemplateContex
 		if err := applyYAMLPatch(fstore, tmplCtx, *patch.YAML); err != nil {
 			return fmt.Errorf("yaml patch: %w", err)
 		}
-	case patch.Exec != nil:
+	case patch.Helm != nil:
 		// Flush the store as we need the up-to-date changes on disk
 		if err := fstore.Flush(); err != nil {
 			return err
 		}
-		if err := applyExecPatch(repoDir, tmplCtx, *patch.Exec); err != nil {
+		if err := applyHelmPatch(repoDir, tmplCtx, *patch.Helm); err != nil {
 			return fmt.Errorf("exec patch: %w", err)
 		}
 	default:
@@ -201,59 +199,22 @@ func yamlEncode(obj any, indent int) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func applyExecPatch(repoDir string, tmplCtx TemplateContext, patch config.PatchExec) error {
-	cmd, err := templateExecCommand(repoDir, tmplCtx, patch)
+func applyHelmPatch(repoDir string, tmplCtx TemplateContext, patch config.PatchHelm) error {
+	chart, err := patch.Chart.ExecuteString(tmplCtx)
 	if err != nil {
-		return fmt.Errorf("create command: %w", err)
+		return fmt.Errorf("execute chart dir template: %w", err)
 	}
-	log.Debug().Stringer("cmd", cmd).Msg("Patching exec.")
 
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("%w; command output:\n%s", err, out)
+	log.Debug().Str("chart", chart).Msg("Patching helm.")
+
+	if patch.DependencyUpdate {
+		log.Info().Str("chart", chart).Msg("Executing `helm dependency update`")
+		cmd := exec.Command("helm", "dependency", "update")
+		cmd.Dir = filepath.Join(repoDir, chart)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("%w; command output:\n%s", err, out)
+		}
 	}
 
 	return nil
-}
-
-func templateExecCommand(repoDir string, tmplCtx TemplateContext, patch config.PatchExec) (*exec.Cmd, error) {
-	if len(patch.Cmd) == 0 {
-		return nil, fmt.Errorf("missing command")
-	}
-	cmdStrings := make([]string, len(patch.Cmd))
-	var buf bytes.Buffer
-	for i, tmpl := range patch.Cmd {
-		if tmpl == nil {
-			return nil, fmt.Errorf("arg %d: arg must not be null", i)
-		}
-		buf.Reset()
-		if err := tmpl.Template().Execute(&buf, tmplCtx); err != nil {
-			return nil, fmt.Errorf("arg %d: execute template: %w", i, err)
-		}
-		cmdStrings[i] = buf.String()
-	}
-	cmd := exec.Command(cmdStrings[0], cmdStrings[1:]...)
-	cmd.Dir = repoDir
-	if patch.Dir != "" {
-		cmd.Dir = filepath.Join(repoDir, patch.Dir)
-	}
-	envStrings := os.Environ()
-	envMap := make(map[string]string, len(envStrings))
-	for _, envStr := range envStrings {
-		key, value, _ := strings.Cut(envStr, "=")
-		envMap[key] = value
-	}
-	for key, tmpl := range patch.Env {
-		buf.Reset()
-		if err := tmpl.Template().Execute(&buf, tmplCtx); err != nil {
-			return nil, fmt.Errorf("env %q: execute template: %w", key, err)
-		}
-		envMap[key] = buf.String()
-	}
-	envStrings = make([]string, 0, len(envMap))
-	for key, value := range envMap {
-		envStrings = append(envStrings, fmt.Sprintf("%s=%s", key, value))
-	}
-	cmd.Env = envStrings
-	return cmd, nil
 }
