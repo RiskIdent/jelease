@@ -19,6 +19,7 @@ package config
 
 import (
 	"encoding"
+	"fmt"
 
 	"github.com/invopop/jsonschema"
 	"github.com/spf13/pflag"
@@ -36,13 +37,16 @@ var _ encoding.TextUnmarshaler = &YAMLPathPattern{}
 var _ jsonSchemaInterface = YAMLPathPattern{}
 
 func (r *YAMLPathPattern) String() string {
+	if r == nil {
+		return ""
+	}
 	return r.Source
 }
 
 func (r *YAMLPathPattern) Set(value string) error {
 	path, err := yamlpath.NewPath(value)
 	if err != nil {
-		return err
+		return fmt.Errorf("parse yamlPath: %w", err)
 	}
 	r.YAMLPath = path
 	r.Source = value

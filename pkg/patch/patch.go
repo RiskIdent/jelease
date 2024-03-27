@@ -82,6 +82,16 @@ func Apply(repoDir string, patch config.PackageRepoPatch, tmplCtx TemplateContex
 func applyRegexPatch(fstore FileStore, tmplCtx TemplateContext, patch config.PatchRegex) error {
 	log.Debug().Str("file", patch.File).Stringer("match", patch.Match).Msg("Patching regex.")
 
+	if patch.File == "" {
+		return fmt.Errorf("missing required field 'file'")
+	}
+	if patch.Match == nil {
+		return fmt.Errorf("missing required field 'match'")
+	}
+	if patch.Replace == nil {
+		return fmt.Errorf("missing required field 'replace'")
+	}
+
 	content, err := fstore.ReadFile(patch.File)
 	if err != nil {
 		return err
@@ -130,6 +140,16 @@ func regexSubmatchIndicesToStrings(line []byte, indices []int) []string {
 
 func applyYAMLPatch(fstore FileStore, tmplCtx TemplateContext, patch config.PatchYAML) error {
 	log.Debug().Str("file", patch.File).Stringer("yamlpath", patch.YAMLPath).Msg("Patching YAML.")
+
+	if patch.File == "" {
+		return fmt.Errorf("missing required field 'file'")
+	}
+	if patch.YAMLPath == nil {
+		return fmt.Errorf("missing required field 'yamlPath'")
+	}
+	if patch.Replace == nil {
+		return fmt.Errorf("missing required field 'replace'")
+	}
 
 	content, err := fstore.ReadFile(patch.File)
 	if err != nil {
@@ -200,6 +220,10 @@ func yamlEncode(obj any, indent int) ([]byte, error) {
 }
 
 func applyHelmDepUpdatePatch(repoDir string, tmplCtx TemplateContext, patch config.PatchHelmDepUpdate) error {
+	if patch.Chart == nil {
+		return fmt.Errorf("missing required field 'chart'")
+	}
+
 	chart, err := patch.Chart.ExecuteString(tmplCtx)
 	if err != nil {
 		return fmt.Errorf("execute chart dir template: %w", err)
