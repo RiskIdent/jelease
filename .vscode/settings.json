@@ -11,10 +11,18 @@
         "tmpl",
         "zerolog"
     ],
+    "files.exclude": {
+      "**/.git": true,
+      "**/.svn": true,
+      "**/.hg": true,
+      "**/CVS": true,
+      "**/.DS_Store": true,
+      "**/Thumbs.db": true,
+      "**/*_templ.go": true
+    },
     "explorer.fileNesting.enabled": true,
     "explorer.fileNesting.patterns": {
         "*": "${capture}.license",
-        "*.templ": "${capture}_templ.go",
         "package.json": "package-lock.json, yarn.lock, pnpm-lock.yaml",
         "Chart.yaml": "Chart.lock, .helmignore",
     },
