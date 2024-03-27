@@ -442,17 +442,17 @@
         },
         {
           "required": [
-            "yq"
+            "yaml"
           ],
-          "title": "yq"
+          "title": "yaml"
         }
       ],
       "properties": {
         "regex": {
           "$ref": "#/$defs/patchRegex"
         },
-        "yq": {
-          "$ref": "#/$defs/patchYq"
+        "yaml": {
+          "$ref": "#/$defs/patchYaml"
         }
       },
       "additionalProperties": false,
@@ -477,25 +477,37 @@
         "replace"
       ]
     },
-    "patchYq": {
+    "patchYaml": {
       "properties": {
         "file": {
           "type": "string"
         },
-        "expression": {
-          "type": "string"
+        "path": {
+          "$ref": "#/$defs/yamlPathPattern"
+        },
+        "replace": {
+          "$ref": "#/$defs/template"
+        },
+        "maxMatches": {
+          "type": "integer",
+          "minimum": 0
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "expression"
+        "path",
+        "replace"
       ]
     },
     "regexPattern": {
       "type": "string",
       "format": "regex",
-      "title": "Regular Expression pattern (regex)"
+      "title": "Regular Expression pattern (regex)",
+      "examples": [
+        "^appVersion: .*",
+        "^version: .*"
+      ]
     },
     "rsaPrivateKeyPem": {
       "oneOf": [
@@ -530,6 +542,15 @@
       "examples": [
         "http://localhost:8080",
         "https://example.com"
+      ]
+    },
+    "yamlPathPattern": {
+      "type": "string",
+      "title": "YAML-Path pattern",
+      "examples": [
+        ".appVersion",
+        ".version",
+        "$..spec.containers[*].image"
       ]
     }
   }

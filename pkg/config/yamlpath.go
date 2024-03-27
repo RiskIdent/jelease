@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2022 Risk.Ident GmbH <contact@riskident.com>
+// SPDX-FileCopyrightText: 2024 Risk.Ident GmbH <contact@riskident.com>
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
@@ -19,56 +19,56 @@ package config
 
 import (
 	"encoding"
-	"regexp"
 
 	"github.com/invopop/jsonschema"
 	"github.com/spf13/pflag"
+	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
 )
 
-type RegexPattern regexp.Regexp
+type YAMLPathPattern struct {
+	YAMLPath *yamlpath.Path
+	Source   string
+}
 
 // Ensure the type implements the interfaces
-var _ pflag.Value = &RegexPattern{}
-var _ encoding.TextUnmarshaler = &RegexPattern{}
-var _ jsonSchemaInterface = RegexPattern{}
+var _ pflag.Value = &YAMLPathPattern{}
+var _ encoding.TextUnmarshaler = &YAMLPathPattern{}
+var _ jsonSchemaInterface = YAMLPathPattern{}
 
-func (r *RegexPattern) Regexp() *regexp.Regexp {
-	return (*regexp.Regexp)(r)
+func (r *YAMLPathPattern) String() string {
+	return r.Source
 }
 
-func (r *RegexPattern) String() string {
-	return r.Regexp().String()
-}
-
-func (r *RegexPattern) Set(value string) error {
-	parsed, err := regexp.Compile(value)
+func (r *YAMLPathPattern) Set(value string) error {
+	path, err := yamlpath.NewPath(value)
 	if err != nil {
 		return err
 	}
-	*r = RegexPattern(*parsed)
+	r.YAMLPath = path
+	r.Source = value
 	return nil
 }
 
-func (r *RegexPattern) Type() string {
-	return "regex"
+func (r *YAMLPathPattern) Type() string {
+	return "yamlpath"
 }
 
-func (r *RegexPattern) UnmarshalText(text []byte) error {
+func (r *YAMLPathPattern) UnmarshalText(text []byte) error {
 	return r.Set(string(text))
 }
 
-func (r *RegexPattern) MarshalText() ([]byte, error) {
+func (r *YAMLPathPattern) MarshalText() ([]byte, error) {
 	return []byte(r.String()), nil
 }
 
-func (RegexPattern) JSONSchema() *jsonschema.Schema {
+func (YAMLPathPattern) JSONSchema() *jsonschema.Schema {
 	return &jsonschema.Schema{
-		Type:   "string",
-		Title:  "Regular Expression pattern (regex)",
-		Format: "regex",
+		Type:  "string",
+		Title: "YAML-Path pattern",
 		Examples: []any{
-			"^appVersion: .*",
-			"^version: .*",
+			".appVersion",
+			".version",
+			"$..spec.containers[*].image",
 		},
 	}
 }

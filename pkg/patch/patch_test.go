@@ -23,6 +23,7 @@ import (
 	"text/template"
 
 	"github.com/RiskIdent/jelease/pkg/config"
+	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
 )
 
 func TestApplyRegexPatch(t *testing.T) {
@@ -57,12 +58,55 @@ func TestApplyRegexPatch(t *testing.T) {
 	}
 }
 
+func TestApplYAMLPatch(t *testing.T) {
+	fstore := NewTestFileStore(map[string]string{
+		"file.txt": "{foo: bar}\n",
+	})
+	patch := config.PatchYAML{
+		File:    "file.txt",
+		Path:    newYAMLPath(t, `.foo`),
+		Replace: newTemplate(t, `{{ .Package }}@{{ .Version }}`),
+	}
+
+	tmplCtx := TemplateContext{
+		Package: "my-pkg",
+		Version: "v1.2.3",
+	}
+
+	err := applyYAMLPatch(fstore, tmplCtx, patch)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := "{foo: my-pkg@v1.2.3}\n"
+	gotBytes, err := fstore.ReadFile("file.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(gotBytes)
+
+	if got != want {
+		t.Errorf("want %q, got %q", want, got)
+	}
+}
+
 func newRegex(t *testing.T, text string) *config.RegexPattern {
 	r, err := regexp.Compile(text)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return (*config.RegexPattern)(r)
+}
+
+func newYAMLPath(t *testing.T, text string) *config.YAMLPathPattern {
+	p, err := yamlpath.NewPath(text)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &config.YAMLPathPattern{
+		YAMLPath: p,
+		Source:   text,
+	}
 }
 
 func newTemplate(t *testing.T, text string) *config.Template {

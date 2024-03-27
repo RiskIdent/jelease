@@ -25,6 +25,7 @@ import (
 
 	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/rs/zerolog/log"
+	"gopkg.in/yaml.v3"
 )
 
 type TemplateContext struct {
@@ -57,8 +58,10 @@ func Apply(repoDir string, patch config.PackageRepoPatch, tmplCtx TemplateContex
 		if err := applyRegexPatch(fstore, tmplCtx, *patch.Regex); err != nil {
 			return fmt.Errorf("regex patch: %w", err)
 		}
-	case patch.YQ != nil:
-		return errors.New("yq patch: not implemented")
+	case patch.YAML != nil:
+		if err := applyYAMLPatch(fstore, tmplCtx, *patch.YAML); err != nil {
+			return fmt.Errorf("yaml patch: %w", err)
+		}
 	default:
 		return errors.New("missing patch type config")
 	}
@@ -113,4 +116,71 @@ func regexSubmatchIndicesToStrings(line []byte, indices []int) []string {
 		strs = append(strs, string(line[start:end]))
 	}
 	return strs
+}
+
+func applyYAMLPatch(fstore FileStore, tmplCtx TemplateContext, patch config.PatchYAML) error {
+	log.Debug().Str("file", patch.File).Stringer("yamlpath", patch.Path).Msg("Patching YAML.")
+
+	content, err := fstore.ReadFile(patch.File)
+	if err != nil {
+		return err
+	}
+	var node yaml.Node
+	if err := yaml.Unmarshal(content, &node); err != nil {
+		return err
+	}
+
+	matches, err := patch.Path.YAMLPath.Find(&node)
+	if err != nil {
+		return fmt.Errorf("yamlpath %q: eval: %w", patch.Path, err)
+	}
+
+	if len(matches) == 0 {
+		return fmt.Errorf("yamlpath %q: no matches found", patch.Path)
+	}
+
+	if patch.MaxMatches > 0 && len(matches) > patch.MaxMatches {
+		return fmt.Errorf("yamlpath %q: matched too many times: %d, max = %d", patch.Path, len(matches), patch.MaxMatches)
+	}
+
+	for _, match := range matches {
+		if match.ShortTag() != "!!str" {
+			return fmt.Errorf("yamlpath %q: line %d: only supports matching strings, but instead matched %q", patch.Path, match.Line, match.ShortTag())
+		}
+		var buf bytes.Buffer
+		if err := patch.Replace.Template().Execute(&buf, tmplCtx); err != nil {
+			return fmt.Errorf("yamlpath %q: line %d: execute replace template: %w", patch.Path, match.Line, err)
+		}
+		setYAMLNodeRecursive(match, buf.String())
+	}
+
+	newContent, err := yamlEncode(&node)
+	if err != nil {
+		return err
+	}
+
+	return fstore.WriteFile(patch.File, newContent)
+}
+
+func setYAMLNodeRecursive(node *yaml.Node, value string) {
+	if node.Alias != nil {
+		setYAMLNodeRecursive(node.Alias, value)
+		return
+	}
+	node.SetString(value)
+}
+
+func yamlEncode(obj any) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2)
+
+	if err := enc.Encode(obj); err != nil {
+		return nil, fmt.Errorf("encode: %w", err)
+	}
+	if err := enc.Close(); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
 }
