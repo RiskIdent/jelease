@@ -21,14 +21,8 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Install templ
-        run: |
-          TEMPL_VERISON=$(grep --perl-regexp --only-matching --max-count 1 'github.com/a-h/templ\s*\K(v.*)' go.mod)
-          set -x
-          go install github.com/a-h/templ/cmd/templ@$TEMPL_VERSION
-
-      - name: Run templ
-        run: templ generate
+      - name: Run templ generate
+        run: make generate
 
       - name: Fail on git diff
         run: git diff --exit-code
