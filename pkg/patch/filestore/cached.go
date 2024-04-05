@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License along
 // with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package patch
+package filestore
 
 import (
 	"io/fs"
@@ -23,43 +23,31 @@ import (
 	"path/filepath"
 )
 
-// FileStore is a minimal abstraction over reading and writing files
-// that is used in the patching steps (e.g yaml patch, regex patch, etc).
-//
-// This abstraction allows us to mock the filesystem during testing,
-// as well as adding additional features like caching when you have
-// multiple patches on the same file (see [CachedFileStore]).
-type FileStore interface {
-	ReadFile(path string) ([]byte, error)
-	WriteFile(path string, content []byte) error
-	Close() error
-}
-
-func NewCachedFileStore(dir string) *CachedFileStore {
-	return &CachedFileStore{
+func NewCached(dir string) *Cached {
+	return &Cached{
 		Dir:   dir,
 		files: map[string]*File{},
 	}
 }
 
-// CachedFileStore is a [FileStore] that uses the OS' file system,
+// Cached is a [FileStore] that uses the OS' file system,
 // but adds in-memory caching in between.
-// The files are never written to disk until the [CachedFileStore.Flush]
+// The files are never written to disk until the [Cached.Flush]
 // or [FileStore.Close] method is called.
-type CachedFileStore struct {
+type Cached struct {
 	Dir   string
 	files map[string]*File
 }
 
 // ensure it implements the interface
-var _ FileStore = &CachedFileStore{}
+var _ FileStore = &Cached{}
 
 type File struct {
 	Content []byte
 	Mode    fs.FileMode
 }
 
-func (s *CachedFileStore) ReadFile(path string) ([]byte, error) {
+func (s *Cached) ReadFile(path string) ([]byte, error) {
 	path = filepath.Clean(path)
 	if file, ok := s.files[path]; ok {
 		return file.Content, nil
@@ -79,7 +67,7 @@ func (s *CachedFileStore) ReadFile(path string) ([]byte, error) {
 	return content, nil
 }
 
-func (s *CachedFileStore) WriteFile(path string, content []byte) error {
+func (s *Cached) WriteFile(path string, content []byte) error {
 	path = filepath.Clean(path)
 	if _, ok := s.files[path]; !ok {
 		// Load it
@@ -92,7 +80,7 @@ func (s *CachedFileStore) WriteFile(path string, content []byte) error {
 	return nil
 }
 
-func (s *CachedFileStore) Flush() error {
+func (s *Cached) Flush() error {
 	for path, file := range s.files {
 		if err := os.WriteFile(filepath.Join(s.Dir, path), file.Content, file.Mode); err != nil {
 			return err
@@ -102,38 +90,6 @@ func (s *CachedFileStore) Flush() error {
 	return nil
 }
 
-func (s *CachedFileStore) Close() error {
+func (s *Cached) Close() error {
 	return s.Flush()
-}
-
-func NewTestFileStore(files map[string]string) *TestFileStore {
-	return &TestFileStore{
-		files: files,
-	}
-}
-
-// TestFileStore is a [FileStore] used during Go unit tests.
-// It never touches the OS' underlying file system.
-type TestFileStore struct {
-	files map[string]string
-}
-
-// ensure it implements the interface
-var _ FileStore = &TestFileStore{}
-
-func (s *TestFileStore) ReadFile(path string) ([]byte, error) {
-	content, ok := s.files[path]
-	if !ok {
-		return nil, os.ErrNotExist
-	}
-	return []byte(content), nil
-}
-
-func (s *TestFileStore) WriteFile(path string, content []byte) error {
-	s.files[path] = string(content)
-	return nil
-}
-
-func (s *TestFileStore) Close() error {
-	return nil
 }

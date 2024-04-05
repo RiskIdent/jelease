@@ -28,7 +28,16 @@ import (
 	"github.com/spf13/pflag"
 )
 
+// Template is a parsed Go [text/template] string, that has additional
+// encoders implemented so it can be used in config files and CLI flags.
 type Template template.Template
+
+// TemplateContext is the common data passed into templates when executing them.
+type TemplateContext struct {
+	Package   string
+	Version   string
+	JiraIssue string
+}
 
 // Ensure the type implements the interfaces
 var _ pflag.Value = &Template{}

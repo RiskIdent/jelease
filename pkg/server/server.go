@@ -165,7 +165,7 @@ func (s HTTPServer) handlePostWebhook(c *gin.Context) {
 }
 
 func tryApplyChanges(j jira.Client, patcher patch.Patcher, release Release, issueRef jira.IssueRef, cfg *config.Config) {
-	tmplCtx := patch.TemplateContext{
+	tmplCtx := config.TemplateContext{
 		Package:   release.Project,
 		Version:   release.Version,
 		JiraIssue: issueRef.Key,
@@ -214,7 +214,7 @@ func createDynamicComment(
 	prs []github.PullRequest,
 	pkgName string,
 	commentTemplates *config.JiraIssueComments,
-	tmplCtx patch.TemplateContext,
+	tmplCtx config.TemplateContext,
 ) {
 	if len(prs) == 0 {
 		log.Warn().Str("project", pkgName).Msg("Found package config, but no repositories were patched.")
@@ -245,17 +245,17 @@ func createTemplatedComment(j jira.Client, issueRef jira.IssueRef, tmpl *config.
 }
 
 type TemplateContextError struct {
-	patch.TemplateContext
+	config.TemplateContext
 	Error string
 }
 
 type TemplateContextPullRequests struct {
-	patch.TemplateContext
+	config.TemplateContext
 	PullRequests []github.PullRequest
 }
 
 type TemplateContextURL struct {
-	patch.TemplateContext
+	config.TemplateContext
 	URL *url.URL
 }
 
@@ -320,7 +320,7 @@ func ensureJiraIssue(j jira.Client, r Release, cfg *config.Config) (newJiraIssue
 	if err := j.UpdateIssueSummary(issueRef, r.IssueSummary()); err != nil {
 		return newJiraIssue{}, err
 	}
-	createTemplatedComment(j, issueRef, cfg.Jira.Issue.Comments.UpdatedIssue, patch.TemplateContext{
+	createTemplatedComment(j, issueRef, cfg.Jira.Issue.Comments.UpdatedIssue, config.TemplateContext{
 		Package:   r.Project,
 		Version:   r.Version,
 		JiraIssue: issueRef.Key,
