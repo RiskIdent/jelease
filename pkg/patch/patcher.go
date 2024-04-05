@@ -150,7 +150,7 @@ func (p Patcher) CloneRepo(remote string, tmplCtx TemplateContext) (*Repo, error
 }
 
 func cloneRepoTemp(g git.Git, tempDir, remote string, tmplCtx TemplateContext) (git.Repo, error) {
-	targetDir := filepath.Join(tempDir, "jelease-cloned-repos", "jelease-repo-*")
+	targetDir := filepath.Join(tempDir, "jelease", "cloned-repos", "repo-*")
 	repo, err := git.CloneTemp(g, targetDir, remote)
 	if err != nil {
 		return nil, err

@@ -21,9 +21,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"sync"
 
 	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/rs/zerolog/log"
@@ -189,6 +192,27 @@ func applyYAMLPatch(fstore FileStore, tmplCtx TemplateContext, patch config.Patc
 		return err
 	}
 
+	fixedContent, err := patchKeepWhitespace(content, newContent)
+	switch {
+	case err != nil:
+		log.Debug().
+			Err(err).
+			Str("file", patch.File).
+			Stringer("yamlpath", patch.YAMLPath).
+			Msg("Failed to perform whitespace preserving patch. Skipping that step.")
+	case bytes.Equal(fixedContent, newContent):
+		log.Debug().
+			Str("file", patch.File).
+			Stringer("yamlpath", patch.YAMLPath).
+			Msg("No changes applied via whitespace preserving patch.")
+	default:
+		log.Debug().
+			Str("file", patch.File).
+			Stringer("yamlpath", patch.YAMLPath).
+			Msg("Applied whitespace preserving patch.")
+		newContent = fixedContent
+	}
+
 	return fstore.WriteFile(patch.File, newContent)
 }
 
@@ -236,5 +260,114 @@ func applyHelmDepUpdatePatch(repoDir string, tmplCtx TemplateContext, patch conf
 		return fmt.Errorf("%w; command output:\n%s", err, out)
 	}
 
+	return nil
+}
+
+// patchKeepWhitespace applies changes while ignoring whitespace changes.
+// Used as the YAML libraries trims away the whitespace, so this function
+// translates the changes from patches while ignoring whitespace trimming.
+//
+// Based on: [https://github.com/mikefarah/yq/issues/515#issuecomment-1574420861]
+//
+// Effectively doing:
+//
+//	cat "$modified_file" | diff -Bw "$original" - | patch "$original" -
+//
+// Note that this approach is not 100% and does not work when the edits
+// are surrounded by whitespace.
+// Instead, this only preserves the whitespace unaffected by the edits.
+func patchKeepWhitespace(original, modified []byte) ([]byte, error) {
+	originalPath, err := writeTemp("patch-original-file-*", original)
+	if err != nil {
+		return nil, fmt.Errorf("write to temp file: %w", err)
+	}
+	defer os.Remove(originalPath)
+
+	// Cannot use the long flag variants, as we want to support busybox's diff as well.
+	//  -B  Ignore changes whose lines are all blank
+	//  -w  Ignore all whitespace
+	diff := exec.Command("diff", "-Bw", originalPath, "-")
+	diff.Stdin = bytes.NewReader(modified)
+	diffStdout, err := diff.StdoutPipe()
+	if err != nil {
+		return nil, fmt.Errorf("create stdout from 'diff': %w", err)
+	}
+
+	patch := exec.Command("patch", originalPath, "--input=-", "--output=-")
+	patch.Stdin = diffStdout
+	var patchStdoutBuf bytes.Buffer
+	patch.Stdout = &patchStdoutBuf
+
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	var diffErr error
+	go func() {
+		defer wg.Done()
+		if err := execRunStderr(diff); err != nil {
+			diffErr = fmt.Errorf("diff: %w", err)
+		}
+	}()
+
+	wg.Add(1)
+	var patchErr error
+	go func() {
+		defer wg.Done()
+		if err := execRunStderr(patch); err != nil {
+			patchErr = fmt.Errorf("patch: %w", err)
+		}
+	}()
+
+	wg.Wait()
+
+	if diffErr != nil {
+		var exitErr *exec.ExitError
+		if errors.As(diffErr, &exitErr) && exitErr.ProcessState.ExitCode() == 1 {
+			// exit code 1 is OK. From 'diff --help':
+			// 	"Exit status is 0 if inputs are the same, 1 if different, 2 if trouble."
+		} else {
+			return nil, diffErr
+		}
+	}
+	if patchErr != nil {
+		return nil, patchErr
+	}
+
+	return patchStdoutBuf.Bytes(), nil
+}
+
+func writeTemp(namePattern string, content []byte) (string, error) {
+	tempDir := filepath.Join(os.TempDir(), "jelease")
+	if err := os.MkdirAll(tempDir, 0o644); err != nil {
+		return "", fmt.Errorf("create temp dir: %w", err)
+	}
+	f, err := os.CreateTemp(tempDir, namePattern)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	path := f.Name()
+	if _, err := f.Write(content); err != nil {
+		os.Remove(path)
+		return path, err
+	}
+	return path, nil
+}
+
+func execRunStderr(cmd *exec.Cmd) error {
+	stderrReader, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("open stderr pipe: %w", err)
+	}
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("start: %w", err)
+	}
+	stderr, err := io.ReadAll(stderrReader)
+	if err != nil {
+		return fmt.Errorf("read stderr pipe: %w", err)
+	}
+	if err := cmd.Wait(); err != nil {
+		return fmt.Errorf("%w; stderr:\n%s", err, stderr)
+	}
 	return nil
 }

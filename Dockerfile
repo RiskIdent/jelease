@@ -15,7 +15,7 @@ RUN go test -v ./... \
     -o build/jelease main.go
 
 FROM alpine
-RUN apk add --no-cache ca-certificates git git-lfs helm
+RUN apk add --no-cache ca-certificates patch git git-lfs helm
 COPY --from=build /jelease/build/jelease /usr/local/bin/
 CMD ["jelease", "serve"]
 USER 10000
