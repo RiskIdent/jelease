@@ -23,6 +23,12 @@ import (
 	"path/filepath"
 )
 
+// FileStore is a minimal abstraction over reading and writing files
+// that is used in the patching steps (e.g yaml patch, regex patch, etc).
+//
+// This abstraction allows us to mock the filesystem during testing,
+// as well as adding additional features like caching when you have
+// multiple patches on the same file (see [CachedFileStore]).
 type FileStore interface {
 	ReadFile(path string) ([]byte, error)
 	WriteFile(path string, content []byte) error
@@ -36,6 +42,10 @@ func NewCachedFileStore(dir string) *CachedFileStore {
 	}
 }
 
+// CachedFileStore is a [FileStore] that uses the OS' file system,
+// but adds in-memory caching in between.
+// The files are never written to disk until the [CachedFileStore.Flush]
+// or [FileStore.Close] method is called.
 type CachedFileStore struct {
 	Dir   string
 	files map[string]*File
@@ -102,6 +112,8 @@ func NewTestFileStore(files map[string]string) *TestFileStore {
 	}
 }
 
+// TestFileStore is a [FileStore] used during Go unit tests.
+// It never touches the OS' underlying file system.
 type TestFileStore struct {
 	files map[string]string
 }
