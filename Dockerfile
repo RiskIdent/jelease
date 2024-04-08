@@ -15,10 +15,10 @@ RUN go test -v ./... \
     -o build/jelease main.go
 
 # NOTE: When updating here, remember to also update in ./goreleaser.Dockerfile
-FROM docker.io/library/alpine
+FROM docker.io/library/alpine AS final
 RUN apk add --no-cache ca-certificates diffutils patch git git-lfs helm \
-  && groupadd -g 10000 jelease \
-  && useradd -m -u 10000 -g 10000 jelease
+  && addgroup -g 10000 jelease \
+  && adduser -D -u 10000 -G jelease jelease
 COPY --from=build /jelease/build/jelease /usr/local/bin/
 CMD ["jelease", "serve"]
 USER 10000
