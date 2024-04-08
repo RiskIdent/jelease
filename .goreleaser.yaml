@@ -5,6 +5,7 @@
 before:
   hooks:
     - go mod tidy
+
 builds:
   - env:
       - CGO_ENABLED=0
@@ -12,6 +13,46 @@ builds:
       - linux
       - darwin
       - windows
+    goarch:
+      - amd64
+      - arm64
+
+dockers:
+  - image_templates:
+      - "ghcr.io/riskident/{{ .ProjectName }}:{{ .Version }}-amd64"
+    dockerfile: Dockerfile
+    use: buildx
+    goarch: arm64
+    goos: linux
+    build_flag_templates:
+      - --platform=linux/amd64
+      - --label=org.opencontainers.image.version={{ .Version }}
+      - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
+      - --label=org.opencontainers.image.revision={{ .FullCommit }}
+      - --build-arg=VERSION={{ .Version }}
+
+  - image_templates:
+      - "ghcr.io/riskident/{{ .ProjectName }}:{{ .Version }}-arm64v8"
+    dockerfile: Dockerfile
+    use: buildx
+    goarch: arm64
+    goos: linux
+    build_flag_templates:
+      - --platform=linux/arm64/v8
+      - --label=org.opencontainers.image.version={{ .Version }}
+      - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
+      - --label=org.opencontainers.image.revision={{ .FullCommit }}
+      - --build-arg=VERSION={{ .Version }}
+
+docker_manifests:
+  - name_template: "ghcr.io/riskident/{{ .ProjectName }}:{{ .Version }}"
+    image_templates:
+      - "ghcr.io/riskident/{{ .ProjectName }}:{{ .Version }}-amd64"
+      - "ghcr.io/riskident/{{ .ProjectName }}:{{ .Version }}-arm64v8"
+  - name_template: "ghcr.io/riskident/{{ .ProjectName }}:latest"
+    image_templates:
+      - "ghcr.io/riskident/{{ .ProjectName }}:{{ .Version }}-amd64"
+      - "ghcr.io/riskident/{{ .ProjectName }}:{{ .Version }}-arm64v8"
 
 archives:
   - format: tar.gz
