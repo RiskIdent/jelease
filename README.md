@@ -12,8 +12,53 @@ SPDX-License-Identifier: CC-BY-4.0
 
 [![REUSE status](https://api.reuse.software/badge/github.com/RiskIdent/jelease)](https://api.reuse.software/info/github.com/RiskIdent/jelease)
 
-Automatically create Jira tickets when a newreleases.io release
-is detected using webhooks.
+Automatically create GitHub PRs on package updates but with more control.
+
+## How it works
+
+Jelease first creates a Jira issue telling you that you need to
+update your software.
+
+Then if Jelease has configuration on how to update the package for you,
+it will go ahead and create PRs.
+
+```mermaid
+flowchart LR
+    newreleases.io -->|update event| Jelease
+    Jelease --> jira[/Create Jira issue/]
+    Jelease --> config{know how to\ncreate PR}
+    config -->|yes| pr[/Create GitHub PR/]
+```
+
+When hosting Jelease inside an internal network, you can make use of
+services like [Webhook Relay](https://webhookrelay.com/), so you
+don't need to expose Jelease to the internet.
+
+```mermaid
+flowchart LR
+    subgraph Internet
+      newreleases.io
+      webhookrelay[Webhook Relay]
+    end
+    newreleases.io -->|update event| webhookrelay
+    Jelease --->|pull events| webhookrelay
+    subgraph internal network
+      Jelease --> jira[/Create Jira issue/]
+      Jelease --> pr[/Create GitHub PR/]
+    end
+```
+
+## Motivation
+
+We wanted our software to stay up to date, and in our
+Infrastructure as Code (IaC) practices we couldn't use conventional tools like
+[Dependabot](https://docs.github.com/en/code-security/dependabot)
+or [Renovate](https://www.mend.io/renovate/). Sample use cases:
+
+- Ansible host_vars specifying package versions
+- Helm chart values specifying Docker image tags
+
+At our workplace, we still use Dependabot, but then fill the gaps with Jelease.
 
 ## Configuration
 
@@ -30,6 +75,29 @@ Jelease reads from the first config file in this list that it can find:
 |    2. | `~/.config/jelease.yaml`    | `~/Library/Application Support/jelease.yaml` | `%APPDATA%\jelease.yaml`      |
 |    3. | `~/.jelease.yaml`           | `~/.jelease.yaml`                            | `%USERPROFILE%\.jelease.yaml` |
 |    4. | `./jelease.yaml`            | `./jelease.yaml`                             | `.\jelease.yaml`              |
+
+### Package config
+
+In the configuration you can specify "packages", which tells Jelease how to
+create PRs. The package configs are just a list of repositories to touch,
+followed by which "patches" it should perform. The available patches are:
+
+- `regex`: Do a search and replace inside a file.
+
+- `yaml`: Use YAML Path (similar to JSON Path)
+  to target a specific field to update
+
+- `helmDepUpdate`: Run `helm dep update` inside a directory.
+
+In these configs we allow you to template a lot of values using Go templates.
+All templates allow you to use the following values:
+
+- `{{ .Package }}` resolves to the name of the package, e.g `RiskIdent/jelease`
+
+- `{{ .Version }}` resolves to the version of the package, e.g `v0.6.2`
+
+- `{{ .JiraIssue }}` resolves to the Jira issue key, e.g `TICKET-1234`,
+  or empty if no issue was created (such as during dry runs)
 
 ### JSON Schema
 
