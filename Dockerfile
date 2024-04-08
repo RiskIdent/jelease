@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: CC0-1.0
 
-FROM golang:1.22.2-alpine AS build
+FROM docker.io/library/golang:1.22.2-alpine AS build
 WORKDIR /jelease
 COPY go.mod go.sum ./
 RUN go mod download
@@ -14,7 +14,7 @@ RUN go test -v ./... \
     -ldflags "-X github.com/RiskIdent/jelease/cmd.appVersion=$VERSION" \
     -o build/jelease main.go
 
-FROM alpine
+FROM docker.io/library/alpine
 RUN apk add --no-cache ca-certificates patch git git-lfs helm
 COPY --from=build /jelease/build/jelease /usr/local/bin/
 CMD ["jelease", "serve"]

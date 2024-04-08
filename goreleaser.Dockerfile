@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: CC0-1.0
 
-FROM alpine
+FROM docker.io/library/alpine
 RUN apk add --no-cache ca-certificates patch git git-lfs helm
 COPY jelease /usr/local/bin/
 CMD ["jelease", "serve"]
