@@ -161,17 +161,17 @@ podman push ghcr.io/riskident/jelease:latest
 
 ## Releasing
 
-1. Create a new release on GitHub, with "v" prefix on version: <https://github.com/RiskIdent/jelease/releases/new>
+Create and push a Git tag (prefixed with "v").
+Our [GitHub Action workflow with goreleaser](https://github.com/RiskIdent/jelease/actions/workflows/release.yml)
+will build and create the release.
 
-2. Write a small changelog, like so:
+```bash
+git checkout main
+git pull
 
-   ```markdown
-   ## Changes (since v0.3.0)
-
-   - Added some feature. (#123)
-   ```
-
-3. Our GitHub Action with goreleaser will build and add artifacts to release
+git tag v0.4.1 -m "v0.4.1"
+git push --tags
+```
 
 ## Logo
 
