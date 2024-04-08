@@ -76,7 +76,7 @@ func (p Patcher) TestGitHubConnection(ctx context.Context) error {
 // CloneAndPublishAll will clone a list of Git repository, apply all the
 // configured patches, and then publish the changes in the form of GitHub
 // pull requests.
-func (p Patcher) CloneAndPublishAll(pkgRepos []config.PackageRepo, tmplCtx TemplateContext) ([]github.PullRequest, error) {
+func (p Patcher) CloneAndPublishAll(pkgRepos []config.PackageRepo, tmplCtx config.TemplateContext) ([]github.PullRequest, error) {
 	if len(pkgRepos) == 0 {
 		log.Warn().Str("package", tmplCtx.Package).Msg("No repos configured for package.")
 		return nil, nil
@@ -101,7 +101,7 @@ func (p Patcher) CloneAndPublishAll(pkgRepos []config.PackageRepo, tmplCtx Templ
 
 // CloneAndPublishRepo will clone a Git repository, apply all the configured
 // patches, and then publish the changes in the form of a GitHub pull requests.
-func (p Patcher) CloneAndPublishRepo(pkgRepo config.PackageRepo, tmplCtx TemplateContext) (github.PullRequest, error) {
+func (p Patcher) CloneAndPublishRepo(pkgRepo config.PackageRepo, tmplCtx config.TemplateContext) (github.PullRequest, error) {
 	repo, err := p.CloneRepo(pkgRepo.URL, tmplCtx)
 	if err != nil {
 		return github.PullRequest{}, err
@@ -118,7 +118,7 @@ func (p Patcher) CloneAndPublishRepo(pkgRepo config.PackageRepo, tmplCtx Templat
 
 // CloneRepo will download a Git repository from GitHub using the configured
 // credentials. It is cloned using HTTPS instead of SSH.
-func (p Patcher) CloneRepo(remote string, tmplCtx TemplateContext) (*Repo, error) {
+func (p Patcher) CloneRepo(remote string, tmplCtx config.TemplateContext) (*Repo, error) {
 	// Check this early so we don't fail right on the finish line
 	ghRef, err := github.ParseRepoRef(remote)
 	if err != nil {
@@ -135,7 +135,7 @@ func (p Patcher) CloneRepo(remote string, tmplCtx TemplateContext) (*Repo, error
 			Email: util.Deref(p.cfg.GitHub.PR.Committer.Email, ""),
 		},
 	}
-	repo, err := cloneRepoTemp(g, util.Deref(p.cfg.GitHub.TempDir, os.TempDir()), remote, tmplCtx)
+	repo, err := cloneRepoTemp(g, util.Deref(p.cfg.GitHub.TempDir, os.TempDir()), remote)
 	if err != nil {
 		return nil, err
 	}
@@ -149,8 +149,8 @@ func (p Patcher) CloneRepo(remote string, tmplCtx TemplateContext) (*Repo, error
 	}, nil
 }
 
-func cloneRepoTemp(g git.Git, tempDir, remote string, tmplCtx TemplateContext) (git.Repo, error) {
-	targetDir := filepath.Join(tempDir, "jelease-cloned-repos", "jelease-repo-*")
+func cloneRepoTemp(g git.Git, tempDir, remote string) (git.Repo, error) {
+	targetDir := filepath.Join(tempDir, "jelease", "cloned-repos", "repo-*")
 	repo, err := git.CloneTemp(g, targetDir, remote)
 	if err != nil {
 		return nil, err

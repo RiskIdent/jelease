@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2022 Risk.Ident GmbH <contact@riskident.com>
+// SPDX-FileCopyrightText: 2024 Risk.Ident GmbH <contact@riskident.com>
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
@@ -14,22 +14,19 @@
 //
 // You should have received a copy of the GNU General Public License along
 // with this program.  If not, see <http://www.gnu.org/licenses/>.
-package pages
 
-import (
-	"github.com/RiskIdent/jelease/pkg/config"
-	"github.com/RiskIdent/jelease/templates/components"
-)
+// Package filestore contains a simple and minimal abstraction over
+// OS operations for reading and writing to files.
+package filestore
 
-templ Config(config *config.Config) {
-	@Layout("Config") {
-		<h2>Config</h2>
-
-		<p>
-			You can try out a new package config here:
-			<a href="/config/try-package">Try package config</a>
-		</p>
-
-		@components.CodeBlock(config.Censored())
-	}
+// FileStore is a minimal abstraction over reading and writing files
+// that is used in the patching steps (e.g yaml patch, regex patch, etc).
+//
+// This abstraction allows us to mock the filesystem during testing,
+// as well as adding additional features like caching when you have
+// multiple patches on the same file (see [Cached]).
+type FileStore interface {
+	ReadFile(path string) ([]byte, error)
+	WriteFile(path string, content []byte) error
+	Close() error
 }

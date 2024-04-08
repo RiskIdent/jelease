@@ -20,6 +20,7 @@ package config
 import (
 	"bytes"
 	"encoding"
+	"io"
 	"text/template"
 
 	"github.com/RiskIdent/jelease/pkg/templatefuncs"
@@ -27,7 +28,16 @@ import (
 	"github.com/spf13/pflag"
 )
 
+// Template is a parsed Go [text/template] string, that has additional
+// encoders implemented so it can be used in config files and CLI flags.
 type Template template.Template
+
+// TemplateContext is the common data passed into templates when executing them.
+type TemplateContext struct {
+	Package   string
+	Version   string
+	JiraIssue string
+}
 
 // Ensure the type implements the interfaces
 var _ pflag.Value = &Template{}
@@ -36,6 +46,18 @@ var _ jsonSchemaInterface = Template{}
 
 func (t *Template) Template() *template.Template {
 	return (*template.Template)(t)
+}
+
+func (t *Template) Execute(w io.Writer, data any) error {
+	return t.Template().Execute(w, data)
+}
+
+func (t *Template) ExecuteString(data any) (string, error) {
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, data); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }
 
 func (t *Template) String() string {
@@ -67,6 +89,11 @@ func (Template) JSONSchema() *jsonschema.Schema {
 	return &jsonschema.Schema{
 		Type:  "string",
 		Title: "Go template",
+		Examples: []any{
+			"{{ .Version }}",
+			"version: {{ .Version | trimPrefix \"v\" }}",
+			"version: {{ index .Groups 1 | versionBump \"0.0.1\" }}",
+		},
 	}
 }
 

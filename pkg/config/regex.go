@@ -66,5 +66,9 @@ func (RegexPattern) JSONSchema() *jsonschema.Schema {
 		Type:   "string",
 		Title:  "Regular Expression pattern (regex)",
 		Format: "regex",
+		Examples: []any{
+			"^appVersion: .*",
+			"^version: .*",
+		},
 	}
 }

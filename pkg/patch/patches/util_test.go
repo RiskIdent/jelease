@@ -15,44 +15,43 @@
 // You should have received a copy of the GNU General Public License along
 // with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package util
+package patches
 
 import (
-	"slices"
+	"regexp"
 	"testing"
+	"text/template"
+
+	"github.com/RiskIdent/jelease/pkg/config"
+	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
 )
 
-func TestConcat(t *testing.T) {
-	tests := []struct {
-		a, b []int
-		want []int
-	}{
-		{
-			a:    nil,
-			b:    nil,
-			want: nil,
-		},
-		{
-			a:    []int{1},
-			b:    nil,
-			want: []int{1},
-		},
-		{
-			a:    nil,
-			b:    []int{1},
-			want: []int{1},
-		},
-		{
-			a:    []int{1, 2},
-			b:    []int{3, 4},
-			want: []int{1, 2, 3, 4},
-		},
-	}
+// No tests in this file.
+// This file only contains test utils.
 
-	for _, tc := range tests {
-		got := Concat(tc.a, tc.b)
-		if !slices.Equal(tc.want, got) {
-			t.Errorf("%v + %v: want %v, got %v", tc.a, tc.b, tc.want, got)
-		}
+func newRegex(t *testing.T, text string) *config.RegexPattern {
+	r, err := regexp.Compile(text)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return (*config.RegexPattern)(r)
+}
+
+func newTemplate(t *testing.T, text string) *config.Template {
+	tmpl, err := template.New("").Parse(text)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return (*config.Template)(tmpl)
+}
+
+func newYAMLPath(t *testing.T, text string) *config.YAMLPathPattern {
+	p, err := yamlpath.NewPath(text)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &config.YAMLPathPattern{
+		YAMLPath: p,
+		Source:   text,
 	}
 }

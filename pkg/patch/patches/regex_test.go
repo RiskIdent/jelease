@@ -14,22 +14,44 @@
 //
 // You should have received a copy of the GNU General Public License along
 // with this program.  If not, see <http://www.gnu.org/licenses/>.
-package pages
+
+package patches
 
 import (
+	"testing"
+
 	"github.com/RiskIdent/jelease/pkg/config"
-	"github.com/RiskIdent/jelease/templates/components"
+	"github.com/RiskIdent/jelease/pkg/patch/filestore"
 )
 
-templ Config(config *config.Config) {
-	@Layout("Config") {
-		<h2>Config</h2>
+func TestApplyRegexPatch(t *testing.T) {
+	fstore := filestore.NewTestFileStore(map[string]string{
+		"file.txt": "<<my-dep v0.1.0>>",
+	})
+	patch := config.PatchRegex{
+		File:    "file.txt",
+		Match:   newRegex(t, `(my-dep) v0.1.0`),
+		Replace: newTemplate(t, `{{ index .Groups 1 }} {{ .Version }}`),
+	}
 
-		<p>
-			You can try out a new package config here:
-			<a href="/config/try-package">Try package config</a>
-		</p>
+	tmplCtx := config.TemplateContext{
+		Package: "my-pkg",
+		Version: "v1.2.3",
+	}
 
-		@components.CodeBlock(config.Censored())
+	err := ApplyRegexPatch(fstore, tmplCtx, patch)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := "<<my-dep v1.2.3>>"
+	gotBytes, err := fstore.ReadFile("file.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(gotBytes)
+
+	if got != want {
+		t.Errorf("want %q, got %q", want, got)
 	}
 }

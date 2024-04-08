@@ -193,7 +193,12 @@ func PackagesCreatePR(model PackagesCreatePRModel) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = createPRResults(model).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = createPRResults(prResults{
+				IsPost:       model.IsPost,
+				DryRun:       model.DryRun,
+				Error:        model.Error,
+				PullRequests: model.PullRequests,
+			}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -217,7 +222,14 @@ func PackagesCreatePR(model PackagesCreatePRModel) templ.Component {
 	})
 }
 
-func createPRResults(model PackagesCreatePRModel) templ.Component {
+type prResults struct {
+	IsPost       bool
+	Error        error
+	DryRun       bool
+	PullRequests []github.PullRequest
+}
+
+func createPRResults(model prResults) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, templ_7745c5c3_W io.Writer) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templ_7745c5c3_W.(*bytes.Buffer)
 		if !templ_7745c5c3_IsBuffer {
@@ -263,7 +275,7 @@ func createPRResults(model PackagesCreatePRModel) templ.Component {
 	})
 }
 
-func createPRResultsNoError(model PackagesCreatePRModel) templ.Component {
+func createPRResultsNoError(model prResults) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, templ_7745c5c3_W io.Writer) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templ_7745c5c3_W.(*bytes.Buffer)
 		if !templ_7745c5c3_IsBuffer {
@@ -301,7 +313,7 @@ func createPRResultsNoError(model PackagesCreatePRModel) templ.Component {
 				var templ_7745c5c3_Var11 string
 				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(i + 1))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/pages/packages_createpr.templ`, Line: 170, Col: 31}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/pages/packages_createpr.templ`, Line: 182, Col: 31}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 				if templ_7745c5c3_Err != nil {
@@ -315,7 +327,7 @@ func createPRResultsNoError(model PackagesCreatePRModel) templ.Component {
 					var templ_7745c5c3_Var12 string
 					templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(pr.Title)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/pages/packages_createpr.templ`, Line: 175, Col: 17}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/pages/packages_createpr.templ`, Line: 187, Col: 17}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 					if templ_7745c5c3_Err != nil {
@@ -339,7 +351,7 @@ func createPRResultsNoError(model PackagesCreatePRModel) templ.Component {
 					var templ_7745c5c3_Var13 string
 					templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(pr.Base)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/pages/packages_createpr.templ`, Line: 183, Col: 27}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/pages/packages_createpr.templ`, Line: 195, Col: 27}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 					if templ_7745c5c3_Err != nil {
@@ -352,7 +364,7 @@ func createPRResultsNoError(model PackagesCreatePRModel) templ.Component {
 					var templ_7745c5c3_Var14 string
 					templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(pr.Head)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/pages/packages_createpr.templ`, Line: 183, Col: 57}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/pages/packages_createpr.templ`, Line: 195, Col: 57}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 					if templ_7745c5c3_Err != nil {
@@ -385,7 +397,7 @@ func createPRResultsNoError(model PackagesCreatePRModel) templ.Component {
 					var templ_7745c5c3_Var15 string
 					templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(" ")
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/pages/packages_createpr.templ`, Line: 193, Col: 46}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/pages/packages_createpr.templ`, Line: 205, Col: 46}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 					if templ_7745c5c3_Err != nil {
@@ -417,7 +429,7 @@ func createPRResultsNoError(model PackagesCreatePRModel) templ.Component {
 					var templ_7745c5c3_Var16 string
 					templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(pr.Description)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/pages/packages_createpr.templ`, Line: 204, Col: 24}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/pages/packages_createpr.templ`, Line: 216, Col: 24}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 					if templ_7745c5c3_Err != nil {
@@ -445,7 +457,7 @@ func createPRResultsNoError(model PackagesCreatePRModel) templ.Component {
 					var templ_7745c5c3_Var17 string
 					templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(pr.Commit.Diff)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/pages/packages_createpr.templ`, Line: 214, Col: 24}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/pages/packages_createpr.templ`, Line: 226, Col: 24}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 					if templ_7745c5c3_Err != nil {

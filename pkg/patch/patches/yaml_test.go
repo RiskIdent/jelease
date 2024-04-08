@@ -15,56 +15,43 @@
 // You should have received a copy of the GNU General Public License along
 // with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package patch
+package patches
 
 import (
-	"regexp"
 	"testing"
-	"text/template"
 
 	"github.com/RiskIdent/jelease/pkg/config"
+	"github.com/RiskIdent/jelease/pkg/patch/filestore"
 )
 
-func TestPatchSingleLineRegex(t *testing.T) {
-	line := []byte("<<my-dep v0.1.0>>")
-	patch := config.PatchRegex{
-		Match:   newRegex(t, `(my-dep) v0.1.0`),
-		Replace: newTemplate(t, `{{ index .Groups 1 }} {{ .Version }}`),
+func TestApplYAMLPatch(t *testing.T) {
+	fstore := filestore.NewTestFileStore(map[string]string{
+		"file.txt": "{foo: bar}\n",
+	})
+	patch := config.PatchYAML{
+		File:     "file.txt",
+		YAMLPath: newYAMLPath(t, `.foo`),
+		Replace:  newTemplate(t, `{{ .Package }}@{{ .Version }}`),
 	}
 
-	tmplCtx := TemplateContext{
+	tmplCtx := config.TemplateContext{
 		Package: "my-pkg",
 		Version: "v1.2.3",
 	}
 
-	newLine, err := patchSingleLineRegex(patch, tmplCtx, line)
+	err := ApplyYAMLPatch(fstore, tmplCtx, patch)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	want := "<<my-dep v1.2.3>>"
-	if newLine == nil {
-		t.Fatalf("want %q, got nil", want)
+	want := "{foo: my-pkg@v1.2.3}\n"
+	gotBytes, err := fstore.ReadFile("file.txt")
+	if err != nil {
+		t.Fatal(err)
 	}
+	got := string(gotBytes)
 
-	got := string(newLine)
 	if got != want {
 		t.Errorf("want %q, got %q", want, got)
 	}
-}
-
-func newRegex(t *testing.T, text string) *config.RegexPattern {
-	r, err := regexp.Compile(text)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return (*config.RegexPattern)(r)
-}
-
-func newTemplate(t *testing.T, text string) *config.Template {
-	tmpl, err := template.New("").Parse(text)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return (*config.Template)(tmpl)
 }

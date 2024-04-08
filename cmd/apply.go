@@ -20,7 +20,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/RiskIdent/jelease/pkg/patch"
+	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
@@ -42,7 +42,7 @@ var applyCmd = &cobra.Command{
 		}
 		log.Info().Str("package", pkgName).Msg("Found package config")
 
-		tmplCtx := patch.TemplateContext{
+		tmplCtx := config.TemplateContext{
 			Package:   pkgName,
 			Version:   version,
 			JiraIssue: applyFlags.jiraIssueKey,

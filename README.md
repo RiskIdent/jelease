@@ -85,12 +85,12 @@ config file:
        repos:
          - url: https://github.example.com/some-org/some-repo
            patches:
-             - file: helm/charts/ri-neuvector/Chart.yaml
-               regex:
+             - regex:
+                 file: helm/charts/ri-neuvector/Chart.yaml
                  match: '^appVersion: .*'
                  replace: 'appVersion: {{ .Version }}'
-             - file: helm/charts/ri-neuvector/Chart.yaml
-               regex:
+             - regex:
+                 file: helm/charts/ri-neuvector/Chart.yaml
                  match: '^version: (.*)'
                  replace: 'version: {{ index .Groups 1 | versionBump "0.0.1" }}'
 

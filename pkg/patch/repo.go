@@ -36,7 +36,7 @@ type Repo struct {
 	remote  string
 	repo    git.Repo
 	cfg     *config.Config
-	tmplCtx TemplateContext
+	tmplCtx config.TemplateContext
 }
 
 // Close cleans up the Git repository by removing the entire directory.

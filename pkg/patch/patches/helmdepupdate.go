@@ -14,22 +14,34 @@
 //
 // You should have received a copy of the GNU General Public License along
 // with this program.  If not, see <http://www.gnu.org/licenses/>.
-package pages
+
+package patches
 
 import (
+	"fmt"
+	"os/exec"
+	"path/filepath"
+
 	"github.com/RiskIdent/jelease/pkg/config"
-	"github.com/RiskIdent/jelease/templates/components"
+	"github.com/rs/zerolog/log"
 )
 
-templ Config(config *config.Config) {
-	@Layout("Config") {
-		<h2>Config</h2>
-
-		<p>
-			You can try out a new package config here:
-			<a href="/config/try-package">Try package config</a>
-		</p>
-
-		@components.CodeBlock(config.Censored())
+func ApplyHelmDepUpdatePatch(repoDir string, tmplCtx config.TemplateContext, patch config.PatchHelmDepUpdate) error {
+	if patch.Chart == nil {
+		return fmt.Errorf("missing required field 'chart'")
 	}
+
+	chart, err := patch.Chart.ExecuteString(tmplCtx)
+	if err != nil {
+		return fmt.Errorf("execute chart dir template: %w", err)
+	}
+
+	log.Info().Str("chart", chart).Msg("Executing `helm dependency update`")
+	cmd := exec.Command("helm", "dependency", "update")
+	cmd.Dir = filepath.Join(repoDir, chart)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("%w; command output:\n%s", err, out)
+	}
+
+	return nil
 }

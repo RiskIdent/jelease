@@ -3,12 +3,15 @@
 // SPDX-License-Identifier: CC0-1.0
 {
     "cSpell.words": [
+        "filestore",
+        "fstore",
         "gonic",
         "jelease",
         "newreleases",
         "Templ",
         "templating",
         "tmpl",
+        "yamlpath",
         "zerolog"
     ],
     "files.exclude": {

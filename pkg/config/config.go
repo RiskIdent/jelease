@@ -77,18 +77,27 @@ type PackageRepo struct {
 }
 
 type PackageRepoPatch struct {
-	File  string
-	Regex *PatchRegex `yaml:",omitempty" json:",omitempty" jsonschema:"oneof_required=regex"`
-	YQ    *PatchYQ    `yaml:",omitempty" json:",omitempty" jsonschema:"oneof_required=yq"`
+	Regex         *PatchRegex         `yaml:",omitempty" json:",omitempty" jsonschema:"oneof_required=regex"`
+	YAML          *PatchYAML          `yaml:",omitempty" json:",omitempty" jsonschema:"oneof_required=yaml"`
+	HelmDepUpdate *PatchHelmDepUpdate `yaml:"helmDepUpdate,omitempty" json:",omitempty" jsonschema:"oneof_required=helmDepUpdate"`
 }
 
 type PatchRegex struct {
+	File    string        `jsonschema:"required"`
 	Match   *RegexPattern `jsonschema:"required"`
 	Replace *Template     `jsonschema:"required"`
 }
 
-type PatchYQ struct {
-	Expression string `jsonschema:"required"`
+type PatchYAML struct {
+	File       string           `jsonschema:"required"`
+	YAMLPath   *YAMLPathPattern `yaml:"yamlPath" jsonschema:"required"`
+	Replace    *Template        `jsonschema:"required"`
+	MaxMatches int              `yaml:"maxMatches,omitempty" jsonschema:"minimum=0"`
+	Indent     int              `yaml:",omitempty" jsonschema:"minimum=0"`
+}
+
+type PatchHelmDepUpdate struct {
+	Chart *Template `jsonschema:"required,default=.,example=charts/jelease"`
 }
 
 type GitHub struct {

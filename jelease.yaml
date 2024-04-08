@@ -25,10 +25,16 @@ packages:
     repos:
       - url: tmp/upstream-test
         patches:
-          - file: go.mod
-            regex:
+          - regex:
+              file: go.mod
               match: '(github.com/joho/godotenv) v.*'
               replace: '{{ index .Groups 1 }} {{ .Version }}'
+          - yaml:
+              file: charts/jelease/Chart.yaml
+              yamlPath: .appVersion
+              replace: '{{ .Version }}'
+          - helmDepUpdate:
+              chart: charts/jelease
 
 # GitHub settings
 github:

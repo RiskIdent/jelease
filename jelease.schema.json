@@ -442,27 +442,48 @@
         },
         {
           "required": [
-            "yq"
+            "yaml"
           ],
-          "title": "yq"
+          "title": "yaml"
+        },
+        {
+          "required": [
+            "helmDepUpdate"
+          ],
+          "title": "helmDepUpdate"
         }
       ],
       "properties": {
-        "file": {
-          "type": "string"
-        },
         "regex": {
           "$ref": "#/$defs/patchRegex"
         },
-        "yq": {
-          "$ref": "#/$defs/patchYq"
+        "yaml": {
+          "$ref": "#/$defs/patchYaml"
+        },
+        "helmDepUpdate": {
+          "$ref": "#/$defs/patchHelmDepUpdate"
         }
       },
       "additionalProperties": false,
       "type": "object"
     },
+    "patchHelmDepUpdate": {
+      "properties": {
+        "chart": {
+          "$ref": "#/$defs/template"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "chart"
+      ]
+    },
     "patchRegex": {
       "properties": {
+        "file": {
+          "type": "string"
+        },
         "match": {
           "$ref": "#/$defs/regexPattern"
         },
@@ -473,26 +494,47 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
+        "file",
         "match",
         "replace"
       ]
     },
-    "patchYq": {
+    "patchYaml": {
       "properties": {
-        "expression": {
+        "file": {
           "type": "string"
+        },
+        "yamlPath": {
+          "$ref": "#/$defs/yamlPathPattern"
+        },
+        "replace": {
+          "$ref": "#/$defs/template"
+        },
+        "maxMatches": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "indent": {
+          "type": "integer",
+          "minimum": 0
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "expression"
+        "file",
+        "yamlPath",
+        "replace"
       ]
     },
     "regexPattern": {
       "type": "string",
       "format": "regex",
-      "title": "Regular Expression pattern (regex)"
+      "title": "Regular Expression pattern (regex)",
+      "examples": [
+        "^appVersion: .*",
+        "^version: .*"
+      ]
     },
     "rsaPrivateKeyPem": {
       "oneOf": [
@@ -511,7 +553,12 @@
     },
     "template": {
       "type": "string",
-      "title": "Go template"
+      "title": "Go template",
+      "examples": [
+        "{{ .Version }}",
+        "version: {{ .Version | trimPrefix \"v\" }}",
+        "version: {{ index .Groups 1 | versionBump \"0.0.1\" }}"
+      ]
     },
     "url": {
       "oneOf": [
@@ -527,6 +574,16 @@
       "examples": [
         "http://localhost:8080",
         "https://example.com"
+      ]
+    },
+    "yamlPathPattern": {
+      "type": "string",
+      "title": "YAML-Path pattern",
+      "examples": [
+        ".appVersion",
+        ".version",
+        "$..spec.containers[*].image",
+        "$.dependencies[?(@.name==\"kafka\")].version"
       ]
     }
   }

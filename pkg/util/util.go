@@ -22,20 +22,6 @@ import (
 	"unicode"
 )
 
-func Concat[S ~[]E, E any](slices ...S) S {
-	var totalLen int
-	for _, s := range slices {
-		totalLen += len(s)
-	}
-	result := make(S, totalLen)
-	var offset int
-	for _, s := range slices {
-		copy(result[offset:], s)
-		offset += len(s)
-	}
-	return result
-}
-
 func Ref[T any](v T) *T {
 	return &v
 }

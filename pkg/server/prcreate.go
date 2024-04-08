@@ -25,7 +25,6 @@ import (
 
 	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/RiskIdent/jelease/pkg/jira"
-	"github.com/RiskIdent/jelease/pkg/patch"
 	"github.com/RiskIdent/jelease/templates/pages"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
@@ -99,7 +98,7 @@ func (s HTTPServer) handlePostPRCreate(c *gin.Context) {
 	cfgClone.DryRun = model.DryRun
 	patcherClone := s.patcher.CloneWithConfig(&cfgClone)
 
-	tmplCtx := patch.TemplateContext{
+	tmplCtx := config.TemplateContext{
 		Package:   model.Package.Name,
 		Version:   model.Version,
 		JiraIssue: model.JiraIssue,
