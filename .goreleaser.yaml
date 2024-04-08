@@ -20,7 +20,7 @@ builds:
 dockers:
   - image_templates:
       - "ghcr.io/riskident/{{ .ProjectName }}:{{ .Version }}-amd64"
-    dockerfile: Dockerfile
+    dockerfile: goreleaser.Dockerfile
     use: buildx
     goarch: arm64
     goos: linux
@@ -33,7 +33,7 @@ dockers:
 
   - image_templates:
       - "ghcr.io/riskident/{{ .ProjectName }}:{{ .Version }}-arm64v8"
-    dockerfile: Dockerfile
+    dockerfile: goreleaser.Dockerfile
     use: buildx
     goarch: arm64
     goos: linux
