@@ -19,7 +19,7 @@ builds:
 
 dockers:
   - image_templates:
-      - "ghcr.io/riskident/{{ .ProjectName }}:{{ .Version }}-amd64"
+      - "ghcr.io/riskident/{{ .ProjectName }}:v{{ .Version }}-amd64"
     dockerfile: goreleaser.Dockerfile
     use: buildx
     goarch: amd64
@@ -32,7 +32,7 @@ dockers:
       - --build-arg=VERSION={{ .Version }}
 
   - image_templates:
-      - "ghcr.io/riskident/{{ .ProjectName }}:{{ .Version }}-arm64v8"
+      - "ghcr.io/riskident/{{ .ProjectName }}:v{{ .Version }}-arm64v8"
     dockerfile: goreleaser.Dockerfile
     use: buildx
     goarch: arm64
@@ -45,14 +45,14 @@ dockers:
       - --build-arg=VERSION={{ .Version }}
 
 docker_manifests:
-  - name_template: "ghcr.io/riskident/{{ .ProjectName }}:{{ .Version }}"
+  - name_template: "ghcr.io/riskident/{{ .ProjectName }}:v{{ .Version }}"
     image_templates:
-      - "ghcr.io/riskident/{{ .ProjectName }}:{{ .Version }}-amd64"
-      - "ghcr.io/riskident/{{ .ProjectName }}:{{ .Version }}-arm64v8"
+      - "ghcr.io/riskident/{{ .ProjectName }}:v{{ .Version }}-amd64"
+      - "ghcr.io/riskident/{{ .ProjectName }}:v{{ .Version }}-arm64v8"
   - name_template: "ghcr.io/riskident/{{ .ProjectName }}:latest"
     image_templates:
-      - "ghcr.io/riskident/{{ .ProjectName }}:{{ .Version }}-amd64"
-      - "ghcr.io/riskident/{{ .ProjectName }}:{{ .Version }}-arm64v8"
+      - "ghcr.io/riskident/{{ .ProjectName }}:v{{ .Version }}-amd64"
+      - "ghcr.io/riskident/{{ .ProjectName }}:v{{ .Version }}-arm64v8"
 
 archives:
   - format: tar.gz
