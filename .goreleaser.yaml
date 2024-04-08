@@ -22,7 +22,7 @@ dockers:
       - "ghcr.io/riskident/{{ .ProjectName }}:{{ .Version }}-amd64"
     dockerfile: goreleaser.Dockerfile
     use: buildx
-    goarch: arm64
+    goarch: amd64
     goos: linux
     build_flag_templates:
       - --platform=linux/amd64
