@@ -14,8 +14,11 @@ RUN go test -v ./... \
     -ldflags "-X github.com/RiskIdent/jelease/cmd.appVersion=$VERSION" \
     -o build/jelease main.go
 
-FROM docker.io/library/alpine
-RUN apk add --no-cache ca-certificates patch git git-lfs helm
+# NOTE: When updating here, remember to also update in ./goreleaser.Dockerfile
+FROM docker.io/library/alpine AS final
+RUN apk add --no-cache ca-certificates diffutils patch git git-lfs helm \
+  && addgroup -g 10000 jelease \
+  && adduser -D -u 10000 -G jelease jelease
 COPY --from=build /jelease/build/jelease /usr/local/bin/
 CMD ["jelease", "serve"]
 USER 10000

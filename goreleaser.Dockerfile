@@ -2,8 +2,11 @@
 #
 # SPDX-License-Identifier: CC0-1.0
 
+# NOTE: When updating here, remember to also update in ./Dockerfile
 FROM docker.io/library/alpine
-RUN apk add --no-cache ca-certificates patch git git-lfs helm
+RUN apk add --no-cache ca-certificates diffutils patch git git-lfs helm \
+  && addgroup -g 10000 jelease \
+  && adduser -D -u 10000 -G jelease jelease
 COPY jelease /usr/local/bin/
 CMD ["jelease", "serve"]
 USER 10000
