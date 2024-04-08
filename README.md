@@ -22,31 +22,14 @@ See [`jelease.yaml`](./jelease.yaml) for the default values.
 
 ### Configuration files
 
-Jelease looks for config files in multiple locations, where the latter overrides
-config fields from the former.
+Jelease reads from the first config file in this list that it can find:
 
-On Linux:
-
-1. Default values *(see [`jelease.yaml`](./jelease.yaml))*
-2. `/etc/jelease/jelease.yaml`
-3. `~/.config/jelease.yaml`
-4. `~/.jelease.yaml`
-5. `jelease.yaml` *(in current directory)*
-
-On Windows:
-
-1. Default values *(see [`jelease.yaml`](./jelease.yaml))*
-2. `%APPDATA%/jelease.yaml`
-3. `%USERPROFILE%/.jelease.yaml`
-4. `jelease.yaml` *(in current directory)*
-
-On Mac:
-
-1. Default values *(see [`jelease.yaml`](./jelease.yaml))*
-2. `/etc/jelease/jelease.yaml`
-3. `~/Library/Application Support/jelease.yaml`
-4. `~/.jelease.yaml`
-5. `jelease.yaml` *(in current directory)*
+| Order | Linux                       | Mac                                          | Windows                       |
+| ----: | --------------------------- | -------------------------------------------- | ----------------------------- |
+|    1. | `/etc/jelease/jelease.yaml` | `/etc/jelease/jelease.yaml`                  | *N/A*                         |
+|    2. | `~/.config/jelease.yaml`    | `~/Library/Application Support/jelease.yaml` | `%APPDATA%\jelease.yaml`      |
+|    3. | `~/.jelease.yaml`           | `~/.jelease.yaml`                            | `%USERPROFILE%\.jelease.yaml` |
+|    4. | `./jelease.yaml`            | `./jelease.yaml`                             | `.\jelease.yaml`              |
 
 ### JSON Schema
 
