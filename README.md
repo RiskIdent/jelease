@@ -41,10 +41,11 @@ flowchart LR
       webhookrelay[Webhook Relay]
     end
     newreleases.io -->|update event| webhookrelay
-    Jelease --->|pull events| webhookrelay
+    webhookrelayd --->|pull events| webhookrelay
     subgraph internal network
       Jelease --> jira[/Create Jira issue/]
       Jelease --> pr[/Create GitHub PR/]
+      webhookrelayd -->|push event| Jelease
     end
 ```
 
