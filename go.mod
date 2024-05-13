@@ -4,7 +4,7 @@
 
 module github.com/RiskIdent/jelease
 
-go 1.22.2
+go 1.22.3
 
 require (
 	github.com/a-h/templ v0.2.680
