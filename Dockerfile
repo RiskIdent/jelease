@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: CC0-1.0
 
-FROM docker.io/library/golang:1.22.4-alpine AS build
+FROM docker.io/library/golang:1.22.5-alpine AS build
 WORKDIR /jelease
 COPY go.mod go.sum ./
 RUN go mod download
