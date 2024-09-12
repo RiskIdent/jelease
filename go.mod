@@ -7,7 +7,7 @@ module github.com/RiskIdent/jelease
 go 1.23.0
 
 require (
-	github.com/a-h/templ v0.2.771
+	github.com/a-h/templ v0.2.778
 	github.com/andygrunwald/go-jira v1.16.0
 	github.com/bradleyfalzon/ghinstallation/v2 v2.11.0
 	github.com/fatih/color v1.17.0
