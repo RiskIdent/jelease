@@ -7,7 +7,7 @@ module github.com/RiskIdent/jelease
 go 1.23.4
 
 require (
-	github.com/a-h/templ v0.2.793
+	github.com/a-h/templ v0.3.819
 	github.com/andygrunwald/go-jira v1.16.0
 	github.com/bradleyfalzon/ghinstallation/v2 v2.13.0
 	github.com/fatih/color v1.18.0
@@ -71,7 +71,7 @@ require (
 	golang.org/x/arch v0.8.0 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/exp v0.0.0-20240404231335-c0f41cb1a7a0 // indirect
-	golang.org/x/net v0.28.0 // indirect
+	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
