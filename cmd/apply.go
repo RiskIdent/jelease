@@ -26,7 +26,8 @@ import (
 )
 
 var applyFlags = struct {
-	jiraIssueKey string
+	jiraIssueKey       string
+	packageDescription string
 }{}
 
 // applyCmd represents the apply command
@@ -43,9 +44,10 @@ var applyCmd = &cobra.Command{
 		log.Info().Str("package", pkgName).Msg("Found package config")
 
 		tmplCtx := config.TemplateContext{
-			Package:   pkgName,
-			Version:   version,
-			JiraIssue: applyFlags.jiraIssueKey,
+			Package:            pkgName,
+			PackageDescription: applyFlags.packageDescription,
+			Version:            version,
+			JiraIssue:          applyFlags.jiraIssueKey,
 		}
 
 		patcher, err := newTestedPatcher()
@@ -61,4 +63,5 @@ func init() {
 	rootCmd.AddCommand(applyCmd)
 
 	applyCmd.Flags().StringVar(&applyFlags.jiraIssueKey, "jira.issue.key", applyFlags.jiraIssueKey, "Optional Jira ticket key used in templates, e.g PROJ-1234")
+	applyCmd.Flags().StringVar(&applyFlags.packageDescription, "package.description", applyFlags.packageDescription, "Optional package description used in templates")
 }

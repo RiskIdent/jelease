@@ -20,7 +20,8 @@ package config
 import (
 	"bytes"
 	"encoding"
-	"io"
+	"fmt"
+	"strings"
 	"text/template"
 
 	"github.com/RiskIdent/jelease/pkg/templatefuncs"
@@ -32,32 +33,51 @@ import (
 // encoders implemented so it can be used in config files and CLI flags.
 type Template template.Template
 
+func NewTemplate(s string) (*Template, error) {
+	var t Template
+	if err := t.Set(s); err != nil {
+		return nil, err
+	}
+	return &t, nil
+}
+
+func MustTemplate(s string) *Template {
+	tmpl, err := NewTemplate(s)
+	if err != nil {
+		panic(fmt.Errorf("MustTemplate(%q): %w", s, err))
+	}
+	return tmpl
+}
+
 // TemplateContext is the common data passed into templates when executing them.
 type TemplateContext struct {
-	Package   string
-	Version   string
-	JiraIssue string
+	Package            string
+	PackageDescription string
+	Version            string
+	JiraIssue          string
+}
+
+func NewTemplateContextForPackage(pkg Package) (TemplateContext, error) {
+	tmplCtx := TemplateContext{
+		Package: pkg.Name,
+	}
+	desc, err := pkg.Description.Render(tmplCtx)
+	if err != nil {
+		return TemplateContext{}, fmt.Errorf("template package description: %w", err)
+	}
+	tmplCtx.PackageDescription = strings.TrimRight(desc, "\n\r\t ")
+	return tmplCtx, nil
 }
 
 // Ensure the type implements the interfaces
-var _ pflag.Value = &Template{}
-var _ encoding.TextUnmarshaler = &Template{}
-var _ jsonSchemaInterface = Template{}
+var (
+	_ pflag.Value              = &Template{}
+	_ encoding.TextUnmarshaler = &Template{}
+	_ jsonSchemaInterface      = Template{}
+)
 
 func (t *Template) Template() *template.Template {
 	return (*template.Template)(t)
-}
-
-func (t *Template) Execute(w io.Writer, data any) error {
-	return t.Template().Execute(w, data)
-}
-
-func (t *Template) ExecuteString(data any) (string, error) {
-	var buf bytes.Buffer
-	if err := t.Execute(&buf, data); err != nil {
-		return "", err
-	}
-	return buf.String(), nil
 }
 
 func (t *Template) String() string {
@@ -98,6 +118,9 @@ func (Template) JSONSchema() *jsonschema.Schema {
 }
 
 func (t *Template) Render(data any) (string, error) {
+	if t == nil {
+		return "", nil
+	}
 	var buf bytes.Buffer
 	if err := t.Template().Execute(&buf, data); err != nil {
 		return "", err

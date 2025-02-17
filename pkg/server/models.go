@@ -37,14 +37,18 @@ func (r Release) IssueSummary() string {
 	return fmt.Sprintf("Update %v to version %v", r.Project, r.Version)
 }
 
-func (r Release) JiraIssue(cfg *config.JiraIssue) jira.Issue {
+func (r Release) JiraIssue(cfg *config.JiraIssue, tmplCtx config.TemplateContext) (jira.Issue, error) {
+	desc, err := cfg.Description.Render(tmplCtx)
+	if err != nil {
+		return jira.Issue{}, fmt.Errorf("template Jira description: %w", err)
+	}
 	return jira.Issue{
-		Description:        cfg.Description,
+		Description:        desc,
 		ProjectKey:         cfg.Project,
 		TypeName:           cfg.Type,
 		Labels:             cfg.Labels,
 		Summary:            r.IssueSummary(),
 		PackageName:        r.Project,
 		PackageNameFieldID: cfg.ProjectNameCustomField,
-	}
+	}, nil
 }

@@ -25,6 +25,8 @@ import (
 	"text/template"
 
 	"github.com/RiskIdent/jelease/pkg/config"
+	"github.com/RiskIdent/jelease/pkg/github"
+	"github.com/RiskIdent/jelease/pkg/patch"
 	"github.com/RiskIdent/jelease/templates/pages"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
@@ -101,11 +103,7 @@ func (s HTTPServer) handlePostConfigTryPackage(c *gin.Context) {
 	cfgClone.DryRun = true
 	patcherClone := s.patcher.CloneWithConfig(&cfgClone)
 
-	tmplCtx := config.TemplateContext{
-		Package: model.Package.Name,
-		Version: model.Version,
-	}
-	prs, err := patcherClone.CloneAndPublishAll(model.Package.Repos, tmplCtx)
+	prs, err := tryPackageConfig(model, patcherClone)
 	if err != nil {
 		log.Error().Err(err).Str("project", model.Package.Name).Msg("Failed creating patches.")
 	}
@@ -113,4 +111,17 @@ func (s HTTPServer) handlePostConfigTryPackage(c *gin.Context) {
 	model.PullRequests = prs
 	model.Error = err
 	c.HTML(http.StatusOK, "", pages.ConfigTryPackage(model))
+}
+
+func tryPackageConfig(model pages.ConfigTryPackageModel, patcher patch.Patcher) ([]github.PullRequest, error) {
+	tmplCtx, err := config.NewTemplateContextForPackage(model.Package)
+	if err != nil {
+		return nil, err
+	}
+	tmplCtx.Version = model.Version
+	prs, err := patcher.CloneAndPublishAll(model.Package.Repos, tmplCtx)
+	if err != nil {
+		return nil, err
+	}
+	return prs, nil
 }

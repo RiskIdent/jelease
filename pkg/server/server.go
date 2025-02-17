@@ -165,18 +165,28 @@ func (s HTTPServer) handlePostWebhook(c *gin.Context) {
 }
 
 func tryApplyChanges(j jira.Client, patcher patch.Patcher, release Release, issueRef jira.IssueRef, cfg *config.Config) {
-	tmplCtx := config.TemplateContext{
-		Package:   release.Project,
-		Version:   release.Version,
-		JiraIssue: issueRef.Key,
-	}
-
 	pkg, ok := cfg.TryFindPackage(release.Project)
 	if !ok {
 		log.Info().Str("project", release.Project).Msg("No package patching config was found. Skipping patching.")
+		tmplCtx := config.TemplateContext{
+			Package:   release.Project,
+			Version:   release.Version,
+			JiraIssue: issueRef.Key,
+		}
 		createTemplatedComment(j, issueRef, cfg.Jira.Issue.Comments.NoConfig, tmplCtx)
 		return
 	}
+
+	tmplCtx, err := config.NewTemplateContextForPackage(pkg)
+	if err != nil {
+		createTemplatedComment(j, issueRef, cfg.Jira.Issue.Comments.PRFailed, TemplateContextError{
+			TemplateContext: tmplCtx,
+			Error:           err.Error(),
+		})
+		return
+	}
+	tmplCtx.Version = release.Version
+	tmplCtx.JiraIssue = issueRef.Key
 
 	if cfg.Jira.Issue.PRDeferredCreation {
 		if cfg.HTTP.PublicURL == nil {
@@ -272,18 +282,34 @@ func ensureJiraIssue(j jira.Client, r Release, cfg *config.Config) (newJiraIssue
 
 	if len(existingIssues) == 0 {
 		// no previous issues, create new jira issue
-		i := r.JiraIssue(&cfg.Jira.Issue)
+
+		tmplCtx := config.TemplateContext{
+			Package: r.Project,
+			Version: r.Version,
+		}
+		if pkg, ok := cfg.TryFindPackage(r.Project); ok {
+			newCtx, err := config.NewTemplateContextForPackage(pkg)
+			if err != nil {
+				return newJiraIssue{}, err
+			}
+			tmplCtx.PackageDescription = newCtx.PackageDescription
+		}
+
+		issue, err := r.JiraIssue(&cfg.Jira.Issue, tmplCtx)
+		if err != nil {
+			return newJiraIssue{}, err
+		}
 
 		if cfg.DryRun {
 			log.Info().
-				Str("issue", i.Key).
+				Str("issue", issue.Key).
 				Msg("Skipping creation of issue because Config.DryRun is enabled.")
 			return newJiraIssue{
-				IssueRef: i.IssueRef(),
+				IssueRef: issue.IssueRef(),
 				Created:  false,
 			}, nil
 		}
-		issueRef, err := j.CreateIssue(i)
+		issueRef, err := j.CreateIssue(issue)
 		if err != nil {
 			return newJiraIssue{}, err
 		}

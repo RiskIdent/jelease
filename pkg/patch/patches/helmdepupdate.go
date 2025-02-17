@@ -31,7 +31,7 @@ func ApplyHelmDepUpdatePatch(repoDir string, tmplCtx config.TemplateContext, pat
 		return fmt.Errorf("missing required field 'chart'")
 	}
 
-	chart, err := patch.Chart.ExecuteString(tmplCtx)
+	chart, err := patch.Chart.Render(tmplCtx)
 	if err != nil {
 		return fmt.Errorf("execute chart dir template: %w", err)
 	}
