@@ -59,8 +59,9 @@ func (c Config) Censored() Config {
 }
 
 type Package struct {
-	Name  string
-	Repos []PackageRepo
+	Name        string
+	Description *Template
+	Repos       []PackageRepo
 }
 
 func (p Package) NormalizedName() string {
@@ -189,7 +190,7 @@ func (a JiraAuth) Censored() JiraAuth {
 type JiraIssue struct {
 	Labels                 []string
 	Status                 string
-	Description            string
+	Description            *Template
 	Type                   string
 	Project                string
 	ProjectNameCustomField uint `yaml:"projectNameCustomField"`

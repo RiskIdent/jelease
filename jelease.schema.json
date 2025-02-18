@@ -247,7 +247,7 @@
           "type": "string"
         },
         "description": {
-          "type": "string"
+          "$ref": "#/$defs/template"
         },
         "type": {
           "type": "string"
@@ -405,6 +405,9 @@
       "properties": {
         "name": {
           "type": "string"
+        },
+        "description": {
+          "$ref": "#/$defs/template"
         },
         "repos": {
           "items": {
