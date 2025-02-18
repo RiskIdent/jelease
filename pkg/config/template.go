@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"encoding"
 	"fmt"
-	"strings"
 	"text/template"
 
 	"github.com/RiskIdent/jelease/pkg/templatefuncs"
@@ -55,18 +54,6 @@ type TemplateContext struct {
 	PackageDescription string
 	Version            string
 	JiraIssue          string
-}
-
-func NewTemplateContextForPackage(pkg Package) (TemplateContext, error) {
-	tmplCtx := TemplateContext{
-		Package: pkg.Name,
-	}
-	desc, err := pkg.Description.Render(tmplCtx)
-	if err != nil {
-		return TemplateContext{}, fmt.Errorf("template package description: %w", err)
-	}
-	tmplCtx.PackageDescription = strings.TrimRight(desc, "\n\r\t ")
-	return tmplCtx, nil
 }
 
 // Ensure the type implements the interfaces
