@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: CC0-1.0
 
+version: 2
+
 before:
   hooks:
     - go mod tidy
@@ -55,7 +57,7 @@ docker_manifests:
       - "ghcr.io/riskident/{{ .ProjectName }}:v{{ .Version }}-arm64v8"
 
 archives:
-  - format: tar.gz
+  - formats: [ tar.gz ]
     name_template: >-
       {{ .ProjectName }}_
       {{- title .Os }}_
@@ -67,7 +69,7 @@ archives:
 checksum:
   name_template: 'checksums.txt'
 snapshot:
-  name_template: "{{ incpatch .Version }}-next"
+  version_template: "{{ incpatch .Version }}-next"
 changelog:
   sort: asc
   filters:
