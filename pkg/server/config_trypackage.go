@@ -114,11 +114,13 @@ func (s HTTPServer) handlePostConfigTryPackage(c *gin.Context) {
 }
 
 func tryPackageConfig(model pages.ConfigTryPackageModel, patcher patch.Patcher) ([]github.PullRequest, error) {
-	tmplCtx, err := config.NewTemplateContextForPackage(model.Package)
+	tmplCtx, err := setTemplateContextPackageDescription(config.TemplateContext{
+		Package: model.Package.Name,
+		Version: model.Version,
+	}, model.Package.Description)
 	if err != nil {
 		return nil, err
 	}
-	tmplCtx.Version = model.Version
 	prs, err := patcher.CloneAndPublishAll(model.Package.Repos, tmplCtx)
 	if err != nil {
 		return nil, err

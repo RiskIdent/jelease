@@ -98,14 +98,16 @@ func (s HTTPServer) handlePostPRCreate(c *gin.Context) {
 	cfgClone.DryRun = model.DryRun
 	patcherClone := s.patcher.CloneWithConfig(&cfgClone)
 
-	tmplCtx, err := config.NewTemplateContextForPackage(model.Package)
+	tmplCtx, err := setTemplateContextPackageDescription(config.TemplateContext{
+		Package:   model.Package.Name,
+		Version:   model.Version,
+		JiraIssue: model.JiraIssue,
+	}, model.Package.Description)
 	if err != nil {
 		model.Error = err
 		c.HTML(http.StatusOK, "", pages.PackagesCreatePR(model))
 		return
 	}
-	tmplCtx.Version = model.Version
-	tmplCtx.JiraIssue = model.JiraIssue
 	prs, err := patcherClone.CloneAndPublishAll(model.Package.Repos, tmplCtx)
 	if err != nil {
 		log.Error().Err(err).Str("project", model.Package.Name).Msg("Failed creating patches.")

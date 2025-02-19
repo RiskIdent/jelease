@@ -20,6 +20,8 @@ package server
 import (
 	"net/url"
 	"testing"
+
+	"github.com/RiskIdent/jelease/pkg/config"
 )
 
 func TestCreateDeferredCreationURL(t *testing.T) {
@@ -118,6 +120,58 @@ func TestCreateDeferredCreationURL(t *testing.T) {
 			gotStr := got.String()
 			if gotStr != tc.want {
 				t.Errorf("did not match!\nwant: %q\ngot:  %q", tc.want, gotStr)
+			}
+		})
+	}
+}
+
+func TestSetTemplateContextPackageDescription(t *testing.T) {
+	tests := []struct {
+		name string
+		ctx  config.TemplateContext
+		desc *config.Template
+		want string
+	}{
+		{
+			name: "empty",
+			ctx:  config.TemplateContext{},
+			desc: nil,
+			want: "",
+		},
+		{
+			name: "only package name",
+			ctx:  config.TemplateContext{Package: "my-pkg"},
+			desc: nil,
+			want: "",
+		},
+		{
+			name: "only package desc",
+			ctx:  config.TemplateContext{},
+			desc: config.MustTemplate("Pkg `{{.Package}}` desc"),
+			want: "Pkg `` desc",
+		},
+		{
+			name: "package name and desc",
+			ctx:  config.TemplateContext{Package: "my-pkg"},
+			desc: config.MustTemplate("Pkg `{{.Package}}` desc"),
+			want: "Pkg `my-pkg` desc",
+		},
+		{
+			name: "package name, version, and desc",
+			ctx:  config.TemplateContext{Package: "my-pkg", Version: "v1.2.3"},
+			desc: config.MustTemplate("Pkg `{{.Package}}@{{.Version}}` desc"),
+			want: "Pkg `my-pkg@v1.2.3` desc",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := setTemplateContextPackageDescription(test.ctx, test.desc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.PackageDescription != test.want {
+				t.Errorf("wrong result\nwant: %#v\ngot:  %#v", test.want, got.PackageDescription)
 			}
 		})
 	}

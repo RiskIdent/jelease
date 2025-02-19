@@ -177,7 +177,11 @@ func tryApplyChanges(j jira.Client, patcher patch.Patcher, release Release, issu
 		return
 	}
 
-	tmplCtx, err := config.NewTemplateContextForPackage(pkg)
+	tmplCtx, err := setTemplateContextPackageDescription(config.TemplateContext{
+		Package:   pkg.Name,
+		Version:   release.Version,
+		JiraIssue: issueRef.Key,
+	}, pkg.Description)
 	if err != nil {
 		createTemplatedComment(j, issueRef, cfg.Jira.Issue.Comments.PRFailed, TemplateContextError{
 			TemplateContext: tmplCtx,
@@ -185,8 +189,6 @@ func tryApplyChanges(j jira.Client, patcher patch.Patcher, release Release, issu
 		})
 		return
 	}
-	tmplCtx.Version = release.Version
-	tmplCtx.JiraIssue = issueRef.Key
 
 	if cfg.Jira.Issue.PRDeferredCreation {
 		if cfg.HTTP.PublicURL == nil {
@@ -288,11 +290,11 @@ func ensureJiraIssue(j jira.Client, r Release, cfg *config.Config) (newJiraIssue
 			Version: r.Version,
 		}
 		if pkg, ok := cfg.TryFindPackage(r.Project); ok {
-			newCtx, err := config.NewTemplateContextForPackage(pkg)
+			newCtx, err := setTemplateContextPackageDescription(tmplCtx, pkg.Description)
 			if err != nil {
 				return newJiraIssue{}, err
 			}
-			tmplCtx.PackageDescription = newCtx.PackageDescription
+			tmplCtx = newCtx
 		}
 
 		issue, err := r.JiraIssue(&cfg.Jira.Issue, tmplCtx)
@@ -355,4 +357,13 @@ func ensureJiraIssue(j jira.Client, r Release, cfg *config.Config) (newJiraIssue
 		IssueRef: mostRecentIssue.IssueRef(),
 		Created:  false,
 	}, nil
+}
+
+func setTemplateContextPackageDescription(tmplCtx config.TemplateContext, pkgDesc *config.Template) (config.TemplateContext, error) {
+	desc, err := pkgDesc.Render(tmplCtx)
+	if err != nil {
+		return config.TemplateContext{}, fmt.Errorf("template package description: %w", err)
+	}
+	tmplCtx.PackageDescription = strings.TrimRight(desc, "\n\r\t ")
+	return tmplCtx, nil
 }
