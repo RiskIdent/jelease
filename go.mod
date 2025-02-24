@@ -22,7 +22,7 @@ require (
 	github.com/spf13/viper v1.19.0
 	github.com/trivago/tgo v1.0.7
 	github.com/vmware-labs/yaml-jsonpath v0.3.2
-	golang.org/x/oauth2 v0.26.0
+	golang.org/x/oauth2 v0.27.0
 	gopkg.in/yaml.v3 v3.0.1
 	newreleases.io/newreleases v1.10.0
 )
