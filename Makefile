@@ -10,7 +10,7 @@ jelease.schema.json: pkg/config/*.go cmd/config_schema.go
 
 .PHONY: generate
 generate:
-	go run github.com/a-h/templ/cmd/templ@$(shell go list -m -f '{{ .Version }}' github.com/a-h/templ) generate
+	go generate
 
 .PHONY: test
 test:
