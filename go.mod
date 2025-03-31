@@ -5,7 +5,6 @@
 module github.com/RiskIdent/jelease
 
 go 1.24.1
-
 require (
 	github.com/a-h/templ v0.3.856
 	github.com/andygrunwald/go-jira v1.16.0
@@ -19,7 +18,7 @@ require (
 	github.com/rs/zerolog v1.34.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
-	github.com/spf13/viper v1.20.0
+	github.com/spf13/viper v1.20.1
 	github.com/trivago/tgo v1.0.7
 	github.com/vmware-labs/yaml-jsonpath v0.3.2
 	golang.org/x/oauth2 v0.28.0
