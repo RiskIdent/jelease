@@ -9,7 +9,7 @@ go 1.24.2
 require (
 	github.com/a-h/templ v0.3.857
 	github.com/andygrunwald/go-jira v1.16.0
-	github.com/bradleyfalzon/ghinstallation/v2 v2.14.0
+	github.com/bradleyfalzon/ghinstallation/v2 v2.15.0
 	github.com/fatih/color v1.18.0
 	github.com/gin-gonic/gin v1.10.0
 	github.com/golang-jwt/jwt/v4 v4.5.2
@@ -48,7 +48,7 @@ require (
 	github.com/go-playground/validator/v10 v10.20.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
-	github.com/google/go-github/v69 v69.0.0 // indirect
+	github.com/google/go-github/v71 v71.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
