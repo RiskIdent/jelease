@@ -27,7 +27,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-//go:generate go tool templ generate
+//go:generate go tool templ generate --include-version=false
 
 //go:embed jelease.yaml
 var defaultConfigYAML []byte
