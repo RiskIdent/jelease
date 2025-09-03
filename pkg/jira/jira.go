@@ -18,6 +18,7 @@
 package jira
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
@@ -29,7 +30,7 @@ import (
 
 	"github.com/RiskIdent/jelease/pkg/config"
 	"github.com/RiskIdent/jelease/pkg/util"
-	"github.com/andygrunwald/go-jira"
+	jira "github.com/andygrunwald/go-jira/v2/cloud"
 	"github.com/rs/zerolog/log"
 	"github.com/trivago/tgo/tcontainer"
 )
@@ -139,14 +140,15 @@ func New(cfg *config.Jira) (Client, error) {
 
 	switch cfg.Auth.Type {
 	case config.JiraAuthTypePAT:
-		httpClient = (&jira.PATAuthTransport{
-			Token:     cfg.Auth.Token,
-			Transport: &http.Transport{TLSClientConfig: &tlsConfig},
-		}).Client()
+		return nil, fmt.Errorf("jira auth type %q: %w", cfg.Auth.Type, errors.ErrUnsupported)
+		//httpClient = (&jira.PATAuthTransport{
+		//	Token:     cfg.Auth.Token,
+		//	Transport: &http.Transport{TLSClientConfig: &tlsConfig},
+		//}).Client()
 	case config.JiraAuthTypeToken:
 		httpClient = (&jira.BasicAuthTransport{
 			Username:  cfg.Auth.User,
-			Password:  cfg.Auth.Token,
+			APIToken:  cfg.Auth.Token,
 			Transport: &http.Transport{TLSClientConfig: &tlsConfig},
 		}).Client()
 	default:
@@ -154,7 +156,7 @@ func New(cfg *config.Jira) (Client, error) {
 	}
 
 	httpClient.Timeout = 10 * time.Second
-	jiraClient, err := jira.NewClient(httpClient, cfg.URL)
+	jiraClient, err := jira.NewClient(cfg.URL, httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +168,7 @@ func New(cfg *config.Jira) (Client, error) {
 }
 
 func (c *client) ProjectMustExist(projectKey string) error {
-	allProjects, response, err := c.raw.Project.GetList()
+	allProjects, response, err := c.raw.Project.GetAll(context.TODO(), &jira.GetQueryOptions{})
 	if err != nil {
 		errCtx := errors.New("error response from Jira when retrieving project list")
 		if response != nil {
@@ -187,7 +189,7 @@ func (c *client) ProjectMustExist(projectKey string) error {
 }
 
 func (c *client) StatusMustExist(statusName string) error {
-	allStatuses, response, err := c.raw.Status.GetAllStatuses()
+	allStatuses, response, err := c.raw.Status.GetAllStatuses(context.TODO())
 	if err != nil {
 		errCtx := errors.New("error response from Jira when retrieving status list: %+v")
 		if response != nil {
@@ -213,7 +215,7 @@ func (c *client) StatusMustExist(statusName string) error {
 }
 
 func (c *client) FindIssueForKey(issueKey string) (Issue, error) {
-	rawIssue, resp, err := c.raw.Issue.Get(issueKey, nil)
+	rawIssue, resp, err := c.raw.Issue.Get(context.TODO(), issueKey, nil)
 	if err != nil {
 		err := fmt.Errorf("searching Jira for previous issues: %w", err)
 		logJiraErrResponse(resp, err)
@@ -224,8 +226,9 @@ func (c *client) FindIssueForKey(issueKey string) (Issue, error) {
 
 func (c *client) FindIssuesForPackage(packageName string) ([]Issue, error) {
 	query := newJiraIssueSearchQuery(c.cfg.Issue.Status, packageName, c.cfg.Issue.ProjectNameCustomField)
-	rawIssues, resp, err := c.raw.Issue.SearchV2JQL(query, &jira.SearchOptionsV3{
+	rawIssues, resp, err := c.raw.Issue.Search(context.TODO(), query, &jira.SearchOptions{
 		MaxResults: 300,
+		Fields:     []string{"*all,-comment,-description"},
 	})
 	if err != nil {
 		err := fmt.Errorf("searching Jira for previous issues: %w", err)
@@ -294,7 +297,7 @@ func (c *client) UpdateIssueSummary(issueRef IssueRef, newSummary string) error 
 		},
 	}
 	log.Trace().Interface("updates", updates).Msg("Updating issue.")
-	resp, err := c.raw.Issue.UpdateIssue(issueRef.ID, updates)
+	resp, err := c.raw.Issue.UpdateIssue(context.TODO(), issueRef.ID, updates)
 	if err != nil {
 		err := fmt.Errorf("update Jira issue: %w", err)
 		logJiraErrResponse(resp, err)
@@ -309,7 +312,7 @@ func (c *client) UpdateIssueSummary(issueRef IssueRef, newSummary string) error 
 
 func (c *client) CreateIssue(issue Issue) (IssueRef, error) {
 	req := issue.rawIssue()
-	created, resp, err := c.raw.Issue.Create(&req)
+	created, resp, err := c.raw.Issue.Create(context.TODO(), &req)
 	if err != nil {
 		err := fmt.Errorf("creating Jira issue: %w", err)
 		logJiraErrResponse(resp, err)
@@ -324,7 +327,7 @@ func (c *client) CreateIssue(issue Issue) (IssueRef, error) {
 }
 
 func (c *client) CreateIssueComment(issueRef IssueRef, newComment string) error {
-	_, resp, err := c.raw.Issue.AddComment(issueRef.ID, &jira.Comment{
+	_, resp, err := c.raw.Issue.AddComment(context.TODO(), issueRef.ID, &jira.Comment{
 		Body: newComment,
 	})
 	if err != nil {

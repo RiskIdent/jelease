@@ -8,7 +8,7 @@ go 1.24.6
 
 require (
 	github.com/a-h/templ v0.3.943
-	github.com/andygrunwald/go-jira v1.16.0
+	github.com/andygrunwald/go-jira/v2 v2.0.0-20250827191841-a1568d030dcc
 	github.com/bradleyfalzon/ghinstallation/v2 v2.16.0
 	github.com/fatih/color v1.18.0
 	github.com/gin-gonic/gin v1.10.1
@@ -61,7 +61,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/natefinch/atomic v1.0.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sagikazarmark/locafero v0.7.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.12.0 // indirect
@@ -84,5 +83,3 @@ require (
 )
 
 tool github.com/a-h/templ/cmd/templ
-
-replace github.com/andygrunwald/go-jira => github.com/conor-naranjo/go-jira v1.16.1-0.20250903022235-144d3c7d5cdc
