@@ -77,7 +77,7 @@ func newIssue(issue jira.Issue, pkgCustomFieldID uint) Issue {
 			pkgName = str
 		}
 	} else {
-		// TODO: Try find pacakge name from label
+		// TODO: Try find package name from label
 	}
 
 	return Issue{
@@ -224,7 +224,9 @@ func (c *client) FindIssueForKey(issueKey string) (Issue, error) {
 
 func (c *client) FindIssuesForPackage(packageName string) ([]Issue, error) {
 	query := newJiraIssueSearchQuery(c.cfg.Issue.Status, packageName, c.cfg.Issue.ProjectNameCustomField)
-	rawIssues, resp, err := c.raw.Issue.Search(query, &jira.SearchOptions{})
+	rawIssues, resp, err := c.raw.Issue.SearchV2JQL(query, &jira.SearchOptionsV3{
+		MaxResults: 300,
+	})
 	if err != nil {
 		err := fmt.Errorf("searching Jira for previous issues: %w", err)
 		logJiraErrResponse(resp, err)

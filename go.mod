@@ -84,3 +84,5 @@ require (
 )
 
 tool github.com/a-h/templ/cmd/templ
+
+replace github.com/andygrunwald/go-jira => github.com/conor-naranjo/go-jira v1.16.1-0.20250903022235-144d3c7d5cdc
