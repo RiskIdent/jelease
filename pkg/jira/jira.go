@@ -141,10 +141,6 @@ func New(cfg *config.Jira) (Client, error) {
 	switch cfg.Auth.Type {
 	case config.JiraAuthTypePAT:
 		return nil, fmt.Errorf("jira auth type %q: %w", cfg.Auth.Type, errors.ErrUnsupported)
-		//httpClient = (&jira.PATAuthTransport{
-		//	Token:     cfg.Auth.Token,
-		//	Transport: &http.Transport{TLSClientConfig: &tlsConfig},
-		//}).Client()
 	case config.JiraAuthTypeToken:
 		httpClient = (&jira.BasicAuthTransport{
 			Username:  cfg.Auth.User,
@@ -228,7 +224,10 @@ func (c *client) FindIssuesForPackage(packageName string) ([]Issue, error) {
 	query := newJiraIssueSearchQuery(c.cfg.Issue.Status, packageName, c.cfg.Issue.ProjectNameCustomField)
 	rawIssues, resp, err := c.raw.Issue.Search(context.TODO(), query, &jira.SearchOptions{
 		MaxResults: 300,
-		Fields:     []string{"*all,-comment,-description"},
+		// By default the search only returns the issue IDs.
+		// We want to know all of the data, except we don't care about the comments or description.
+		// https://developer.atlassian.com/cloud/jira/platform/rest/v2/api-group-issue-search/#api-rest-api-2-search-jql-get
+		Fields: []string{"*all", "-comment", "-description"},
 	})
 	if err != nil {
 		err := fmt.Errorf("searching Jira for previous issues: %w", err)
