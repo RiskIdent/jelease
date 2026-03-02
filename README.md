@@ -12,6 +12,9 @@ SPDX-License-Identifier: CC-BY-4.0
 
 [![REUSE status](https://api.reuse.software/badge/github.com/RiskIdent/jelease)](https://api.reuse.software/info/github.com/RiskIdent/jelease)
 
+> [!WARNING]
+> Archived in favor of just using [Renovate](https://docs.renovatebot.com/) instead
+
 Automatically create GitHub PRs on package updates but with more control.
 
 ## How it works
